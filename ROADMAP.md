@@ -1,12 +1,26 @@
-# Nova Browser Development Roadmap
+# Nova AI Browser - Complete Development Roadmap
 
-## Overview
+> Building a production-grade AI-native browser that competes with Perplexity Comet, Arc Browser, and OpenAI Operator.
 
-This roadmap outlines the development phases for bringing Nova Browser from concept to production. Each phase builds incrementally on previous work.
+## Vision
+
+**Nova is not a traditional browser. It's an AI-first operating system for the web.**
+
+The Flow:
+```
+User Goal → AI Understands → Plan Created → Actions Executed → Results Verified → Outcome Delivered
+```
+
+Examples:
+- "Find the best gaming laptop under ₹80,000"
+- "Research this company"
+- "Summarize all open tabs"
+- "Compare these products"
+- "Fill this application form"
 
 ---
 
-## Phase 1: Foundation & MVP (Weeks 1-4)
+## Phase 1: Foundation & MVP ✅ COMPLETE (Weeks 1-4)
 
 ### Goals
 - Establish solid project architecture
