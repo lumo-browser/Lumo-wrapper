@@ -26,9 +26,9 @@ export const MEMORY_WARNING_THRESHOLD = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
 export const MEMORY_CRITICAL_THRESHOLD = 1.8 * 1024 * 1024 * 1024; // 1.8 GB
 
 // API Keys
-export const OPENAI_API_KEY = process.env.VITE_OPENAI_API_KEY || '';
-export const CLAUDE_API_KEY = process.env.VITE_CLAUDE_API_KEY || '';
-export const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || '';
+export const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
+export const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || '';
+export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 // LLM Models
 export const LLM_MODELS = {
@@ -116,14 +116,14 @@ export enum LogLevel {
   ERROR = 'error',
 }
 
-export const LOG_LEVEL = process.env.DEBUG ? LogLevel.DEBUG : LogLevel.INFO;
+export const LOG_LEVEL = import.meta.env.VITE_DEBUG ? LogLevel.DEBUG : LogLevel.INFO;
 
-// File Paths
+// File Paths (for Electron context)
 export const CONFIG_PATHS = {
-  HOME: process.env.HOME || '',
-  CONFIG_DIR: process.env.HOME ? `${process.env.HOME}/.nova` : '',
-  DB_PATH: process.env.HOME ? `${process.env.HOME}/.nova/nova_browser.db` : '',
-  CACHE_DIR: process.env.HOME ? `${process.env.HOME}/.nova/cache` : '',
+  HOME: typeof process !== 'undefined' ? (process.env.HOME || '') : '',
+  CONFIG_DIR: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.nova` : '',
+  DB_PATH: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.nova/nova_browser.db` : '',
+  CACHE_DIR: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.nova/cache` : '',
 };
 
 // Automation
