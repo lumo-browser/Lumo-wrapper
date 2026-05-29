@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+out
+coverage
+*.egg-info
+.pytest_cache
+.venv
