@@ -8,6 +8,7 @@ import { BaseAgent, AgentContext, AgentStatus, AgentMessage } from './base-agent
 import { WorkflowPlan, WorkflowAction } from '@types';
 import { Validator } from '@utils/validators';
 import { APP_VERSION, SYSTEM_PROMPTS } from '@core/constants';
+import { GoalParsingService, AnalyzedGoal } from '../goal-parsing.service';
 
 export interface ParsedGoal {
   originalGoal: string;
@@ -46,10 +47,12 @@ export interface PlannerOutput {
  */
 export class PlannerAgent extends BaseAgent {
   private validator: Validator;
+  private goalParser: GoalParsingService;
 
   constructor() {
     super('planner', 'agent');
     this.validator = new Validator();
+    this.goalParser = new GoalParsingService();
   }
 
   /**
@@ -124,44 +127,17 @@ export class PlannerAgent extends BaseAgent {
   private parseGoal(goal: string): ParsedGoal {
     this.logger.debug('Parsing goal', { scope: 'Planner', goal });
 
-    // Validate goal format
-    if (!this.validator.validateString(goal, 5, 500)) {
-      throw new Error('Invalid goal format');
-    }
+    // Use GoalParsingService for advanced parsing
+    const analyzed = this.goalParser.analyze(goal);
 
-    // Simple heuristic-based parsing
-    const lowerGoal = goal.toLowerCase();
-
-    // Determine complexity
-    let complexity: 'simple' | 'moderate' | 'complex' = 'simple';
-    if (
-      lowerGoal.includes('and') ||
-      lowerGoal.includes('then') ||
-      lowerGoal.includes('multiple')
-    ) {
-      complexity = 'moderate';
-    }
-    if (
-      lowerGoal.includes('complex') ||
-      lowerGoal.includes('workflow') ||
-      lowerGoal.includes('sequence')
-    ) {
-      complexity = 'complex';
-    }
-
-    // Extract constraints
-    const constraints: string[] = [];
-    if (lowerGoal.includes('without')) {
-      constraints.push('avoid_specific_actions');
-    }
-    if (lowerGoal.includes('quickly')) {
-      constraints.push('optimize_speed');
-    }
+    // Map analyzed goal to ParsedGoal
+    const complexity =
+      analyzed.complexity <= 3 ? 'simple' : analyzed.complexity <= 7 ? 'moderate' : 'complex';
 
     return {
       originalGoal: goal,
-      mainObjective: goal.split('.')[0].trim(), // Take first sentence
-      constraints,
+      mainObjective: goal.split('.')[0].trim(),
+      constraints: analyzed.constraints.map((c) => c.description),
       expectedOutcome: `Completion of: ${goal.split('.')[0]}`,
       complexity
     };
