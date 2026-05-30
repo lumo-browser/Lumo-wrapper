@@ -308,14 +308,13 @@ export default function App(): React.ReactElement {
           )}
         </div>
 
-        {/* AI sidebar — slides in from right */}
+        {/* AI sidebar — slides in from right (BYOA: no Nova account needed) */}
         {showAI && (
           <AISidebar
             isOpen={showAI}
             onClose={() => setShowAI(false)}
-            isLoggedIn={!!currentUser}
-            onRequestLogin={() => setShowAccount(true)}
             currentUrl={currentUrl}
+            pageTitle={activeTab?.title ?? ''}
           />
         )}
       </div>
