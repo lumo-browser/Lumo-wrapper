@@ -3,7 +3,7 @@
  * Provides structured logging with levels and formatting
  */
 
-import { LogLevel, LOG_LEVEL } from '@core/constants';
+import { LogLevel, LOG_LEVEL } from '../core/constants';
 
 export interface LogEntry {
   timestamp: string;

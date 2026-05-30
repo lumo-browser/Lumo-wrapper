@@ -5,13 +5,14 @@
 import React, { useEffect, useState } from 'react';
 import { logger } from '@utils/logger';
 import { AIPlannerPanel, StatusPanel, SettingsPanel } from '@ui/components';
+import { HomePage } from './pages/HomePage';
 
 const SCOPE = 'App';
 
-type TabType = 'planner' | 'status' | 'settings';
+type TabType = 'home' | 'planner' | 'status' | 'settings';
 
 export default function App(): React.ReactElement {
-  const [activeTab, setActiveTab] = useState<TabType>('planner');
+  const [activeTab, setActiveTab] = useState<TabType>('home');
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function App(): React.ReactElement {
   };
 
   const tabs: Array<{ id: TabType; label: string; icon: string }> = [
+    { id: 'home', label: 'Home', icon: '🏠' },
     { id: 'planner', label: 'AI Planner', icon: '🤖' },
     { id: 'status', label: 'Status', icon: '📊' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
@@ -94,10 +96,12 @@ export default function App(): React.ReactElement {
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden p-4">
         <div className="flex-1 flex gap-4">
-          {/* Left Panel - AI Planner (wider) */}
+          {/* Left Panel - Content (wider) */}
           <div className="flex-1 min-w-0">
+            {activeTab === 'home' && <HomePage />}
             {activeTab === 'planner' && <AIPlannerPanel />}
             {activeTab === 'status' && <StatusPanel />}
+            {activeTab === 'settings' && <SettingsPanel onThemeChange={handleThemeChange} />}
             {activeTab === 'settings' && <SettingsPanel onThemeChange={handleThemeChange} />}
           </div>
 

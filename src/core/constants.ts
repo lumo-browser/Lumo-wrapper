@@ -25,10 +25,23 @@ export const TARGET_MEMORY_USAGE = 2 * 1024 * 1024 * 1024; // 2 GB
 export const MEMORY_WARNING_THRESHOLD = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
 export const MEMORY_CRITICAL_THRESHOLD = 1.8 * 1024 * 1024 * 1024; // 1.8 GB
 
+// Helper to safely get environment variables across both Electron (Node) and Vite renderer processes
+const getEnvVar = (key: string): string | undefined => {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key];
+  }
+  // @ts-ignore - Handled by Vite replacement at build time
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    // @ts-ignore - Handled by Vite
+    return import.meta.env[key];
+  }
+  return undefined;
+};
+
 // API Keys
-export const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
-export const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY || '';
-export const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+export const OPENAI_API_KEY = getEnvVar('VITE_OPENAI_API_KEY') || '';
+export const CLAUDE_API_KEY = getEnvVar('VITE_CLAUDE_API_KEY') || '';
+export const GEMINI_API_KEY = getEnvVar('VITE_GEMINI_API_KEY') || '';
 
 // LLM Models
 export const LLM_MODELS = {
@@ -116,7 +129,7 @@ export enum LogLevel {
   ERROR = 'error',
 }
 
-export const LOG_LEVEL = import.meta.env.VITE_DEBUG ? LogLevel.DEBUG : LogLevel.INFO;
+export const LOG_LEVEL = getEnvVar('VITE_DEBUG') ? LogLevel.DEBUG : LogLevel.INFO;
 
 // File Paths (for Electron context)
 export const CONFIG_PATHS = {
