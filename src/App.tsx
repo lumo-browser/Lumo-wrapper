@@ -3,6 +3,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { Home, Zap, BarChart3, Settings, Lightbulb, CheckCircle, Clock, TrendingUp, Brain } from 'lucide-react';
 import { logger } from '@utils/logger';
 import { AIPlannerPanel, StatusPanel, SettingsPanel } from '@ui/components';
 import { HomePage } from './pages/HomePage';
@@ -51,11 +52,11 @@ export default function App(): React.ReactElement {
     }
   };
 
-  const tabs: Array<{ id: TabType; label: string; icon: string }> = [
-    { id: 'home', label: 'Home', icon: '🏠' },
-    { id: 'planner', label: 'AI Planner', icon: '🤖' },
-    { id: 'status', label: 'Status', icon: '📊' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
+  const tabs: Array<{ id: TabType; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
+    { id: 'home', label: 'Home', Icon: Home },
+    { id: 'planner', label: 'AI Planner', Icon: Zap },
+    { id: 'status', label: 'Status', Icon: BarChart3 },
+    { id: 'settings', label: 'Settings', Icon: Settings },
   ];
 
   return (
@@ -81,13 +82,14 @@ export default function App(): React.ReactElement {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 font-medium text-sm transition-colors duration-200 border-b-2 ${
+              className={`px-4 py-3 font-medium text-sm transition-colors duration-200 border-b-2 flex items-center gap-2 ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
                   : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              {tab.icon} {tab.label}
+              <tab.Icon className="w-4 h-4" />
+              {tab.label}
             </button>
           ))}
         </nav>
@@ -109,7 +111,7 @@ export default function App(): React.ReactElement {
           <div className="w-64 hidden lg:flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
             <div className="bg-gradient-to-r from-pink-600 to-rose-600 dark:from-pink-700 dark:to-rose-700 p-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <span>💡</span>
+                <Lightbulb className="w-5 h-5" />
                 Quick Info
               </h3>
             </div>
@@ -117,21 +119,24 @@ export default function App(): React.ReactElement {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Features */}
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">✨ Available Features</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2 flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  Available Features
+                </h4>
                 <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                  <li>✅ AI Goal Planning</li>
-                  <li>✅ Action Decomposition</li>
-                  <li>✅ Dependency Sequencing</li>
-                  <li>✅ Confidence Scoring</li>
-                  <li>✅ Error Detection</li>
-                  <li>⏳ Browser Automation (Week 6)</li>
-                  <li>⏳ Plan Verification (Week 6)</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> AI Goal Planning</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> Action Decomposition</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> Dependency Sequencing</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> Confidence Scoring</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> Error Detection</li>
+                  <li className="flex items-center gap-2"><Clock className="w-3 h-3 text-yellow-600" /> Browser Automation (Week 6)</li>
+                  <li className="flex items-center gap-2"><Clock className="w-3 h-3 text-yellow-600" /> Plan Verification (Week 6)</li>
                 </ul>
               </div>
 
               {/* Tips */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">💭 Try These Goals</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2 flex items-center gap-2"><Brain className="w-4 h-4" /> Try These Goals</h4>
                 <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
                   <li className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
                     "Navigate to Google and search for TypeScript"
@@ -147,7 +152,7 @@ export default function App(): React.ReactElement {
 
               {/* Stats */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2">📈 System Stats</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> System Stats</h4>
                 <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
                   <div className="flex justify-between">
                     <span>Services:</span>
