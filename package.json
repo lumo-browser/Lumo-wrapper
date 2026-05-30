@@ -14,7 +14,7 @@
     "build:backend": "cd backend && npm run build",
     "build:frontend": "npm run build:vite && npm run build:electron",
     "build:vite": "vite build",
-    "build:electron": "tsc src/main/main.ts --outDir dist && tsc src/main/preload.ts --outDir dist",
+    "build:electron": "tsc src/main/main.ts --outDir dist --esModuleInterop --skipLibCheck && tsc src/main/preload.ts --outDir dist --esModuleInterop --skipLibCheck",
     "package": "electron-builder",
     "test": "vitest",
     "test:ui": "vitest --ui",

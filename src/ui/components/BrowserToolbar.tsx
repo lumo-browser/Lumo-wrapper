@@ -15,7 +15,6 @@ import {
   Star,
   StarOff,
   Puzzle,
-  Puzzle,
   User,
   Sparkles,
   MoreHorizontal,
