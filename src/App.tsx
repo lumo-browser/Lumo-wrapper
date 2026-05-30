@@ -1,200 +1,247 @@
 /**
- * Root App component — Nova Browser
- * Full browser chrome: tabs, toolbar, extensions, account, AI chat & assistant
+ * Nova Browser — Root Application Shell
+ *
+ * Structure (top → bottom):
+ *   [Tab Bar] — Chrome-style tabs
+ *   [Toolbar] — Address bar + nav controls
+ *   [Content + optional AI Sidebar] — flex row
+ *
+ * The AI is a sidebar accessed from the toolbar ✨ button.
+ * There are NO developer panels, no admin dashboards, no "AI Planner" nav tabs.
+ * Settings lives in the 3-dot menu.
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Home, Zap, BarChart3, Settings } from 'lucide-react';
 import { logger } from '@utils/logger';
-import { AIPlannerPanel, StatusPanel, SettingsPanel } from '@ui/components';
-import { HomePage } from './pages/HomePage';
+
 import { BrowserTabBar, type BrowserTab } from '@ui/components/BrowserTabBar';
 import { BrowserToolbar } from '@ui/components/BrowserToolbar';
 import { ExtensionsPanel } from '@ui/components/ExtensionsPanel';
 import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
-import { AIChatPanel } from '@ui/components/AIChatPanel';
-import { AIAssistantBar } from '@ui/components/AIAssistantBar';
+import { AISidebar } from '@ui/components/AISidebar';
+import { BrowserMenu } from '@ui/components/BrowserMenu';
+import { NewTabPage } from './pages/NewTabPage';
 
 const SCOPE = 'App';
 
-type ViewType = 'home' | 'planner' | 'status' | 'settings';
-
-let tabCounter = 2;
-
-const createDefaultTab = (): BrowserTab => ({
-  id: `tab-${++tabCounter}`,
+// ── Tab helpers ────────────────────────────────────────────────────────────
+let _tabId = 1;
+const mkTab = (overrides: Partial<BrowserTab> = {}): BrowserTab => ({
+  id: `tab-${++_tabId}`,
   title: 'New Tab',
   url: '',
   isActive: false,
   isLoading: false,
+  ...overrides,
 });
 
 const INITIAL_TABS: BrowserTab[] = [
-  { id: 'tab-1', title: 'Home', url: 'nova://home', isActive: true, isLoading: false },
+  mkTab({ id: 'tab-1', title: 'New Tab', url: '', isActive: true }),
 ];
 
+// ── Navigation history per tab ─────────────────────────────────────────────
+interface NavHistory {
+  stack: string[];
+  cursor: number;
+}
+const emptyHistory = (): NavHistory => ({ stack: [], cursor: -1 });
+
+// ── App ────────────────────────────────────────────────────────────────────
 export default function App(): React.ReactElement {
   // Theme
   const [isDark, setIsDark] = useState(true);
 
-  // Browser tabs
+  // Tabs
   const [tabs, setTabs] = useState<BrowserTab[]>(INITIAL_TABS);
-  const activeTabId = tabs.find((t) => t.isActive)?.id ?? tabs[0]?.id;
-  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activeTab = tabs.find((t) => t.isActive) ?? tabs[0];
 
-  // Navigation
-  const [currentUrl, setCurrentUrl] = useState('nova://home');
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [canGoForward, setCanGoForward] = useState(false);
+  // Per-tab nav history
+  const [navHistories, setNavHistories] = useState<Record<string, NavHistory>>({
+    'tab-1': emptyHistory(),
+  });
 
-  // Inner app view (for nova:// pages)
-  const [activeView, setActiveView] = useState<ViewType>('home');
+  // Bookmark state (per URL)
+  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
 
   // Panels
   const [showExtensions, setShowExtensions] = useState(false);
-  const [showAccount, setShowAccount] = useState(false);
-  const [showChat, setShowChat] = useState(false);
-  const [chatInitialPrompt, setChatInitialPrompt] = useState<string | undefined>();
+  const [showAccount, setShowAccount]       = useState(false);
+  const [showAI, setShowAI]                 = useState(false);
+  const [showMenu, setShowMenu]             = useState(false);
+  const [showSettings, setShowSettings]     = useState(false);
 
   // Account
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
 
-  // Extensions panel ref for outside click
-  const extBtnRef = useRef<HTMLDivElement>(null);
+  // Refs for outside-click dismissal
+  const menuRef       = useRef<HTMLDivElement>(null);
+  const extRef        = useRef<HTMLDivElement>(null);
+  const loadTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ---- Theme ----
+  // ── Boot ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    logger.info(SCOPE, 'Nova Browser mounted');
-    document.documentElement.classList.toggle('dark', isDark);
+    logger.info(SCOPE, 'Nova Browser started');
 
-    const saved = localStorage.getItem('nova-browser-settings');
+    // Restore theme
+    const saved = localStorage.getItem('nova-settings');
     if (saved) {
       try {
         const s = JSON.parse(saved);
         const dark = s.theme !== 'light';
         setIsDark(dark);
         document.documentElement.classList.toggle('dark', dark);
-      } catch {
-        logger.error(SCOPE, 'Failed to parse settings');
-      }
+      } catch { /* noop */ }
+    } else {
+      document.documentElement.classList.add('dark');
     }
 
+    // Restore user
     const savedUser = localStorage.getItem('nova-user');
     if (savedUser) {
-      try {
-        setCurrentUser(JSON.parse(savedUser));
-      } catch {
-        /* noop */
-      }
+      try { setCurrentUser(JSON.parse(savedUser)); } catch { /* noop */ }
     }
+
+    // Outside-click handler
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+      if (extRef.current  && !extRef.current.contains(e.target as Node))  setShowExtensions(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // ── Theme ────────────────────────────────────────────────────────────────
   const handleToggleTheme = useCallback(() => {
-    setIsDark((d) => {
-      const next = !d;
+    setIsDark((prev) => {
+      const next = !prev;
       document.documentElement.classList.toggle('dark', next);
-      const saved = localStorage.getItem('nova-browser-settings');
-      const settings = saved ? JSON.parse(saved) : {};
-      localStorage.setItem('nova-browser-settings', JSON.stringify({ ...settings, theme: next ? 'dark' : 'light' }));
+      const saved = localStorage.getItem('nova-settings');
+      const s = saved ? JSON.parse(saved) : {};
+      localStorage.setItem('nova-settings', JSON.stringify({ ...s, theme: next ? 'dark' : 'light' }));
       return next;
     });
   }, []);
 
-  const handleThemeChange = (theme: 'dark' | 'light') => {
-    const dark = theme === 'dark';
-    setIsDark(dark);
-    document.documentElement.classList.toggle('dark', dark);
-  };
-
-  // ---- Tabs ----
-  const handleTabSelect = (id: string) => {
+  // ── Tabs ─────────────────────────────────────────────────────────────────
+  const selectTab = (id: string) =>
     setTabs((prev) => prev.map((t) => ({ ...t, isActive: t.id === id })));
-  };
 
-  const handleTabClose = (id: string) => {
+  const closeTab = (id: string) =>
     setTabs((prev) => {
-      if (prev.length === 1) return prev;
+      if (prev.length === 1) return prev; // never close last tab
       const idx = prev.findIndex((t) => t.id === id);
       const next = prev.filter((t) => t.id !== id);
       if (prev[idx]?.isActive && next.length > 0) {
-        const newActive = idx > 0 ? idx - 1 : 0;
-        next[newActive] = { ...next[newActive], isActive: true };
+        const ni = Math.max(0, idx - 1);
+        next[ni] = { ...next[ni], isActive: true };
       }
+      return next;
+    });
+
+  const addTab = () => {
+    const t = mkTab({ isActive: true });
+    setTabs((prev) => [...prev.map((x) => ({ ...x, isActive: false })), t]);
+    setNavHistories((prev) => ({ ...prev, [t.id]: emptyHistory() }));
+  };
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  const navigate = useCallback((url: string) => {
+    if (!activeTab) return;
+    const tabId = activeTab.id;
+
+    // Update tab immediately
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === tabId
+          ? { ...t, url, title: url ? url.replace(/^https?:\/\//, '').split('/')[0] : 'New Tab', isLoading: true }
+          : t
+      )
+    );
+
+    // Update history for this tab
+    setNavHistories((prev) => {
+      const h = prev[tabId] ?? emptyHistory();
+      const newStack = [...h.stack.slice(0, h.cursor + 1), url];
+      return { ...prev, [tabId]: { stack: newStack, cursor: newStack.length - 1 } };
+    });
+
+    // Simulate load completion
+    if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+    loadTimerRef.current = setTimeout(() => {
+      setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, isLoading: false } : t)));
+    }, 1000);
+  }, [activeTab]);
+
+  const goBack = useCallback(() => {
+    if (!activeTab) return;
+    const h = navHistories[activeTab.id];
+    if (!h || h.cursor <= 0) return;
+    const newCursor = h.cursor - 1;
+    const url = h.stack[newCursor];
+    setNavHistories((prev) => ({ ...prev, [activeTab.id]: { ...h, cursor: newCursor } }));
+    setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, url, title: url.replace(/^https?:\/\//, '').split('/')[0] } : t));
+  }, [activeTab, navHistories]);
+
+  const goForward = useCallback(() => {
+    if (!activeTab) return;
+    const h = navHistories[activeTab.id];
+    if (!h || h.cursor >= h.stack.length - 1) return;
+    const newCursor = h.cursor + 1;
+    const url = h.stack[newCursor];
+    setNavHistories((prev) => ({ ...prev, [activeTab.id]: { ...h, cursor: newCursor } }));
+    setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, url, title: url.replace(/^https?:\/\//, '').split('/')[0] } : t));
+  }, [activeTab, navHistories]);
+
+  const handleRefresh = () => { if (activeTab?.url) navigate(activeTab.url); };
+  const handleStop    = () => {
+    if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+    setTabs((prev) => prev.map((t) => t.isActive ? { ...t, isLoading: false } : t));
+  };
+
+  // ── Bookmarks ─────────────────────────────────────────────────────────────
+  const toggleBookmark = () => {
+    const url = activeTab?.url;
+    if (!url) return;
+    setBookmarks((prev) => {
+      const next = new Set(prev);
+      next.has(url) ? next.delete(url) : next.add(url);
       return next;
     });
   };
 
-  const handleTabAdd = () => {
-    const newTab = createDefaultTab();
-    setTabs((prev) => [
-      ...prev.map((t) => ({ ...t, isActive: false })),
-      { ...newTab, isActive: true },
-    ]);
-    setCurrentUrl('');
-    setActiveView('home');
-  };
-
-  // ---- Navigation ----
-  const handleNavigate = (url: string) => {
-    setCurrentUrl(url);
-    setTabs((prev) =>
-      prev.map((t) =>
-        t.isActive
-          ? { ...t, url, title: url.replace(/^https?:\/\//, '').split('/')[0] || 'New Tab', isLoading: true }
-          : t
-      )
-    );
-    setCanGoBack(true);
-    // Simulate page load
-    setTimeout(() => {
-      setTabs((prev) => prev.map((t) => (t.isActive ? { ...t, isLoading: false } : t)));
-    }, 1200);
-  };
-
-  // ---- Account ----
+  // ── Account ───────────────────────────────────────────────────────────────
   const handleLogin = (user: UserAccount) => {
     setCurrentUser(user);
     localStorage.setItem('nova-user', JSON.stringify(user));
   };
-
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('nova-user');
   };
 
-  // ---- AI Chat ----
-  const handleOpenChat = (prompt?: string) => {
-    setChatInitialPrompt(prompt);
-    setShowChat(true);
-  };
+  // ── Derived state ─────────────────────────────────────────────────────────
+  const currentUrl = activeTab?.url ?? '';
+  const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
+  const canGoBack    = currentHistory.cursor > 0;
+  const canGoForward = currentHistory.cursor < currentHistory.stack.length - 1;
+  const isSecure     = currentUrl.startsWith('https://');
+  const isNtpPage    = !currentUrl;
+  const isBookmarked = bookmarks.has(currentUrl);
 
-  const handleRequestLogin = () => {
-    setShowAccount(true);
-  };
-
-  // ---- Views ----
-  const navViews: Array<{ id: ViewType; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'home', label: 'Home', Icon: Home },
-    { id: 'planner', label: 'AI Planner', Icon: Zap },
-    { id: 'status', label: 'Status', Icon: BarChart3 },
-    { id: 'settings', label: 'Settings', Icon: Settings },
-  ];
-
-  const isNovaPage = !currentUrl || currentUrl.startsWith('nova://');
-  const isSecure = currentUrl.startsWith('https://');
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col w-full h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200 overflow-hidden">
-      {/* ---- Browser Tab Bar ---- */}
+    <div className="flex flex-col w-full h-screen overflow-hidden bg-white dark:bg-[#1e1e1e]">
+
+      {/* ── Tab Strip ── */}
       <BrowserTabBar
         tabs={tabs}
-        onTabSelect={handleTabSelect}
-        onTabClose={handleTabClose}
-        onTabAdd={handleTabAdd}
+        onTabSelect={selectTab}
+        onTabClose={closeTab}
+        onTabAdd={addTab}
       />
 
-      {/* ---- Browser Toolbar (Address Bar) ---- */}
-      <div className="relative">
+      {/* ── Toolbar ── */}
+      <div className="relative flex-shrink-0" ref={menuRef}>
         <BrowserToolbar
           url={currentUrl}
           canGoBack={canGoBack}
@@ -204,106 +251,76 @@ export default function App(): React.ReactElement {
           isDark={isDark}
           isLoggedIn={!!currentUser}
           userEmail={currentUser?.email}
-          onBack={() => setCanGoBack(false)}
-          onForward={() => {}}
-          onRefresh={() => handleNavigate(currentUrl)}
-          onNavigate={handleNavigate}
+          isBookmarked={isBookmarked}
+          isAISidebarOpen={showAI}
+          onBack={goBack}
+          onForward={goForward}
+          onRefresh={handleRefresh}
+          onStop={handleStop}
+          onNavigate={navigate}
           onToggleTheme={handleToggleTheme}
-          onOpenExtensions={() => setShowExtensions((v) => !v)}
+          onToggleExtensions={() => setShowExtensions((v) => !v)}
           onOpenAccount={() => setShowAccount(true)}
+          onToggleAI={() => setShowAI((v) => !v)}
+          onToggleBookmark={toggleBookmark}
+          onOpenMenu={() => setShowMenu((v) => !v)}
         />
 
-        {/* Extensions Dropdown */}
+        {/* Extensions dropdown */}
         {showExtensions && (
-          <div ref={extBtnRef} className="absolute right-0 top-full">
+          <div ref={extRef} className="absolute right-0 top-full z-50">
             <ExtensionsPanel onClose={() => setShowExtensions(false)} />
           </div>
         )}
+
+        {/* 3-dot menu */}
+        {showMenu && (
+          <BrowserMenu
+            isDark={isDark}
+            isLoggedIn={!!currentUser}
+            userEmail={currentUser?.email}
+            onClose={() => setShowMenu(false)}
+            onToggleTheme={handleToggleTheme}
+            onOpenAccount={() => { setShowAccount(true); setShowMenu(false); }}
+            onOpenSettings={() => setShowMenu(false)}
+          />
+        )}
       </div>
 
-      {/* ---- App View Nav (only for nova:// pages) ---- */}
-      {isNovaPage && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4">
-          <nav className="flex gap-1">
-            {navViews.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                onClick={() => setActiveView(id)}
-                className={`px-4 py-2.5 font-medium text-sm transition-colors duration-150 border-b-2 flex items-center gap-2 ${
-                  activeView === id
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
+      {/* ── Content area + optional AI sidebar ── */}
+      <div className="flex flex-1 overflow-hidden">
 
-      {/* ---- Main Content ---- */}
-      <main className="flex-1 overflow-auto">
-        {isNovaPage ? (
-          <div className="h-full">
-            {activeView === 'home' && <HomePage />}
-            {activeView === 'planner' && (
-              <div className="p-4 h-full">
-                <AIPlannerPanel />
+        {/* Page content */}
+        <div className="flex-1 overflow-auto bg-white dark:bg-[#1e1e1e]">
+          {isNtpPage ? (
+            <NewTabPage onNavigate={navigate} />
+          ) : (
+            /* In production this is Electron's WebContentsView rendering the Chromium engine */
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-400 dark:text-gray-600">
+              <div className="w-10 h-10 border-2 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin" />
+              <div className="text-center">
+                <p className="text-sm font-medium">{currentUrl}</p>
+                <p className="text-xs mt-1 text-gray-300 dark:text-gray-700">
+                  Chromium WebContentsView · V8 engine active
+                </p>
               </div>
-            )}
-            {activeView === 'status' && (
-              <div className="p-4 h-full">
-                <StatusPanel />
-              </div>
-            )}
-            {activeView === 'settings' && (
-              <div className="p-4 h-full">
-                <SettingsPanel onThemeChange={handleThemeChange} />
-              </div>
-            )}
-          </div>
-        ) : (
-          // External page placeholder (would be Electron WebContentsView in production)
-          <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-600 flex-col gap-3">
-            <div className="w-12 h-12 border-2 border-gray-300 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin" />
-            <p className="text-sm">Loading {currentUrl}</p>
-            <p className="text-xs text-gray-300 dark:text-gray-700">Chromium WebView renders here in production</p>
-          </div>
-        )}
-      </main>
-
-      {/* ---- Status Bar ---- */}
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-            <span>System Ready</span>
-          </div>
-          {currentUser && (
-            <span className="text-blue-600 dark:text-blue-400">{currentUser.email}</span>
+            </div>
           )}
         </div>
-        <span>Nova Browser v0.1.0</span>
-      </footer>
 
-      {/* ---- Floating AI Assistant Button ---- */}
-      <AIAssistantBar
-        isLoggedIn={!!currentUser}
-        onOpenChat={handleOpenChat}
-        onRequestLogin={handleRequestLogin}
-      />
+        {/* AI sidebar — slides in from right */}
+        {showAI && (
+          <AISidebar
+            isOpen={showAI}
+            onClose={() => setShowAI(false)}
+            isLoggedIn={!!currentUser}
+            onRequestLogin={() => setShowAccount(true)}
+            currentUrl={currentUrl}
+          />
+        )}
+      </div>
 
-      {/* ---- AI Chat Panel ---- */}
-      <AIChatPanel
-        isOpen={showChat}
-        onClose={() => setShowChat(false)}
-        isLoggedIn={!!currentUser}
-        onRequestLogin={handleRequestLogin}
-      />
-
-      {/* ---- Account Modal ---- */}
+      {/* ── Account modal ── */}
       <AccountModal
         isOpen={showAccount}
         currentUser={currentUser}
