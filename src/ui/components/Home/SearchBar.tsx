@@ -1,9 +1,10 @@
 /**
- * SearchBar Component
+ * SearchBar Component - Professional Version
  * Main search input for Nova Browser home page
  */
 
 import React, { useState } from 'react';
+import { Search, Send } from 'lucide-react';
 import clsx from 'clsx';
 
 interface SearchBarProps {
@@ -11,7 +12,10 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-export function SearchBar({ onSearch, placeholder = 'What would you like to accomplish?' }: SearchBarProps): React.ReactElement {
+export function SearchBar({
+  onSearch,
+  placeholder = 'What would you like to accomplish?',
+}: SearchBarProps): React.ReactElement {
   const [query, setQuery] = useState<string>('');
   const [isFocused, setIsFocused] = useState<boolean>(false);
 
@@ -23,17 +27,21 @@ export function SearchBar({ onSearch, placeholder = 'What would you like to acco
     }
   };
 
+  const suggestedSearches = [
+    'Research a company',
+    'Find product alternatives',
+    'Summarize an article',
+    'Compare pricing plans',
+  ];
+
   return (
-    <div className="w-full max-w-3xl mx-auto mb-8">
-      <form onSubmit={handleSubmit} className="relative">
-        <div
-          className={clsx(
-            'relative rounded-full transition-all duration-300 shadow-lg',
-            isFocused
-              ? 'ring-2 ring-blue-500 shadow-blue-500/50'
-              : 'hover:shadow-xl dark:hover:shadow-blue-500/20'
-          )}
-        >
+    <div className="w-full max-w-4xl mx-auto mb-12">
+      {/* Main Search Form */}
+      <form onSubmit={handleSubmit} className="mb-8">
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className={clsx('w-5 h-5 transition-colors', isFocused ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500')} />
+          </div>
           <input
             type="text"
             value={query}
@@ -42,40 +50,43 @@ export function SearchBar({ onSearch, placeholder = 'What would you like to acco
             onBlur={() => setIsFocused(false)}
             placeholder={placeholder}
             className={clsx(
-              'w-full px-6 py-4 pr-12 rounded-full',
-              'bg-white dark:bg-gray-900',
+              'w-full pl-12 pr-14 py-3 rounded-lg',
+              'border border-gray-200 dark:border-gray-700',
+              'bg-white dark:bg-gray-800',
               'text-gray-900 dark:text-white',
               'placeholder-gray-500 dark:placeholder-gray-400',
-              'border-none outline-none',
-              'text-lg transition-colors'
+              'focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400',
+              'focus:border-transparent',
+              'transition-all duration-200',
+              'group-hover:border-gray-300 dark:group-hover:border-gray-600'
             )}
             autoFocus
           />
-
           <button
             type="submit"
-            className={clsx(
-              'absolute right-2 top-1/2 -translate-y-1/2',
-              'p-2 rounded-full',
-              'bg-blue-500 hover:bg-blue-600 text-white',
-              'transition-colors duration-200',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
-            )}
             disabled={!query.trim()}
+            className={clsx(
+              'absolute inset-y-0 right-0 px-4 flex items-center',
+              'text-white font-medium rounded-r-lg',
+              'transition-all duration-200',
+              query.trim()
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                : 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
+            )}
             aria-label="Search"
           >
-            <span className="text-xl">✨</span>
+            <Send className="w-4 h-4" />
           </button>
         </div>
       </form>
 
-      {/* Suggested searches */}
-      <div className="mt-6 flex flex-wrap gap-2 justify-center">
-        <span className="text-sm text-gray-500 dark:text-gray-400 w-full text-center mb-2">
-          Try searching:
-        </span>
-        {['Research a company', 'Find best laptop', 'Summarize this website', 'Compare products'].map(
-          (suggestion) => (
+      {/* Suggested Searches */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide px-1">
+          Try these searches
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {suggestedSearches.map((suggestion) => (
             <button
               key={suggestion}
               onClick={() => {
@@ -83,16 +94,19 @@ export function SearchBar({ onSearch, placeholder = 'What would you like to acco
                 onSearch(suggestion);
               }}
               className={clsx(
-                'px-3 py-1 rounded-full text-sm',
-                'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-                'hover:bg-gray-300 dark:hover:bg-gray-700',
-                'transition-colors duration-200'
+                'px-4 py-3 text-sm font-medium text-left',
+                'bg-gray-50 dark:bg-gray-800',
+                'border border-gray-200 dark:border-gray-700',
+                'text-gray-700 dark:text-gray-300',
+                'hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:border-blue-500',
+                'rounded-lg transition-all duration-200',
+                'focus:outline-none focus:ring-2 focus:ring-blue-500'
               )}
             >
               {suggestion}
             </button>
-          )
-        )}
+          ))}
+        </div>
       </div>
     </div>
   );
