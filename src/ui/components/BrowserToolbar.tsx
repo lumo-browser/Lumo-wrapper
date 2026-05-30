@@ -1,23 +1,25 @@
 /**
- * BrowserToolbar — Address bar, navigation controls, extensions, account
+ * BrowserToolbar — Chrome/Edge-accurate address bar + controls
+ * One AI button. No developer panels. Pure browser chrome.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  Shield,
+  X as XIcon,
   ShieldCheck,
+  Shield,
   Search,
   Star,
-  Share2,
+  StarOff,
   Puzzle,
   User,
-  Moon,
+  Sparkles,
+  MoreHorizontal,
   Sun,
-  ChevronDown,
-  Menu,
+  Moon,
 } from 'lucide-react';
 
 interface BrowserToolbarProps {
@@ -29,13 +31,19 @@ interface BrowserToolbarProps {
   isDark: boolean;
   isLoggedIn: boolean;
   userEmail?: string;
+  isBookmarked: boolean;
+  isAISidebarOpen: boolean;
   onBack: () => void;
   onForward: () => void;
   onRefresh: () => void;
+  onStop: () => void;
   onNavigate: (url: string) => void;
   onToggleTheme: () => void;
-  onOpenExtensions: () => void;
+  onToggleExtensions: () => void;
   onOpenAccount: () => void;
+  onToggleAI: () => void;
+  onToggleBookmark: () => void;
+  onOpenMenu: () => void;
 }
 
 export function BrowserToolbar({
@@ -47,33 +55,51 @@ export function BrowserToolbar({
   isDark,
   isLoggedIn,
   userEmail,
+  isBookmarked,
+  isAISidebarOpen,
   onBack,
   onForward,
   onRefresh,
+  onStop,
   onNavigate,
   onToggleTheme,
-  onOpenExtensions,
+  onToggleExtensions,
   onOpenAccount,
+  onToggleAI,
+  onToggleBookmark,
+  onOpenMenu,
 }: BrowserToolbarProps): React.ReactElement {
-  const [addressValue, setAddressValue] = useState(url);
+  const [draftUrl, setDraftUrl] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Keep draft in sync when not focused
   useEffect(() => {
-    if (!isFocused) {
-      setAddressValue(url);
-    }
+    if (!isFocused) setDraftUrl(url);
   }, [url, isFocused]);
+
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+    setDraftUrl(url);
+    requestAnimationFrame(() => inputRef.current?.select());
+  }, [url]);
+
+  const handleBlur = useCallback(() => {
+    setIsFocused(false);
+    setDraftUrl(url);
+  }, [url]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const raw = addressValue.trim();
+    const raw = draftUrl.trim();
     if (!raw) return;
 
-    let resolved = raw;
-    if (!raw.startsWith('http://') && !raw.startsWith('https://') && raw.includes('.')) {
+    let resolved: string;
+    if (/^https?:\/\//i.test(raw)) {
+      resolved = raw;
+    } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(raw) && !raw.includes(' ')) {
       resolved = `https://${raw}`;
-    } else if (!raw.startsWith('http') && !raw.includes('.')) {
+    } else {
       resolved = `https://www.google.com/search?q=${encodeURIComponent(raw)}`;
     }
 
@@ -81,141 +107,202 @@ export function BrowserToolbar({
     inputRef.current?.blur();
   };
 
-  const displayUrl = isFocused ? addressValue : (url.replace(/^https?:\/\//, '') || '');
+  // Displayed in the bar when not focused — strip protocol for cleanliness
+  const displayValue = isFocused
+    ? draftUrl
+    : url.replace(/^https?:\/\//, '').replace(/\/$/, '') || '';
+
+  const isNtpPage = !url || url === 'nova://newtab';
 
   return (
-    <div className="flex items-center gap-1 px-2 py-1.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-      {/* Navigation Controls */}
-      <div className="flex items-center gap-0.5">
-        <NavButton onClick={onBack} disabled={!canGoBack} title="Back">
-          <ChevronLeft className="w-4 h-4" />
-        </NavButton>
-        <NavButton onClick={onForward} disabled={!canGoForward} title="Forward">
-          <ChevronRight className="w-4 h-4" />
-        </NavButton>
-        <NavButton onClick={onRefresh} title={isLoading ? 'Stop' : 'Refresh'}>
-          <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </NavButton>
+    <div className="flex items-center gap-1.5 px-3 py-1.5 h-11
+      bg-white dark:bg-[#2d2d2d]
+      border-b border-gray-200 dark:border-[#3a3a3a]
+      flex-shrink-0">
+
+      {/* ── Navigation Controls ── */}
+      <div className="flex items-center gap-px">
+        <NavBtn
+          onClick={onBack}
+          disabled={!canGoBack}
+          title="Back (Alt+Left)"
+          id="nav-back"
+        >
+          <ChevronLeft className="w-[18px] h-[18px]" strokeWidth={2.5} />
+        </NavBtn>
+
+        <NavBtn
+          onClick={onForward}
+          disabled={!canGoForward}
+          title="Forward (Alt+Right)"
+          id="nav-forward"
+        >
+          <ChevronRight className="w-[18px] h-[18px]" strokeWidth={2.5} />
+        </NavBtn>
+
+        <NavBtn
+          onClick={isLoading ? onStop : onRefresh}
+          title={isLoading ? 'Stop (Esc)' : 'Refresh (F5)'}
+          id="nav-refresh"
+        >
+          {isLoading
+            ? <XIcon className="w-4 h-4" strokeWidth={2.5} />
+            : <RotateCcw className="w-[15px] h-[15px]" strokeWidth={2.5} />
+          }
+        </NavBtn>
       </div>
 
-      {/* Address Bar */}
-      <form onSubmit={handleSubmit} className="flex-1 mx-2">
+      {/* ── Address Bar ── */}
+      <form onSubmit={handleSubmit} className="flex-1 min-w-0 mx-1">
         <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200
+          className={`
+            flex items-center gap-2 h-8 px-3 rounded-full transition-all duration-150
             ${isFocused
-              ? 'bg-white dark:bg-gray-700 ring-2 ring-blue-500 shadow-sm'
-              : 'bg-gray-100 dark:bg-gray-700/60 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
+              ? 'bg-white dark:bg-[#1e1e1e] ring-2 ring-blue-500 shadow-sm'
+              : 'bg-gray-100 dark:bg-[#3a3a3a] hover:bg-gray-200 dark:hover:bg-[#404040]'
+            }
+          `}
         >
-          {/* Security Icon */}
-          {isFocused ? (
-            <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-          ) : isSecure ? (
-            <ShieldCheck className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-          ) : (
-            <Shield className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-          )}
+          {/* Security / Search icon */}
+          <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+            {isFocused ? (
+              <Search className="w-3.5 h-3.5 text-gray-400" />
+            ) : isNtpPage ? (
+              <Search className="w-3.5 h-3.5 text-gray-400" />
+            ) : isSecure ? (
+              <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <Shield className="w-3.5 h-3.5 text-gray-400" />
+            )}
+          </div>
 
+          {/* Input */}
           <input
             ref={inputRef}
             type="text"
-            value={displayUrl}
-            onChange={(e) => setAddressValue(e.target.value)}
-            onFocus={() => {
-              setIsFocused(true);
-              setAddressValue(url);
-              setTimeout(() => inputRef.current?.select(), 0);
-            }}
-            onBlur={() => setIsFocused(false)}
-            placeholder="Search or enter address"
-            className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400
-              outline-none min-w-0 font-mono"
+            value={displayValue}
+            onChange={(e) => setDraftUrl(e.target.value)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            placeholder="Search Google or enter address"
+            className="flex-1 min-w-0 bg-transparent text-[13px] text-gray-900 dark:text-gray-100
+              placeholder-gray-400 dark:placeholder-gray-500 outline-none"
+            spellCheck={false}
+            autoComplete="off"
+            id="address-bar"
           />
 
-          {/* Star / Bookmark */}
-          {!isFocused && (
+          {/* Bookmark star — only when not focused and not NTP */}
+          {!isFocused && !isNtpPage && (
             <button
               type="button"
-              className="flex-shrink-0 text-gray-400 hover:text-yellow-500 transition-colors"
-              title="Bookmark"
+              onClick={(e) => { e.preventDefault(); onToggleBookmark(); }}
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              title={isBookmarked ? 'Remove bookmark' : 'Bookmark this page'}
             >
-              <Star className="w-3.5 h-3.5" />
+              {isBookmarked
+                ? <Star className="w-3.5 h-3.5 fill-blue-500 text-blue-500" />
+                : <StarOff className="w-3.5 h-3.5" />
+              }
             </button>
           )}
         </div>
       </form>
 
-      {/* Right Actions */}
-      <div className="flex items-center gap-1">
-        {/* Share */}
-        <NavButton title="Share">
-          <Share2 className="w-4 h-4" />
-        </NavButton>
+      {/* ── Right Controls ── */}
+      <div className="flex items-center gap-0.5">
+        {/* AI Assistant — primary AI entry point */}
+        <NavBtn
+          onClick={onToggleAI}
+          title="Nova AI (Ctrl+Shift+A)"
+          id="btn-ai"
+          active={isAISidebarOpen}
+        >
+          <Sparkles className="w-4 h-4" />
+        </NavBtn>
 
         {/* Extensions */}
-        <button
-          onClick={onOpenExtensions}
-          className="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-500 dark:text-gray-400
-            hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-xs font-medium"
+        <NavBtn
+          onClick={onToggleExtensions}
           title="Extensions"
+          id="btn-extensions"
         >
           <Puzzle className="w-4 h-4" />
-        </button>
+        </NavBtn>
 
-        {/* Theme Toggle */}
-        <NavButton onClick={onToggleTheme} title={isDark ? 'Light mode' : 'Dark mode'}>
+        {/* Theme toggle */}
+        <NavBtn
+          onClick={onToggleTheme}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          id="btn-theme"
+        >
           {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </NavButton>
+        </NavBtn>
 
         {/* Account */}
         <button
           onClick={onOpenAccount}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs font-medium
+          id="btn-account"
+          title={isLoggedIn ? userEmail : 'Sign in to Nova'}
+          className={`
+            ml-0.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold
+            transition-all duration-150
             ${isLoggedIn
-              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'
-              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          title="Account"
+              ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-blue-200 dark:ring-blue-900'
+              : 'bg-gray-200 dark:bg-[#3a3a3a] hover:bg-gray-300 dark:hover:bg-[#444] text-gray-600 dark:text-gray-400'
+            }
+          `}
         >
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold
-            ${isLoggedIn ? 'bg-blue-600' : 'bg-gray-400 dark:bg-gray-600'}`}>
-            {isLoggedIn && userEmail ? userEmail[0].toUpperCase() : <User className="w-3.5 h-3.5" />}
-          </div>
-          {isLoggedIn && userEmail && (
-            <span className="hidden md:block max-w-[80px] truncate">{userEmail.split('@')[0]}</span>
-          )}
+          {isLoggedIn && userEmail
+            ? userEmail[0].toUpperCase()
+            : <User className="w-3.5 h-3.5" />
+          }
         </button>
 
-        {/* Menu */}
-        <NavButton title="Menu">
-          <Menu className="w-4 h-4" />
-        </NavButton>
+        {/* Menu (3-dot) */}
+        <NavBtn
+          onClick={onOpenMenu}
+          title="Settings and more"
+          id="btn-menu"
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </NavBtn>
       </div>
     </div>
   );
 }
 
-function NavButton({
+// Reusable nav button
+function NavBtn({
   children,
   onClick,
   disabled = false,
   title,
+  id,
+  active = false,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   title?: string;
+  id?: string;
+  active?: boolean;
 }): React.ReactElement {
   return (
     <button
+      id={id}
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors duration-150
+      className={`
+        w-8 h-8 rounded-full flex items-center justify-center transition-all duration-100
         ${disabled
           ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-        }`}
+          : active
+            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#3a3a3a] active:bg-gray-200 dark:active:bg-[#444]'
+        }
+      `}
     >
       {children}
     </button>
