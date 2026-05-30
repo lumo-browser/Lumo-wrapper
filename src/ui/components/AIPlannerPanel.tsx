@@ -90,7 +90,6 @@ export function AIPlannerPanel(): React.ReactElement {
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 p-4">
         <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <span>🤖</span>
           AI Planner Agent
         </h2>
         <p className="text-xs text-blue-100 mt-1">Transform goals into executable plans</p>
@@ -118,21 +117,21 @@ export function AIPlannerPanel(): React.ReactElement {
             disabled={state.isLoading}
             className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors duration-200"
           >
-            {state.isLoading ? '🔄 Creating Plan...' : '✨ Create Plan'}
+            {state.isLoading ? 'Creating Plan...' : 'Create Plan'}
           </button>
         </form>
 
         {/* Error Message */}
         {state.error && (
           <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">❌ {state.error}</p>
+            <p className="text-sm text-red-800 dark:text-red-200">{state.error}</p>
           </div>
         )}
 
         {/* Success Message */}
         {state.successMessage && (
           <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg">
-            <p className="text-sm text-green-800 dark:text-green-200">✅ {state.successMessage}</p>
+            <p className="text-sm text-green-800 dark:text-green-200">{state.successMessage}</p>
           </div>
         )}
 
@@ -176,7 +175,7 @@ export function AIPlannerPanel(): React.ReactElement {
                       <p className="text-gray-600 dark:text-gray-400 mt-1">{action.description}</p>
                     )}
                     {action.estimatedDuration && (
-                      <p className="text-gray-500 dark:text-gray-400 mt-1">⏱️ {action.estimatedDuration}ms</p>
+                      <p className="text-gray-500 dark:text-gray-400 mt-1">{action.estimatedDuration}ms</p>
                     )}
                   </div>
                 ))}
@@ -200,7 +199,7 @@ export function AIPlannerPanel(): React.ReactElement {
             {/* Errors/Warnings */}
             {state.currentPlan.errors.length > 0 && (
               <div className="p-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded">
-                <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 mb-1">⚠️ Issues:</p>
+                <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 mb-1">Issues:</p>
                 <ul className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
                   {state.currentPlan.errors.slice(0, 3).map((err, idx) => (
                     <li key={idx}>• {err}</li>

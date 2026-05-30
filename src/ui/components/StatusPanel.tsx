@@ -50,13 +50,13 @@ export function StatusPanel(): React.ReactElement {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return '✅';
+        return '✓';
       case 'error':
-        return '❌';
+        return '✗';
       case 'pending':
-        return '⏳';
+        return '...';
       default:
-        return '❓';
+        return '?';
     }
   };
 
@@ -91,7 +91,6 @@ export function StatusPanel(): React.ReactElement {
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-700 dark:to-purple-800 p-4">
         <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <span>📊</span>
           Status & History
         </h2>
         <p className="text-xs text-purple-100 mt-1">Monitor execution and plan history</p>
@@ -125,7 +124,6 @@ export function StatusPanel(): React.ReactElement {
         {/* History Section */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <span>📜</span>
             Recent Executions
           </h3>
 
@@ -150,9 +148,9 @@ export function StatusPanel(): React.ReactElement {
                 </div>
 
                 <div className="flex gap-3 text-xs text-gray-600 dark:text-gray-400">
-                  <span>📋 {record.stepCount} steps</span>
-                  <span>⏱️ {(record.duration / 1000).toFixed(1)}s</span>
-                  <span>🎯 {record.confidence}%</span>
+                  <span>{record.stepCount} steps</span>
+                  <span>{(record.duration / 1000).toFixed(1)}s</span>
+                  <span>{record.confidence}% confidence</span>
                 </div>
               </div>
             ))}

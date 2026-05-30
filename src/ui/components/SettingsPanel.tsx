@@ -102,7 +102,6 @@ export function SettingsPanel({ onThemeChange }: SettingsPanelProps): React.Reac
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 p-4">
         <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <span>⚙️</span>
           Settings
         </h2>
         <p className="text-xs text-indigo-100 mt-1">Configure browser preferences</p>
@@ -112,7 +111,7 @@ export function SettingsPanel({ onThemeChange }: SettingsPanelProps): React.Reac
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Theme Selection */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">🎨 Appearance</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Appearance</h3>
           <div className="space-y-2">
             {(['dark', 'light', 'auto'] as const).map((theme) => (
               <label
@@ -137,7 +136,7 @@ export function SettingsPanel({ onThemeChange }: SettingsPanelProps): React.Reac
 
         {/* Execution Settings */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">⚡ Execution</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Execution</h3>
           <div className="space-y-3">
             <ToggleSetting
               label="Auto-execute Plans"
@@ -156,7 +155,7 @@ export function SettingsPanel({ onThemeChange }: SettingsPanelProps): React.Reac
 
         {/* Development Settings */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">🔧 Development</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Development</h3>
           <div className="space-y-3">
             <ToggleSetting
               label="Debug Mode"
@@ -176,14 +175,14 @@ export function SettingsPanel({ onThemeChange }: SettingsPanelProps): React.Reac
         {/* Status Message */}
         {settingsSaved && (
           <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg">
-            <p className="text-sm text-green-800 dark:text-green-200">✅ Settings saved</p>
+            <p className="text-sm text-green-800 dark:text-green-200">Settings saved successfully</p>
           </div>
         )}
 
         {/* Info */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
           <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-            <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">ℹ️ About Nova Browser</p>
+            <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">About Nova Browser</p>
             <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
               <li>• Version: 0.1.0</li>
               <li>• Phase: 2 Week 5 (Planning Layer)</li>
