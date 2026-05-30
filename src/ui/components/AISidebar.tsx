@@ -1,36 +1,33 @@
 /**
- * AISidebar — Browser-native AI panel (BYOA model)
+ * Nova AI Space — The ultimate AI integration
  *
- * No Nova account required.
- * User connects their own AI provider (OpenAI, Claude, Gemini, etc.)
- * Messages are sent directly from the browser to the provider's API.
+ * No API keys. Users simply select a provider, it opens as a tab in the sidebar,
+ * and they log in securely using the provider's official flow.
+ * Providers run in webviews alongside the native Nova Assistant.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
-  Send,
-  RotateCcw,
+  Plus,
+  Pin,
+  PinOff,
   Sparkles,
   Bot,
   User,
+  Send,
   Loader2,
   Copy,
+  ChevronDown,
   FileText,
   Search,
   Zap,
   BookOpen,
-  Settings2,
-  ChevronDown,
-  AlertCircle,
 } from 'lucide-react';
-import { useAIProviderStore } from '../../store/ai-provider.store';
-import { sendToProvider, type ChatMessage } from '../../services/ai-provider.service';
-import { getProvider } from '../../types/ai-provider.types';
-import { AIProviderSetup } from './AIProviderSetup';
+import { useAISpaceStore } from '../../store/ai-space.store';
+import { AI_PROVIDERS, type AIProviderId } from '../../types/ai-space.types';
+import { PlannerAgent } from '@services/agents';
 import { logger } from '@utils/logger';
-
-const SCOPE = 'AISidebar';
 
 interface Message {
   id: string;
@@ -38,20 +35,14 @@ interface Message {
   content: string;
   timestamp: Date;
   isLoading?: boolean;
-  error?: boolean;
 }
 
 const QUICK_PROMPTS = [
-  { icon: FileText, label: 'Summarize',   prompt: 'Summarize the main content of the current page in clear bullet points.' },
-  { icon: Search,   label: 'Research',    prompt: 'Research this topic and provide a structured, detailed report.' },
-  { icon: Zap,      label: 'Plan task',   prompt: 'Help me plan and automate a browser task step by step.' },
-  { icon: BookOpen, label: 'Key points',  prompt: 'Extract the key facts and important data from the current page.' },
+  { icon: FileText, label: 'Summarize', prompt: 'Summarize the main content of the current page.' },
+  { icon: Search,   label: 'Research',  prompt: 'Research this topic and provide a structured report.' },
+  { icon: Zap,      label: 'Plan task', prompt: 'Help me plan and automate a browser task step by step.' },
+  { icon: BookOpen, label: 'Key points', prompt: 'Extract the key facts and data from the current page.' },
 ];
-
-const SYSTEM_PROMPT = `You are Nova, an intelligent browser assistant. You help users
-research topics, summarize web pages, plan tasks, extract information, and automate
-browser workflows. Be concise, accurate, and helpful. When relevant, structure your
-responses clearly.`;
 
 interface AISidebarProps {
   isOpen: boolean;
@@ -61,407 +52,254 @@ interface AISidebarProps {
 }
 
 export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarProps): React.ReactElement | null {
-  const { activeProvider, getActiveKey, status } = useAIProviderStore();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [view, setView] = useState<'chat' | 'settings'>('chat');
-  const [showProviderMenu, setShowProviderMenu] = useState(false);
-
-  const bottomRef  = useRef<HTMLDivElement>(null);
-  const inputRef   = useRef<HTMLTextAreaElement>(null);
-  const abortRef   = useRef<AbortController | null>(null);
-
-  const hasProvider = status === 'connected' && !!activeProvider;
-
-  // Auto-scroll + focus
-  useEffect(() => {
-    if (isOpen && view === 'chat') {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-      if (hasProvider) setTimeout(() => inputRef.current?.focus(), 250);
-    }
-  }, [messages, isOpen, view, hasProvider]);
-
-  // Reset to chat when provider connects
-  useEffect(() => {
-    if (hasProvider && view === 'settings') {
-      setView('chat');
-    }
-  }, [hasProvider]);
+  const { tabs, activeTabId, addTab, removeTab, setActiveTab, togglePin } = useAISpaceStore();
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   if (!isOpen) return null;
 
-  const activeProviderDef = activeProvider ? getProvider(activeProvider.providerId) : null;
-
-  const sendMessage = useCallback(async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || isProcessing || !hasProvider) return;
-
-    const apiKey = getActiveKey();
-    if (!apiKey || !activeProvider) return;
-
-    const userMsg: Message = {
-      id: `u-${Date.now()}`,
-      role: 'user',
-      content: trimmed,
-      timestamp: new Date(),
-    };
-    const loadingMsg: Message = {
-      id: `l-${Date.now()}`,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-      isLoading: true,
-    };
-
-    setMessages((prev) => [...prev, userMsg, loadingMsg]);
-    setInput('');
-    setIsProcessing(true);
-
-    // Build context-aware messages
-    const historyMsgs: ChatMessage[] = messages
-      .filter((m) => !m.isLoading && !m.error)
-      .map((m) => ({ role: m.role, content: m.content }));
-
-    const contextNote = currentUrl
-      ? `\n\nCurrent page: ${pageTitle || 'Unknown'} (${currentUrl})`
-      : '';
-
-    const apiMessages: ChatMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT + contextNote },
-      ...historyMsgs,
-      { role: 'user', content: trimmed },
-    ];
-
-    abortRef.current = new AbortController();
-
-    try {
-      const result = await sendToProvider(
-        activeProvider.providerId,
-        apiKey,
-        activeProvider.model,
-        apiMessages,
-        abortRef.current.signal
-      );
-
-      const assistantMsg: Message = {
-        id: `a-${Date.now()}`,
-        role: 'assistant',
-        content: result.content,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => prev.filter((m) => !m.isLoading).concat(assistantMsg));
-      logger.info(SCOPE, 'Response received', { provider: activeProvider.providerId, model: result.model });
-    } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') return;
-
-      const errMsg: Message = {
-        id: `e-${Date.now()}`,
-        role: 'assistant',
-        content: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
-        timestamp: new Date(),
-        error: true,
-      };
-      setMessages((prev) => prev.filter((m) => !m.isLoading).concat(errMsg));
-      logger.error(SCOPE, 'Provider request failed');
-    } finally {
-      setIsProcessing(false);
-      abortRef.current = null;
-    }
-  }, [isProcessing, hasProvider, getActiveKey, activeProvider, messages, currentUrl, pageTitle]);
-
-  const handleStop = () => {
-    abortRef.current?.abort();
-    setMessages((prev) => prev.filter((m) => !m.isLoading));
-    setIsProcessing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
-  };
-
-  const copyText = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
-  const clearChat = () => setMessages([]);
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activeProvider = AI_PROVIDERS.find((p) => p.id === activeTab?.providerId);
 
   return (
-    <div className="slide-in-right flex flex-col w-80 h-full bg-white dark:bg-[#242424]
-      border-l border-gray-200 dark:border-[#3a3a3a] flex-shrink-0 overflow-hidden">
+    <div className="slide-in-right flex flex-col w-[380px] h-full bg-[#f3f4f6] dark:bg-[#1e1e1e]
+      border-l border-gray-200 dark:border-[#3a3a3a] flex-shrink-0 z-50">
 
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between px-3 py-2.5
-        border-b border-gray-200 dark:border-[#3a3a3a] flex-shrink-0">
+      {/* ── Tabs Header ── */}
+      <div className="flex items-center bg-[#dee1e6] dark:bg-[#1e1e1e] px-2 pt-2 gap-1 overflow-x-auto scrollbar-none border-b border-gray-300 dark:border-[#3a3a3a]">
+        {tabs.map((tab) => {
+          const provider = AI_PROVIDERS.find((p) => p.id === tab.providerId);
+          if (!provider) return null;
+          const isActive = tab.id === activeTabId;
 
-        {/* Left: Provider selector */}
-        <button
-          onClick={() => setShowProviderMenu((v) => !v)}
-          className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
-        >
-          {activeProviderDef ? (
-            <>
-              <div className={`w-5 h-5 rounded-md bg-gradient-to-br ${activeProviderDef.gradient}
-                flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
-                {activeProviderDef.name[0]}
-              </div>
-              <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                {activeProviderDef.name}
-              </span>
-              <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" />
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 text-blue-500 flex-shrink-0" />
-              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Nova AI</span>
-            </>
-          )}
-        </button>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          {messages.length > 0 && (
-            <button
-              onClick={clearChat}
-              className="w-7 h-7 rounded-full flex items-center justify-center
-                text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
-                hover:bg-gray-100 dark:hover:bg-[#3a3a3a] transition-colors"
-              title="Clear chat"
+          return (
+            <div
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`group relative flex items-center gap-2 h-9 px-3 min-w-[100px] max-w-[140px]
+                rounded-t-lg cursor-pointer transition-colors text-xs font-medium select-none
+                ${isActive
+                  ? 'bg-white dark:bg-[#2d2d2d] text-gray-900 dark:text-gray-100 shadow-[0_1px_0_0_white] dark:shadow-[0_1px_0_0_#2d2d2d] z-10'
+                  : 'bg-transparent text-gray-600 dark:text-gray-400 hover:bg-[#cbcdd2] dark:hover:bg-[#2a2a2a]'
+                }`}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          )}
+              {/* Icon */}
+              <div className={`w-4 h-4 rounded shadow-sm flex items-center justify-center text-white text-[9px] font-bold ${provider.color} flex-shrink-0`}>
+                {provider.name[0]}
+              </div>
+              <span className="flex-1 truncate">{tab.customName || provider.name}</span>
+
+              {/* Actions */}
+              <div className={`flex items-center gap-0.5 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); togglePin(tab.id); }}
+                  className="w-4 h-4 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  title={tab.isPinned ? "Unpin tab" : "Pin tab"}
+                >
+                  {tab.isPinned ? <Pin className="w-3 h-3 fill-current" /> : <PinOff className="w-3 h-3" />}
+                </button>
+                {tab.providerId !== 'nova' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeTab(tab.id); }}
+                    className="w-4 h-4 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-red-900/50 text-gray-400 hover:text-red-500"
+                    title="Close tab"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Add Provider Button */}
+        <div className="relative">
           <button
-            onClick={() => setView(view === 'settings' ? 'chat' : 'settings')}
-            className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
-              ${view === 'settings'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#3a3a3a]'
-              }`}
-            title="Manage AI providers"
+            onClick={() => setShowAddMenu(!showAddMenu)}
+            className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#cbcdd2] dark:hover:bg-[#2a2a2a] text-gray-500 transition-colors ml-1 mb-1"
+            title="Add AI Provider"
           >
-            <Settings2 className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
           </button>
+
+          {/* Add Menu Dropdown */}
+          {showAddMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowAddMenu(false)} />
+              <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-[#2d2d2d] rounded-xl shadow-2xl border border-gray-200 dark:border-[#3a3a3a] py-1 z-50">
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">Add Provider</div>
+                {AI_PROVIDERS.filter((p) => p.id !== 'nova').map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { addTab(p.id); setShowAddMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#3a3a3a] transition-colors"
+                  >
+                    <div className={`w-4 h-4 rounded text-white text-[9px] font-bold flex items-center justify-center ${p.color}`}>
+                      {p.name[0]}
+                    </div>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Close Sidebar */}
+        <div className="ml-auto mb-1 pr-1">
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center
-              text-gray-400 hover:text-gray-700 dark:hover:text-gray-200
-              hover:bg-gray-100 dark:hover:bg-[#3a3a3a] transition-colors"
-            title="Close"
+            className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#cbcdd2] dark:hover:bg-[#2a2a2a] text-gray-500 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Provider quick-switch menu */}
-      {showProviderMenu && (
-        <ProviderQuickMenu onClose={() => setShowProviderMenu(false)} onManage={() => { setView('settings'); setShowProviderMenu(false); }} />
-      )}
-
-      {/* ── Settings / Provider Setup ── */}
-      {view === 'settings' ? (
-        <div className="flex-1 overflow-y-auto p-3 scrollbar-thin">
-          <AIProviderSetup onDone={() => setView('chat')} />
-        </div>
-      ) : (
-        <>
-          {/* ── No provider connected ── */}
-          {!hasProvider ? (
-            <div className="flex-1 flex flex-col items-center justify-center px-5 text-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600
-                flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">Connect your AI</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                  Use ChatGPT, Claude, Gemini, or any supported provider with your own API key. No Nova account needed.
-                </p>
-              </div>
-              <button
-                onClick={() => setView('settings')}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold
-                  rounded-xl transition-colors shadow-sm"
-              >
-                Choose a provider
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* ── Quick prompts (shown when chat is empty) ── */}
-              {messages.length === 0 && (
-                <div className="px-3 pt-3 pb-1 flex-shrink-0">
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {QUICK_PROMPTS.map((qp) => {
-                      const Icon = qp.icon;
-                      return (
-                        <button
-                          key={qp.label}
-                          onClick={() => sendMessage(qp.prompt)}
-                          className="flex items-center gap-2 px-3 py-2.5 text-left rounded-xl
-                            bg-gray-50 dark:bg-[#2d2d2d]
-                            hover:bg-blue-50 dark:hover:bg-[#1e3a5f]/40
-                            text-gray-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-300
-                            border border-gray-200 dark:border-[#3a3a3a] hover:border-blue-200 dark:hover:border-blue-800
-                            transition-all duration-150"
-                        >
-                          <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span className="text-xs font-medium leading-tight">{qp.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Messages ── */}
-              <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
-                {messages.map((msg) => (
-                  <Bubble key={msg.id} msg={msg} onCopy={copyText} />
-                ))}
-                <div ref={bottomRef} />
-              </div>
-
-              {/* ── Input ── */}
-              <div className="px-3 pb-3 pt-2 border-t border-gray-200 dark:border-[#3a3a3a] flex-shrink-0">
-                <div className="flex items-end gap-2 px-3 py-2 rounded-xl
-                  bg-gray-100 dark:bg-[#2d2d2d]
-                  focus-within:ring-2 focus-within:ring-blue-500 transition-all">
-                  <textarea
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Ask anything..."
-                    rows={1}
-                    disabled={isProcessing}
-                    className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100
-                      placeholder-gray-400 outline-none resize-none max-h-28 scrollbar-none"
-                    style={{ lineHeight: '1.5rem' }}
-                  />
-                  <button
-                    onClick={isProcessing ? handleStop : () => sendMessage(input)}
-                    disabled={!isProcessing && !input.trim()}
-                    className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center
-                      text-white transition-colors
-                      bg-blue-600 hover:bg-blue-700 active:bg-blue-800
-                      disabled:bg-gray-300 dark:disabled:bg-gray-600"
-                  >
-                    {isProcessing
-                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : <Send className="w-3.5 h-3.5" />
-                    }
-                  </button>
-                </div>
-                <p className="text-[10px] text-center mt-1.5 text-gray-400 dark:text-gray-600">
-                  {activeProviderDef?.name} · {activeProvider?.model}
-                </p>
-              </div>
-            </>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Provider quick-switch ──────────────────────────────────────────────────
-function ProviderQuickMenu({ onClose, onManage }: { onClose: () => void; onManage: () => void }): React.ReactElement {
-  const { connections, activeProvider, setActive } = useAIProviderStore();
-  const connected = Object.values(connections);
-
-  return (
-    <div className="border-b border-gray-200 dark:border-[#3a3a3a] bg-gray-50 dark:bg-[#1e1e1e] flex-shrink-0">
-      {connected.length === 0 ? (
-        <div className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">No providers connected.</div>
-      ) : (
-        <div className="py-1">
-          {connected.map((conn) => {
-            const def = getProvider(conn.providerId);
-            const isActive = activeProvider?.providerId === conn.providerId;
-            return (
-              <button
-                key={conn.providerId}
-                onClick={() => { setActive(conn.providerId); onClose(); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors
-                  ${isActive ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-100 dark:hover:bg-[#2d2d2d]'}`}
-              >
-                <div className={`w-5 h-5 rounded bg-gradient-to-br ${def.gradient}
-                  flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0`}>
-                  {def.name[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-900 dark:text-white">{def.name}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{conn.model}</p>
-                </div>
-                {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <button
-        onClick={onManage}
-        className="w-full px-3 py-2 text-xs text-blue-600 dark:text-blue-400 text-left
-          hover:bg-gray-100 dark:hover:bg-[#2d2d2d] transition-colors border-t border-gray-200 dark:border-[#3a3a3a]"
-      >
-        Manage providers
-      </button>
-    </div>
-  );
-}
-
-// ── Message Bubble ─────────────────────────────────────────────────────────
-function Bubble({ msg, onCopy }: { msg: Message; onCopy: (s: string) => void }): React.ReactElement {
-  const isUser = msg.role === 'user';
-
-  if (msg.isLoading) {
-    return (
-      <div className="flex items-start gap-2">
-        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-violet-600
-          flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Bot className="w-3.5 h-3.5 text-white" />
-        </div>
-        <div className="flex items-center gap-1 px-3 py-2.5 bg-gray-100 dark:bg-[#2d2d2d] rounded-2xl rounded-tl-sm">
-          {[0, 150, 300].map((d) => (
-            <div key={d} className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"
-              style={{ animationDelay: `${d}ms` }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`flex items-start gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
-      <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
-        ${isUser ? 'bg-gray-200 dark:bg-[#3a3a3a]' : 'bg-gradient-to-br from-blue-500 to-violet-600'}`}>
-        {isUser
-          ? <User className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-          : <Bot className="w-3.5 h-3.5 text-white" />
-        }
-      </div>
-
-      <div className={`group max-w-[85%] flex flex-col ${isUser ? 'items-end' : 'items-start'} gap-1`}>
-        <div className={`px-3 py-2 text-[13px] leading-relaxed whitespace-pre-wrap rounded-2xl
-          ${isUser
-            ? 'bg-blue-600 text-white rounded-tr-sm'
-            : msg.error
-              ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-tl-sm'
-              : 'bg-gray-100 dark:bg-[#2d2d2d] text-gray-900 dark:text-gray-100 rounded-tl-sm'
-          }`}>
-          {msg.error && <AlertCircle className="w-3.5 h-3.5 inline mr-1 mb-0.5" />}
-          {msg.content}
-        </div>
-
-        {!isUser && !msg.error && (
-          <button
-            onClick={() => onCopy(msg.content)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity
-              flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-1"
-          >
-            <Copy className="w-3 h-3" /> Copy
-          </button>
+      {/* ── Main Content Area ── */}
+      <div className="flex-1 overflow-hidden bg-white dark:bg-[#2d2d2d]">
+        {activeTab?.providerId === 'nova' ? (
+          <NovaAssistant currentUrl={currentUrl} pageTitle={pageTitle} />
+        ) : (
+          <ProviderWebview provider={activeProvider} />
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Native Nova Assistant ──────────────────────────────────────────────────
+function NovaAssistant({ currentUrl, pageTitle }: { currentUrl: string; pageTitle: string }) {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 'greeting',
+      role: 'assistant',
+      content: 'Hello! I am your native Nova Assistant. I have full context of your tabs, pages, and browser state. How can I help?',
+      timestamp: new Date(),
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isProcessing) return;
+
+    setMessages((prev) => [
+      ...prev,
+      { id: `u-${Date.now()}`, role: 'user', content: trimmed, timestamp: new Date() },
+      { id: `l-${Date.now()}`, role: 'assistant', content: '', timestamp: new Date(), isLoading: true },
+    ]);
+    setInput('');
+    setIsProcessing(true);
+
+    try {
+      const planner = new PlannerAgent();
+      await planner.initialize({
+        conversationId: `ai-${Date.now()}`,
+        sessionId: `s-${Date.now()}`,
+        pageContext: { url: currentUrl, title: pageTitle },
+        previousResults: [],
+        variables: {},
+      });
+
+      const result = await planner.execute({ goal: trimmed, context: { currentPage: currentUrl } });
+      const reply = result.plan.length > 0
+        ? `Here is my plan (${result.confidence}% confidence):\n\n${result.plan.map((a, i) => `${i + 1}. ${a.type.toUpperCase()}${a.description ? ` — ${a.description}` : ''}`).join('\n')}\n\nEstimated time: ${(result.estimatedDuration / 1000).toFixed(1)}s`
+        : `Understood. I can help with "${trimmed}". Please provide more details.`;
+
+      setMessages((prev) => prev.filter((m) => !m.isLoading).concat({
+        id: `a-${Date.now()}`, role: 'assistant', content: reply, timestamp: new Date(),
+      }));
+    } catch (e) {
+      setMessages((prev) => prev.filter((m) => !m.isLoading).concat({
+        id: `e-${Date.now()}`, role: 'assistant', content: 'Task failed.', timestamp: new Date(),
+      }));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex items-start gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
+              ${msg.role === 'user' ? 'bg-gray-200 dark:bg-[#3a3a3a]' : 'bg-gradient-to-br from-blue-500 to-violet-600'}`}>
+              {msg.role === 'user' ? <User className="w-4 h-4 text-gray-500" /> : <Sparkles className="w-4 h-4 text-white" />}
+            </div>
+            <div className={`px-3 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap rounded-2xl max-w-[85%]
+              ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-gray-100 dark:bg-[#3a3a3a] text-gray-900 dark:text-gray-100 rounded-tl-sm'}`}>
+              {msg.isLoading ? <Loader2 className="w-4 h-4 animate-spin text-blue-500" /> : msg.content}
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-3 bg-white dark:bg-[#2d2d2d] border-t border-gray-200 dark:border-[#3a3a3a]">
+        <div className="flex items-end gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-[#1e1e1e] focus-within:ring-2 focus-within:ring-blue-500">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+            placeholder="Ask Nova Assistant..."
+            rows={1}
+            disabled={isProcessing}
+            className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none resize-none max-h-28 scrollbar-none"
+            style={{ lineHeight: '1.5rem' }}
+          />
+          <button
+            onClick={() => sendMessage(input)}
+            disabled={!input.trim() || isProcessing}
+            className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 flex items-center justify-center text-white transition-colors flex-shrink-0"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Provider Webview ───────────────────────────────────────────────────────
+function ProviderWebview({ provider }: { provider?: typeof AI_PROVIDERS[0] }) {
+  if (!provider) return null;
+
+  return (
+    <div className="flex flex-col h-full bg-white dark:bg-[#2d2d2d]">
+      <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 text-center flex-shrink-0">
+        <p className="text-[11px] font-medium text-yellow-800 dark:text-yellow-400 flex items-center justify-center gap-1.5">
+          <Sparkles className="w-3 h-3" />
+          Log in safely. Nova securely embeds {provider.name} and cannot see your passwords.
+        </p>
+      </div>
+
+      <div className="flex-1 relative bg-white dark:bg-black flex items-center justify-center">
+        {/*
+          In a real Electron app, this would be a <webview src={provider.url} partition="persist:ai" />
+          For the Vite web preview, we use an iframe (many providers block this, so we show a mock UI if it fails)
+        */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-600 z-0">
+          <Loader2 className="w-8 h-8 animate-spin mb-3" />
+          <p className="text-sm">Loading {provider.name}...</p>
+        </div>
+
+        <iframe
+          src={provider.url}
+          className="w-full h-full relative z-10 border-none bg-transparent"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          title={provider.name}
+          // The iframe will likely be blocked by X-Frame-Options on google.com/chatgpt.com in standard browsers.
+          // This simulates the webview structure.
+        />
       </div>
     </div>
   );
