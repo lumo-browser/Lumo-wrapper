@@ -15,11 +15,13 @@ import {
   Star,
   StarOff,
   Puzzle,
+  Puzzle,
   User,
   Sparkles,
   MoreHorizontal,
   Sun,
   Moon,
+  RefreshCcw,
 } from 'lucide-react';
 
 interface BrowserToolbarProps {
@@ -239,24 +241,15 @@ export function BrowserToolbar({
           {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </NavBtn>
 
-        {/* Account */}
+        {/* Data Sync */}
         <button
           onClick={onOpenAccount}
           id="btn-account"
-          title={isLoggedIn ? userEmail : 'Sign in to Nova'}
-          className={`
-            ml-0.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold
-            transition-all duration-150
-            ${isLoggedIn
-              ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-blue-200 dark:ring-blue-900'
-              : 'bg-gray-200 dark:bg-[#3a3a3a] hover:bg-gray-300 dark:hover:bg-[#444] text-gray-600 dark:text-gray-400'
-            }
-          `}
+          title="Import Browser Data"
+          className="ml-0.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold
+            transition-all duration-150 bg-gray-200 dark:bg-[#3a3a3a] hover:bg-gray-300 dark:hover:bg-[#444] text-gray-600 dark:text-gray-400"
         >
-          {isLoggedIn && userEmail
-            ? userEmail[0].toUpperCase()
-            : <User className="w-3.5 h-3.5" />
-          }
+          <RefreshCcw className="w-3.5 h-3.5" />
         </button>
 
         {/* Menu (3-dot) */}
