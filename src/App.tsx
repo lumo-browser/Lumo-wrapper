@@ -236,7 +236,13 @@ export default function App(): React.ReactElement {
     if (!activeTab) return;
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
     if (wv && typeof wv.setZoomLevel === 'function') {
-      wv.getZoomLevel((level: number) => wv.setZoomLevel(level + 1));
+      try {
+        wv.getZoomLevel((level: number) => wv.setZoomLevel(level + 1));
+      } catch (e) {
+        console.warn('Zoom not supported in this environment');
+      }
+    } else {
+      console.warn('Zoom not supported in this environment');
     }
   }, [activeTab]);
 
@@ -244,7 +250,13 @@ export default function App(): React.ReactElement {
     if (!activeTab) return;
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
     if (wv && typeof wv.setZoomLevel === 'function') {
-      wv.getZoomLevel((level: number) => wv.setZoomLevel(level - 1));
+      try {
+        wv.getZoomLevel((level: number) => wv.setZoomLevel(level - 1));
+      } catch (e) {
+        console.warn('Zoom not supported in this environment');
+      }
+    } else {
+      console.warn('Zoom not supported in this environment');
     }
   }, [activeTab]);
 
@@ -340,7 +352,8 @@ export default function App(): React.ReactElement {
             const isSettings = tab.url === 'nova://settings';
             const isHistory = tab.url === 'nova://history';
             const isBookmarks = tab.url === 'nova://bookmarks';
-            const isInternal = isNtp || isSettings || isHistory || isBookmarks;
+            const isAbout = tab.url === 'nova://about';
+            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout;
 
             return (
               <div
@@ -351,6 +364,7 @@ export default function App(): React.ReactElement {
                 {isSettings && <InternalPage title="Settings">Manage your browser preferences, search engine, and privacy settings here.</InternalPage>}
                 {isHistory && <InternalPage title="History">Your browsing history will appear here. Powered by SQLite.</InternalPage>}
                 {isBookmarks && <InternalPage title="Bookmarks">Your saved pages and reading list will appear here.</InternalPage>}
+                {isAbout && <InternalPage title="About Nova Browser">Version 0.1.0<br/>A production-ready AI-native browser built with Chromium and Electron.</InternalPage>}
                 
                 {!isInternal && (
                   <webview

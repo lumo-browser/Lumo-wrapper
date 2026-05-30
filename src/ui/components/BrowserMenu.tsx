@@ -72,7 +72,7 @@ export function BrowserMenu({
       separator: true,
     },
     { id: 'settings',   icon: Settings,  label: 'Settings',     shortcut: 'Ctrl+,', onClick: () => { onOpenSettings(); onClose(); } },
-    { id: 'about',      icon: Info,      label: 'About Nova',                        onClick: onClose },
+    { id: 'about',      icon: Info,      label: 'About Nova',                        onClick: () => { onNavigate('nova://about'); onClose(); } },
   ];
 
   return (

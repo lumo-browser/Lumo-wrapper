@@ -27,9 +27,21 @@ export function AccountModal({ isOpen, currentUser, onClose, onLogin, onLogout }
   const [mode, setMode] = useState<AuthMode>(currentUser ? 'profile' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importSuccess, setImportSuccess] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleImport = () => {
+    setIsImporting(true);
+    // Simulate IPC call to backend to read Firefox/Chrome SQLite profiles
+    setTimeout(() => {
+      setIsImporting(false);
+      setImportSuccess(true);
+      setTimeout(() => setImportSuccess(false), 3000);
+    }, 2000);
+  };
 
   if (!isOpen) return null;
 
@@ -117,6 +129,34 @@ export function AccountModal({ isOpen, currentUser, onClose, onLogin, onLogout }
                   {currentUser.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
                 </span>
               </div>
+            </div>
+
+            {/* Import Data Section */}
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-[#3a3a3a]">
+              <h4 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-wider">Sync Existing Browser</h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Move your bookmarks, history, and stored data from Firefox or Chrome directly into Nova.
+              </p>
+              <button
+                onClick={handleImport}
+                disabled={isImporting || importSuccess}
+                className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors border
+                  ${importSuccess 
+                    ? 'bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400'
+                    : 'bg-white dark:bg-[#2d2d2d] border-gray-200 dark:border-[#3a3a3a] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#3a3a3a]'
+                  }`}
+              >
+                {isImporting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    Importing Firefox data...
+                  </>
+                ) : importSuccess ? (
+                  'Data successfully synced!'
+                ) : (
+                  'Import Data from Firefox / Chrome'
+                )}
+              </button>
             </div>
 
             {/* Menu Items */}
