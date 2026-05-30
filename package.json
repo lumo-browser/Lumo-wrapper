@@ -8,7 +8,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
-    "dev:vite": "vite",
+    "dev:vite": "vite --force",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "build": "npm run build:backend && npm run build:frontend",
     "build:backend": "cd backend && npm run build",
