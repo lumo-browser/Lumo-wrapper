@@ -6,6 +6,18 @@
  * Providers run in webviews alongside the native Nova Assistant.
  */
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      webview: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        src?: string;
+        allowpopups?: string;
+        partition?: string;
+      };
+    }
+  }
+}
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
@@ -273,22 +285,22 @@ function ProviderWebview({ provider }: { provider?: typeof AI_PROVIDERS[0] }) {
 
       <div className="flex-1 relative bg-white dark:bg-black flex items-center justify-center">
         {/*
-          In a real Electron app, this would be a <webview src={provider.url} partition="persist:ai" />
-          For the Vite web preview, we use an iframe (many providers block this, so we show a mock UI if it fails)
+          Use Electron's <webview> tag to bypass X-Frame-Options restrictions.
+          This only works when the app is run inside the Electron environment (not in a standard web browser).
         */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-600 z-0">
-          <Loader2 className="w-8 h-8 animate-spin mb-3" />
-          <p className="text-sm">Loading {provider.name}...</p>
-        </div>
-
-        <iframe
+        <webview
           src={provider.url}
           className="w-full h-full relative z-10 border-none bg-transparent"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           title={provider.name}
-          // The iframe will likely be blocked by X-Frame-Options on google.com/chatgpt.com in standard browsers.
-          // This simulates the webview structure.
+          allowpopups="true"
+          partition={`persist:ai-${provider.id}`}
         />
+        
+        <div className="absolute bottom-3 left-0 right-0 px-4 text-center z-20 pointer-events-none">
+          <p className="text-[10px] text-gray-400 bg-white/80 dark:bg-black/80 backdrop-blur rounded-full px-2 py-1 inline-block">
+            Note: Must be run in Electron (npm run dev) to load external providers.
+          </p>
+        </div>
       </div>
     </div>
   );
