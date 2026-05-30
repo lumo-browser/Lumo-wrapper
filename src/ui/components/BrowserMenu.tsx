@@ -29,6 +29,10 @@ interface BrowserMenuProps {
   onToggleTheme: () => void;
   onOpenAccount: () => void;
   onOpenSettings: () => void;
+  onNavigate: (url: string) => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onPrint: () => void;
 }
 
 interface MenuItem {
@@ -48,14 +52,18 @@ export function BrowserMenu({
   onToggleTheme,
   onOpenAccount,
   onOpenSettings,
+  onNavigate,
+  onZoomIn,
+  onZoomOut,
+  onPrint,
 }: BrowserMenuProps): React.ReactElement {
   const items: MenuItem[] = [
-    { id: 'zoom-in',    icon: ZoomIn,    label: 'Zoom in',      shortcut: 'Ctrl++', onClick: onClose },
-    { id: 'zoom-out',   icon: ZoomOut,   label: 'Zoom out',     shortcut: 'Ctrl+-', onClick: onClose },
-    { id: 'bookmarks',  icon: BookOpen,  label: 'Bookmarks',    shortcut: 'Ctrl+B', onClick: onClose, separator: true },
-    { id: 'history',    icon: Clock,     label: 'History',      shortcut: 'Ctrl+H', onClick: onClose },
-    { id: 'downloads',  icon: Download,  label: 'Downloads',    shortcut: 'Ctrl+J', onClick: onClose, separator: true },
-    { id: 'print',      icon: Printer,   label: 'Print',        shortcut: 'Ctrl+P', onClick: onClose },
+    { id: 'zoom-in',    icon: ZoomIn,    label: 'Zoom in',      shortcut: 'Ctrl++', onClick: () => { onZoomIn(); onClose(); } },
+    { id: 'zoom-out',   icon: ZoomOut,   label: 'Zoom out',     shortcut: 'Ctrl+-', onClick: () => { onZoomOut(); onClose(); } },
+    { id: 'bookmarks',  icon: BookOpen,  label: 'Bookmarks',    shortcut: 'Ctrl+B', onClick: () => { onNavigate('nova://bookmarks'); onClose(); }, separator: true },
+    { id: 'history',    icon: Clock,     label: 'History',      shortcut: 'Ctrl+H', onClick: () => { onNavigate('nova://history'); onClose(); } },
+    { id: 'downloads',  icon: Download,  label: 'Downloads',    shortcut: 'Ctrl+J', onClick: () => { onNavigate('nova://downloads'); onClose(); }, separator: true },
+    { id: 'print',      icon: Printer,   label: 'Print',        shortcut: 'Ctrl+P', onClick: () => { onPrint(); onClose(); } },
     {
       id: 'theme',
       icon: isDark ? Sun : Moon,

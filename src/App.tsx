@@ -22,6 +22,18 @@ import { AISidebar } from '@ui/components/AISidebar';
 import { BrowserMenu } from '@ui/components/BrowserMenu';
 import { NewTabPage } from './pages/NewTabPage';
 
+// ── Internal Pages ─────────────────────────────────────────────────────────
+function InternalPage({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
+      <h1 className="text-2xl font-semibold mb-4">{title}</h1>
+      <div className="max-w-md text-center text-gray-500 dark:text-gray-400">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 const SCOPE = 'App';
 
 // ── Tab helpers ────────────────────────────────────────────────────────────
@@ -219,6 +231,33 @@ export default function App(): React.ReactElement {
     localStorage.removeItem('nova-user');
   };
 
+  // ── Menu Actions ──────────────────────────────────────────────────────────
+  const handleZoomIn = useCallback(() => {
+    if (!activeTab) return;
+    const wv = document.getElementById(`webview-${activeTab.id}`) as any;
+    if (wv && typeof wv.setZoomLevel === 'function') {
+      wv.getZoomLevel((level: number) => wv.setZoomLevel(level + 1));
+    }
+  }, [activeTab]);
+
+  const handleZoomOut = useCallback(() => {
+    if (!activeTab) return;
+    const wv = document.getElementById(`webview-${activeTab.id}`) as any;
+    if (wv && typeof wv.setZoomLevel === 'function') {
+      wv.getZoomLevel((level: number) => wv.setZoomLevel(level - 1));
+    }
+  }, [activeTab]);
+
+  const handlePrint = useCallback(() => {
+    if (!activeTab) return;
+    const wv = document.getElementById(`webview-${activeTab.id}`) as any;
+    if (wv && typeof wv.print === 'function') {
+      wv.print();
+    } else {
+      window.print();
+    }
+  }, [activeTab]);
+
   // ── Derived state ─────────────────────────────────────────────────────────
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
@@ -282,30 +321,49 @@ export default function App(): React.ReactElement {
             onClose={() => setShowMenu(false)}
             onToggleTheme={handleToggleTheme}
             onOpenAccount={() => { setShowAccount(true); setShowMenu(false); }}
-            onOpenSettings={() => setShowMenu(false)}
+            onOpenSettings={() => { navigate('nova://settings'); setShowMenu(false); }}
+            onNavigate={navigate}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onPrint={handlePrint}
           />
         )}
       </div>
 
       {/* ── Content area + optional AI sidebar ── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
 
-        {/* Page content */}
-        <div className="flex-1 overflow-auto bg-white dark:bg-[#1e1e1e]">
-          {isNtpPage ? (
-            <NewTabPage onNavigate={navigate} />
-          ) : (
-            /* In production this is Electron's WebContentsView rendering the Chromium engine */
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-400 dark:text-gray-600">
-              <div className="w-10 h-10 border-2 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin" />
-              <div className="text-center">
-                <p className="text-sm font-medium">{currentUrl}</p>
-                <p className="text-xs mt-1 text-gray-300 dark:text-gray-700">
-                  Chromium WebContentsView · V8 engine active
-                </p>
+        {/* Page content (WebViews) */}
+        <div className="flex-1 overflow-hidden bg-white dark:bg-[#1e1e1e] relative">
+          {tabs.map((tab) => {
+            const isNtp = !tab.url || tab.url === 'nova://newtab';
+            const isSettings = tab.url === 'nova://settings';
+            const isHistory = tab.url === 'nova://history';
+            const isBookmarks = tab.url === 'nova://bookmarks';
+            const isInternal = isNtp || isSettings || isHistory || isBookmarks;
+
+            return (
+              <div
+                key={tab.id}
+                className={`absolute inset-0 flex flex-col ${tab.isActive ? 'z-10 visible' : 'z-0 hidden'}`}
+              >
+                {isNtp && <NewTabPage onNavigate={navigate} />}
+                {isSettings && <InternalPage title="Settings">Manage your browser preferences, search engine, and privacy settings here.</InternalPage>}
+                {isHistory && <InternalPage title="History">Your browsing history will appear here. Powered by SQLite.</InternalPage>}
+                {isBookmarks && <InternalPage title="Bookmarks">Your saved pages and reading list will appear here.</InternalPage>}
+                
+                {!isInternal && (
+                  <webview
+                    id={`webview-${tab.id}`}
+                    src={tab.url}
+                    className="w-full h-full flex-1 border-none bg-white"
+                    allowpopups="true"
+                    partition="persist:nova-main"
+                  />
+                )}
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
 
         {/* AI sidebar — slides in from right (BYOA: no Nova account needed) */}
