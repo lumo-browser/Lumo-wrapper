@@ -1,188 +1,316 @@
 /**
- * Root App component
+ * Root App component — Nova Browser
+ * Full browser chrome: tabs, toolbar, extensions, account, AI chat & assistant
  */
 
-import React, { useEffect, useState } from 'react';
-import { Home, Zap, BarChart3, Settings, Lightbulb, CheckCircle, Clock, TrendingUp, Brain } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Home, Zap, BarChart3, Settings } from 'lucide-react';
 import { logger } from '@utils/logger';
 import { AIPlannerPanel, StatusPanel, SettingsPanel } from '@ui/components';
 import { HomePage } from './pages/HomePage';
+import { BrowserTabBar, type BrowserTab } from '@ui/components/BrowserTabBar';
+import { BrowserToolbar } from '@ui/components/BrowserToolbar';
+import { ExtensionsPanel } from '@ui/components/ExtensionsPanel';
+import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
+import { AIChatPanel } from '@ui/components/AIChatPanel';
+import { AIAssistantBar } from '@ui/components/AIAssistantBar';
 
 const SCOPE = 'App';
 
-type TabType = 'home' | 'planner' | 'status' | 'settings';
+type ViewType = 'home' | 'planner' | 'status' | 'settings';
+
+let tabCounter = 2;
+
+const createDefaultTab = (): BrowserTab => ({
+  id: `tab-${++tabCounter}`,
+  title: 'New Tab',
+  url: '',
+  isActive: false,
+  isLoading: false,
+});
+
+const INITIAL_TABS: BrowserTab[] = [
+  { id: 'tab-1', title: 'Home', url: 'nova://home', isActive: true, isLoading: false },
+];
 
 export default function App(): React.ReactElement {
-  const [activeTab, setActiveTab] = useState<TabType>('home');
+  // Theme
   const [isDark, setIsDark] = useState(true);
 
-  useEffect(() => {
-    logger.info(SCOPE, 'App mounted with dark mode');
+  // Browser tabs
+  const [tabs, setTabs] = useState<BrowserTab[]>(INITIAL_TABS);
+  const activeTabId = tabs.find((t) => t.isActive)?.id ?? tabs[0]?.id;
+  const activeTab = tabs.find((t) => t.id === activeTabId);
 
-    // Set dark mode as default
-    if (isDark) {
-      document.documentElement.classList.add('dark');
+  // Navigation
+  const [currentUrl, setCurrentUrl] = useState('nova://home');
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [canGoForward, setCanGoForward] = useState(false);
+
+  // Inner app view (for nova:// pages)
+  const [activeView, setActiveView] = useState<ViewType>('home');
+
+  // Panels
+  const [showExtensions, setShowExtensions] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatInitialPrompt, setChatInitialPrompt] = useState<string | undefined>();
+
+  // Account
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+
+  // Extensions panel ref for outside click
+  const extBtnRef = useRef<HTMLDivElement>(null);
+
+  // ---- Theme ----
+  useEffect(() => {
+    logger.info(SCOPE, 'Nova Browser mounted');
+    document.documentElement.classList.toggle('dark', isDark);
+
+    const saved = localStorage.getItem('nova-browser-settings');
+    if (saved) {
+      try {
+        const s = JSON.parse(saved);
+        const dark = s.theme !== 'light';
+        setIsDark(dark);
+        document.documentElement.classList.toggle('dark', dark);
+      } catch {
+        logger.error(SCOPE, 'Failed to parse settings');
+      }
     }
 
-    // Check for saved preference
-    const savedTheme = localStorage.getItem('nova-browser-settings');
-    if (savedTheme) {
+    const savedUser = localStorage.getItem('nova-user');
+    if (savedUser) {
       try {
-        const settings = JSON.parse(savedTheme);
-        const effectiveDark = settings.theme === 'light' ? false : true;
-        setIsDark(effectiveDark);
-        if (effectiveDark) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      } catch (e) {
-        logger.error(SCOPE, 'Failed to parse saved settings');
+        setCurrentUser(JSON.parse(savedUser));
+      } catch {
+        /* noop */
       }
     }
   }, []);
 
+  const handleToggleTheme = useCallback(() => {
+    setIsDark((d) => {
+      const next = !d;
+      document.documentElement.classList.toggle('dark', next);
+      const saved = localStorage.getItem('nova-browser-settings');
+      const settings = saved ? JSON.parse(saved) : {};
+      localStorage.setItem('nova-browser-settings', JSON.stringify({ ...settings, theme: next ? 'dark' : 'light' }));
+      return next;
+    });
+  }, []);
+
   const handleThemeChange = (theme: 'dark' | 'light') => {
-    const isDarkMode = theme === 'dark';
-    setIsDark(isDarkMode);
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    const dark = theme === 'dark';
+    setIsDark(dark);
+    document.documentElement.classList.toggle('dark', dark);
   };
 
-  const tabs: Array<{ id: TabType; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
+  // ---- Tabs ----
+  const handleTabSelect = (id: string) => {
+    setTabs((prev) => prev.map((t) => ({ ...t, isActive: t.id === id })));
+  };
+
+  const handleTabClose = (id: string) => {
+    setTabs((prev) => {
+      if (prev.length === 1) return prev;
+      const idx = prev.findIndex((t) => t.id === id);
+      const next = prev.filter((t) => t.id !== id);
+      if (prev[idx]?.isActive && next.length > 0) {
+        const newActive = idx > 0 ? idx - 1 : 0;
+        next[newActive] = { ...next[newActive], isActive: true };
+      }
+      return next;
+    });
+  };
+
+  const handleTabAdd = () => {
+    const newTab = createDefaultTab();
+    setTabs((prev) => [
+      ...prev.map((t) => ({ ...t, isActive: false })),
+      { ...newTab, isActive: true },
+    ]);
+    setCurrentUrl('');
+    setActiveView('home');
+  };
+
+  // ---- Navigation ----
+  const handleNavigate = (url: string) => {
+    setCurrentUrl(url);
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.isActive
+          ? { ...t, url, title: url.replace(/^https?:\/\//, '').split('/')[0] || 'New Tab', isLoading: true }
+          : t
+      )
+    );
+    setCanGoBack(true);
+    // Simulate page load
+    setTimeout(() => {
+      setTabs((prev) => prev.map((t) => (t.isActive ? { ...t, isLoading: false } : t)));
+    }, 1200);
+  };
+
+  // ---- Account ----
+  const handleLogin = (user: UserAccount) => {
+    setCurrentUser(user);
+    localStorage.setItem('nova-user', JSON.stringify(user));
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('nova-user');
+  };
+
+  // ---- AI Chat ----
+  const handleOpenChat = (prompt?: string) => {
+    setChatInitialPrompt(prompt);
+    setShowChat(true);
+  };
+
+  const handleRequestLogin = () => {
+    setShowAccount(true);
+  };
+
+  // ---- Views ----
+  const navViews: Array<{ id: ViewType; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'home', label: 'Home', Icon: Home },
     { id: 'planner', label: 'AI Planner', Icon: Zap },
     { id: 'status', label: 'Status', Icon: BarChart3 },
     { id: 'settings', label: 'Settings', Icon: Settings },
   ];
 
-  return (
-    <div className="flex flex-col w-full h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nova Browser</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">AI-powered autonomous browser with planning</p>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <div className="w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full animate-pulse" />
-            <span className="text-gray-600 dark:text-gray-400">System Ready</span>
-          </div>
-        </div>
-      </header>
+  const isNovaPage = !currentUrl || currentUrl.startsWith('nova://');
+  const isSecure = currentUrl.startsWith('https://');
 
-      {/* Tab Navigation */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4">
-        <nav className="flex gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 font-medium text-sm transition-colors duration-200 border-b-2 flex items-center gap-2 ${
-                activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              <tab.Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+  return (
+    <div className="flex flex-col w-full h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200 overflow-hidden">
+      {/* ---- Browser Tab Bar ---- */}
+      <BrowserTabBar
+        tabs={tabs}
+        onTabSelect={handleTabSelect}
+        onTabClose={handleTabClose}
+        onTabAdd={handleTabAdd}
+      />
+
+      {/* ---- Browser Toolbar (Address Bar) ---- */}
+      <div className="relative">
+        <BrowserToolbar
+          url={currentUrl}
+          canGoBack={canGoBack}
+          canGoForward={canGoForward}
+          isLoading={activeTab?.isLoading ?? false}
+          isSecure={isSecure}
+          isDark={isDark}
+          isLoggedIn={!!currentUser}
+          userEmail={currentUser?.email}
+          onBack={() => setCanGoBack(false)}
+          onForward={() => {}}
+          onRefresh={() => handleNavigate(currentUrl)}
+          onNavigate={handleNavigate}
+          onToggleTheme={handleToggleTheme}
+          onOpenExtensions={() => setShowExtensions((v) => !v)}
+          onOpenAccount={() => setShowAccount(true)}
+        />
+
+        {/* Extensions Dropdown */}
+        {showExtensions && (
+          <div ref={extBtnRef} className="absolute right-0 top-full">
+            <ExtensionsPanel onClose={() => setShowExtensions(false)} />
+          </div>
+        )}
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden p-4">
-        <div className="flex-1 flex gap-4">
-          {/* Left Panel - Content (wider) */}
-          <div className="flex-1 min-w-0">
-            {activeTab === 'home' && <HomePage />}
-            {activeTab === 'planner' && <AIPlannerPanel />}
-            {activeTab === 'status' && <StatusPanel />}
-            {activeTab === 'settings' && <SettingsPanel onThemeChange={handleThemeChange} />}
-            {activeTab === 'settings' && <SettingsPanel onThemeChange={handleThemeChange} />}
-          </div>
-
-          {/* Right Sidebar - Quick Info */}
-          <div className="w-64 hidden lg:flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-pink-600 to-rose-600 dark:from-pink-700 dark:to-rose-700 p-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Lightbulb className="w-5 h-5" />
-                Quick Info
-              </h3>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Features */}
-              <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2 flex items-center gap-2">
-                  <Zap className="w-4 h-4" />
-                  Available Features
-                </h4>
-                <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> AI Goal Planning</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> Action Decomposition</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> Dependency Sequencing</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> Confidence Scoring</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-green-600" /> Error Detection</li>
-                  <li className="flex items-center gap-2"><Clock className="w-3 h-3 text-yellow-600" /> Browser Automation (Week 6)</li>
-                  <li className="flex items-center gap-2"><Clock className="w-3 h-3 text-yellow-600" /> Plan Verification (Week 6)</li>
-                </ul>
-              </div>
-
-              {/* Tips */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2 flex items-center gap-2"><Brain className="w-4 h-4" /> Try These Goals</h4>
-                <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
-                  <li className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
-                    "Navigate to Google and search for TypeScript"
-                  </li>
-                  <li className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
-                    "Fill out the contact form"
-                  </li>
-                  <li className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
-                    "Extract data from table"
-                  </li>
-                </ul>
-              </div>
-
-              {/* Stats */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-2 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> System Stats</h4>
-                <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
-                  <div className="flex justify-between">
-                    <span>Services:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">7 Active</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Phase:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">2 (Week 5)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tests:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">100+</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Coverage:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">80%+</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* ---- App View Nav (only for nova:// pages) ---- */}
+      {isNovaPage && (
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4">
+          <nav className="flex gap-1">
+            {navViews.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveView(id)}
+                className={`px-4 py-2.5 font-medium text-sm transition-colors duration-150 border-b-2 flex items-center gap-2 ${
+                  activeView === id
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
+      )}
+
+      {/* ---- Main Content ---- */}
+      <main className="flex-1 overflow-auto">
+        {isNovaPage ? (
+          <div className="h-full">
+            {activeView === 'home' && <HomePage />}
+            {activeView === 'planner' && (
+              <div className="p-4 h-full">
+                <AIPlannerPanel />
+              </div>
+            )}
+            {activeView === 'status' && (
+              <div className="p-4 h-full">
+                <StatusPanel />
+              </div>
+            )}
+            {activeView === 'settings' && (
+              <div className="p-4 h-full">
+                <SettingsPanel onThemeChange={handleThemeChange} />
+              </div>
+            )}
+          </div>
+        ) : (
+          // External page placeholder (would be Electron WebContentsView in production)
+          <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-600 flex-col gap-3">
+            <div className="w-12 h-12 border-2 border-gray-300 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin" />
+            <p className="text-sm">Loading {currentUrl}</p>
+            <p className="text-xs text-gray-300 dark:text-gray-700">Chromium WebView renders here in production</p>
+          </div>
+        )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2">
-        <p className="text-xs text-gray-600 dark:text-gray-400">
-          Nova Browser v0.1.0 • Phase 2 Week 5 • AI Planning System • Made with ❤️
-        </p>
+      {/* ---- Status Bar ---- */}
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-1 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+            <span>System Ready</span>
+          </div>
+          {currentUser && (
+            <span className="text-blue-600 dark:text-blue-400">{currentUser.email}</span>
+          )}
+        </div>
+        <span>Nova Browser v0.1.0</span>
       </footer>
+
+      {/* ---- Floating AI Assistant Button ---- */}
+      <AIAssistantBar
+        isLoggedIn={!!currentUser}
+        onOpenChat={handleOpenChat}
+        onRequestLogin={handleRequestLogin}
+      />
+
+      {/* ---- AI Chat Panel ---- */}
+      <AIChatPanel
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
+        isLoggedIn={!!currentUser}
+        onRequestLogin={handleRequestLogin}
+      />
+
+      {/* ---- Account Modal ---- */}
+      <AccountModal
+        isOpen={showAccount}
+        currentUser={currentUser}
+        onClose={() => setShowAccount(false)}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+      />
     </div>
   );
 }
