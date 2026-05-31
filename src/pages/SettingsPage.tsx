@@ -29,6 +29,7 @@ export interface BrowserSettings {
   theme: ThemeMode;
   searchEngine: SearchEngine;
   fontSize: number; // 12–20
+  blockAds: boolean;
   blockPopups: boolean;
   doNotTrack: boolean;
   clearOnExit: boolean;
@@ -195,6 +196,13 @@ export function SettingsPage({
 
           {/* ── Privacy & Security ── */}
           <SettingSection title="Privacy & Security" icon={<Shield className="w-4 h-4" />}>
+            <SettingRow label="Block Ads & Trackers" description="Built-in Brave-style ad blocking engine">
+              <Toggle
+                enabled={settings.blockAds}
+                onChange={(v) => onUpdateSettings({ blockAds: v })}
+              />
+            </SettingRow>
+
             <SettingRow label="Block Pop-ups" description="Prevent websites from opening pop-up windows">
               <Toggle
                 enabled={settings.blockPopups}

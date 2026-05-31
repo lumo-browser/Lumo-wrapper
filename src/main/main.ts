@@ -3,8 +3,31 @@
  * Self-contained — no shared imports from renderer code
  */
 
-import { app, BrowserWindow, Menu } from 'electron';
+import { app, BrowserWindow, Menu, session, ipcMain } from 'electron';
 import path from 'path';
+
+// Global state for ad blocker
+let isAdBlockerEnabled = true;
+
+// Basic ad and tracker blocklist
+const adDomains = [
+  '*://*.doubleclick.net/*',
+  '*://*.googleadservices.com/*',
+  '*://*.googlesyndication.com/*',
+  '*://*.google-analytics.com/*',
+  '*://*.facebook.com/tr*',
+  '*://*.amazon-adsystem.com/*',
+  '*://*.criteo.com/*',
+  '*://*.adnxs.com/*',
+  '*://*.advertising.com/*',
+  '*://*.outbrain.com/*',
+  '*://*.taboola.com/*',
+  '*://*.rubiconproject.com/*',
+  '*://*.openx.net/*',
+  '*://*.moatads.com/*',
+  '*://*.scorecardresearch.com/*',
+  '*://*.quantserve.com/*',
+];
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -26,6 +49,20 @@ function createWindow(): void {
 
   const isDev = !app.isPackaged;
   const url = isDev ? 'http://localhost:5173' : `file://${path.join(__dirname, '../index.html')}`;
+
+  // Setup ad blocker
+  session.defaultSession.webRequest.onBeforeRequest(
+    { urls: adDomains },
+    (details, callback) => {
+      if (isAdBlockerEnabled) {
+        // Block the request
+        callback({ cancel: true });
+      } else {
+        // Allow the request
+        callback({ cancel: false });
+      }
+    }
+  );
 
   mainWindow.loadURL(url);
 
@@ -86,6 +123,13 @@ function createMenu(): void {
 
 app.on('ready', () => {
   console.log('[Nova] App ready');
+
+  // Handle ad blocker state changes from the renderer
+  ipcMain.on('nova:set-ad-blocker', (event, enabled) => {
+    console.log(`[Nova] Ad blocker ${enabled ? 'enabled' : 'disabled'}`);
+    isAdBlockerEnabled = enabled;
+  });
+
   createWindow();
   createMenu();
 });

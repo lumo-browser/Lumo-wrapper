@@ -144,7 +144,7 @@ export default function App(): React.ReactElement {
   const [settings, setSettings] = useState<BrowserSettings>(() => {
     const defaults: BrowserSettings = {
       theme: 'dark', searchEngine: 'google', fontSize: 14,
-      blockPopups: true, doNotTrack: true, clearOnExit: false,
+      blockAds: true, blockPopups: true, doNotTrack: true, clearOnExit: false,
     };
     try { return { ...defaults, ...JSON.parse(localStorage.getItem('nova-settings') || '{}') }; } catch { return defaults; }
   });
@@ -171,6 +171,12 @@ export default function App(): React.ReactElement {
     const dark = settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     setIsDark(dark);
     document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.style.fontSize = `${settings.fontSize}px`;
+
+    // Sync initial ad blocker state to main process
+    if (window.electron?.send) {
+      window.electron.send('nova:set-ad-blocker', settings.blockAds);
+    }
 
     // Restore user
     const savedUser = localStorage.getItem('nova-user');
@@ -212,15 +218,21 @@ export default function App(): React.ReactElement {
         setIsDark(dark);
         document.documentElement.classList.toggle('dark', dark);
       }
+      if (updates.fontSize) {
+        document.documentElement.style.fontSize = `${updates.fontSize}px`;
+      }
+      if (updates.blockAds !== undefined && window.electron?.send) {
+        window.electron.send('nova:set-ad-blocker', updates.blockAds);
+      }
       return next;
     });
   }, []);
 
   // ── Tabs ─────────────────────────────────────────────────────────────────
-  const selectTab = (id: string) =>
-    setTabs((prev) => prev.map((t) => ({ ...t, isActive: t.id === id })));
+  const selectTab = useCallback((id: string) =>
+    setTabs((prev) => prev.map((t) => ({ ...t, isActive: t.id === id }))), []);
 
-  const closeTab = (id: string) =>
+  const closeTab = useCallback((id: string) =>
     setTabs((prev) => {
       if (prev.length === 1) return prev; // never close last tab
       const idx = prev.findIndex((t) => t.id === id);
@@ -230,13 +242,13 @@ export default function App(): React.ReactElement {
         next[ni] = { ...next[ni], isActive: true };
       }
       return next;
-    });
+    }), []);
 
-  const addTab = () => {
+  const addTab = useCallback(() => {
     const t = mkTab({ isActive: true });
     setTabs((prev) => [...prev.map((x) => ({ ...x, isActive: false })), t]);
     setNavHistories((prev) => ({ ...prev, [t.id]: emptyHistory() }));
-  };
+  }, []);
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const navigate = useCallback((url: string) => {
@@ -410,6 +422,46 @@ export default function App(): React.ReactElement {
       window.print();
     }
   }, [activeTab]);
+
+  // ── Keyboard Shortcuts ──────────────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if focused on an input/textarea (unless specific shortcuts)
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+      if (e.ctrlKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        addTab();
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        if (activeTab) closeTab(activeTab.id);
+      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setShowAI((v) => !v);
+      } else if (e.key === 'F5' || (e.ctrlKey && e.key.toLowerCase() === 'r')) {
+        e.preventDefault();
+        handleRefresh();
+      } else if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handleGoBack();
+      } else if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleGoForward();
+      } else if (e.key === 'Escape') {
+        handleStop();
+      } else if (e.ctrlKey && e.key === '=') {
+        e.preventDefault();
+        handleZoomIn();
+      } else if (e.ctrlKey && e.key === '-') {
+        e.preventDefault();
+        handleZoomOut();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut]);
 
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();

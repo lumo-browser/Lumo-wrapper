@@ -1,6 +1,14 @@
 import React from 'react';
 
 declare global {
+  interface Window {
+    electron?: {
+      invoke: (channel: string, ...args: any[]) => Promise<any>;
+      send: (channel: string, ...args: any[]) => void;
+      on: (channel: string, listener: (event: any, ...args: any[]) => void) => () => void;
+    };
+  }
+
   namespace JSX {
     interface IntrinsicElements {
       webview: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
