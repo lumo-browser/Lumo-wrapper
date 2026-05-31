@@ -46,9 +46,10 @@ interface WebviewTabProps {
   onTitleChange: (title: string) => void;
   onLoadingChange: (loading: boolean) => void;
   onUrlChange: (url: string) => void;
+  onNavStateChange: (canGoBack: boolean, canGoForward: boolean) => void;
 }
 
-function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange }: WebviewTabProps) {
+function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
 
@@ -63,6 +64,9 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange }:
     const onNavigated = (e: any) => {
       onUrlChange(e.url || '');
       onLoadingChange(false);
+      if (wv && typeof wv.canGoBack === 'function') {
+        onNavStateChange(wv.canGoBack(), wv.canGoForward());
+      }
     };
 
     wv.addEventListener('did-start-loading', onStartLoad);
@@ -465,8 +469,8 @@ export default function App(): React.ReactElement {
 
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
-  const canGoBack    = currentHistory.cursor > 0;
-  const canGoForward = currentHistory.cursor < currentHistory.stack.length - 1;
+  const canGoBack    = activeTab?.canGoBack ?? (currentHistory.cursor > 0);
+  const canGoForward = activeTab?.canGoForward ?? (currentHistory.cursor < currentHistory.stack.length - 1);
   const isSecure     = currentUrl.startsWith('https://');
   const isNtpPage    = !currentUrl;
 
@@ -612,6 +616,9 @@ export default function App(): React.ReactElement {
                     }
                     onUrlChange={(newUrl) =>
                       setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, url: newUrl } : t))
+                    }
+                    onNavStateChange={(canBack, canForward) =>
+                      setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, canGoBack: canBack, canGoForward: canForward } : t))
                     }
                   />
                 )}

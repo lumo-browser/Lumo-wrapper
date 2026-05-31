@@ -12,6 +12,8 @@ export interface BrowserTab {
   favicon?: string;
   isActive: boolean;
   isLoading: boolean;
+  canGoBack?: boolean;
+  canGoForward?: boolean;
 }
 
 interface BrowserTabBarProps {
