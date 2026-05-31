@@ -115,9 +115,21 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
     }
     if (!activeTab || !goal.trim()) return;
 
-    const wv = document.getElementById(`webview-${activeTab.id}`) as any;
+    let wv = document.getElementById(`webview-${activeTab.id}`) as any;
+    
+    // Fallback: If ID lookup fails, search the DOM directly
     if (!wv) {
-      addLog('error', 'The Agent requires a live website to function. Please navigate to a standard web page (e.g. google.com) instead of a nova:// internal page.');
+      const allWebviews = document.querySelectorAll('webview');
+      if (allWebviews.length === 1) {
+        wv = allWebviews[0];
+      } else if (allWebviews.length > 1) {
+        // Find the one that isn't hidden by display: none
+        wv = Array.from(allWebviews).find((w: any) => w.parentElement?.style.display !== 'none');
+      }
+    }
+
+    if (!wv) {
+      addLog('error', 'Agent paused: You are currently on an internal browser page. Please type a website address (like google.com or amazon.com) into the search bar at the top, hit Enter to load it, and then run the Agent again!');
       return;
     }
 
