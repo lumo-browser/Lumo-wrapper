@@ -295,12 +295,6 @@ function ProviderWebview({ provider }: { provider?: typeof AI_PROVIDERS[0] }) {
           allowpopups="true"
           partition={`persist:ai-${provider.id}`}
         />
-        
-        <div className="absolute bottom-3 left-0 right-0 px-4 text-center z-20 pointer-events-none">
-          <p className="text-[10px] text-gray-400 bg-white/80 dark:bg-black/80 backdrop-blur rounded-full px-2 py-1 inline-block">
-            Note: Must be run in Electron (npm run dev) to load external providers.
-          </p>
-        </div>
       </div>
     </div>
   );
