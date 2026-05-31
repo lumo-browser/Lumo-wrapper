@@ -21,6 +21,7 @@ import {
   Sun,
   Moon,
   RefreshCcw,
+  Cpu,
 } from 'lucide-react';
 
 interface BrowserToolbarProps {
@@ -34,6 +35,7 @@ interface BrowserToolbarProps {
   userEmail?: string;
   isBookmarked: boolean;
   isAISidebarOpen: boolean;
+  isAgentOpen: boolean;
   onBack: () => void;
   onForward: () => void;
   onRefresh: () => void;
@@ -43,6 +45,7 @@ interface BrowserToolbarProps {
   onToggleExtensions: () => void;
   onOpenAccount: () => void;
   onToggleAI: () => void;
+  onToggleAgent: () => void;
   onToggleBookmark: () => void;
   onOpenMenu: () => void;
   searchEngineUrl?: string;
@@ -59,6 +62,7 @@ export function BrowserToolbar({
   userEmail,
   isBookmarked,
   isAISidebarOpen,
+  isAgentOpen,
   onBack,
   onForward,
   onRefresh,
@@ -68,6 +72,7 @@ export function BrowserToolbar({
   onToggleExtensions,
   onOpenAccount,
   onToggleAI,
+  onToggleAgent,
   onToggleBookmark,
   onOpenMenu,
   searchEngineUrl = 'https://www.google.com/search?q=',
@@ -214,6 +219,16 @@ export function BrowserToolbar({
 
       {/* ── Right Controls ── */}
       <div className="flex items-center gap-0.5">
+        {/* Agent — Autonomous Browser Control */}
+        <NavBtn
+          onClick={onToggleAgent}
+          title="Nova Agent (Ctrl+Shift+R)"
+          id="btn-agent"
+          active={isAgentOpen}
+        >
+          <Cpu className="w-4 h-4" />
+        </NavBtn>
+
         {/* AI Assistant — primary AI entry point */}
         <NavBtn
           onClick={onToggleAI}

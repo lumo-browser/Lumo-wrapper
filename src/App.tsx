@@ -149,6 +149,7 @@ export default function App(): React.ReactElement {
   const [settings, setSettings] = useState<BrowserSettings>(() => {
     const defaults: BrowserSettings = {
       theme: 'dark', searchEngine: 'google', fontSize: 14,
+      openRouterApiKey: '',
       blockAds: true, blockPopups: true, doNotTrack: true, clearOnExit: false,
     };
     try { return { ...defaults, ...JSON.parse(localStorage.getItem('nova-settings') || '{}') }; } catch { return defaults; }
@@ -158,6 +159,7 @@ export default function App(): React.ReactElement {
   const [showExtensions, setShowExtensions] = useState(false);
   const [showAccount, setShowAccount]       = useState(false);
   const [showAI, setShowAI]                 = useState(false);
+  const [showAgent, setShowAgent]           = useState(false);
   const [showMenu, setShowMenu]             = useState(false);
 
   // Account
@@ -452,6 +454,11 @@ export default function App(): React.ReactElement {
       } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
         setShowAI((v) => !v);
+        setShowAgent(false);
+      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        setShowAgent(v => !v);
+        setShowAI(false);
       } else if (e.key === 'F5' || (e.ctrlKey && e.key.toLowerCase() === 'r')) {
         e.preventDefault();
         handleRefresh();
