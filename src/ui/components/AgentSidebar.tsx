@@ -117,7 +117,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
 
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
     if (!wv) {
-      addLog('error', 'No active webview found.');
+      addLog('error', 'The Agent requires a live website to function. Please navigate to a standard web page (e.g. google.com) instead of a nova:// internal page.');
       return;
     }
 

@@ -153,8 +153,21 @@ export default function App(): React.ReactElement {
       openRouterApiKey: '',
       blockAds: true, blockPopups: true, doNotTrack: true, clearOnExit: false,
     };
-    try { return { ...defaults, ...JSON.parse(localStorage.getItem('nova-settings') || '{}') }; } catch { return defaults; }
+    try { 
+      const parsed = JSON.parse(localStorage.getItem('nova-settings') || '{}');
+      return { ...defaults, ...parsed, openRouterApiKey: '' }; // Keep api key blank initially
+    } catch { return defaults; }
   });
+
+  // Securely load API Key on boot
+  useEffect(() => {
+    const encryptedKey = localStorage.getItem('nova-api-key-secure');
+    if (encryptedKey && window.electron?.invoke) {
+      window.electron.invoke('nova:load-key', encryptedKey).then(decrypted => {
+        if (decrypted) setSettings(s => ({ ...s, openRouterApiKey: decrypted }));
+      });
+    }
+  }, []);
 
   // Panels
   const [showExtensions, setShowExtensions] = useState(false);
@@ -205,7 +218,20 @@ export default function App(): React.ReactElement {
   // Persist bookmarks/history/settings to localStorage
   useEffect(() => { localStorage.setItem('nova-bookmarks', JSON.stringify(bookmarkEntries)); }, [bookmarkEntries]);
   useEffect(() => { localStorage.setItem('nova-history', JSON.stringify(historyEntries)); }, [historyEntries]);
-  useEffect(() => { localStorage.setItem('nova-settings', JSON.stringify(settings)); }, [settings]);
+  
+  useEffect(() => { 
+    const { openRouterApiKey, ...safeSettings } = settings;
+    localStorage.setItem('nova-settings', JSON.stringify(safeSettings)); 
+    
+    // Securely encrypt the key if it exists
+    if (window.electron?.invoke && openRouterApiKey) {
+      window.electron.invoke('nova:save-key', openRouterApiKey).then(encrypted => {
+        if (encrypted) localStorage.setItem('nova-api-key-secure', encrypted);
+      });
+    } else if (!openRouterApiKey) {
+      localStorage.removeItem('nova-api-key-secure');
+    }
+  }, [settings]);
 
   // ── Theme ────────────────────────────────────────────────────────────────
   const handleToggleTheme = useCallback(() => {

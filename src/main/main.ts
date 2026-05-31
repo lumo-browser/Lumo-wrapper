@@ -3,7 +3,7 @@
  * Self-contained — no shared imports from renderer code
  */
 
-import { app, BrowserWindow, Menu, session, ipcMain, nativeTheme } from 'electron';
+import { app, BrowserWindow, Menu, session, ipcMain, nativeTheme, safeStorage } from 'electron';
 import path from 'path';
 
 // Global state for ad blocker
@@ -134,6 +134,35 @@ app.on('ready', () => {
   ipcMain.on('nova:set-theme', (event, theme: 'dark' | 'light' | 'system') => {
     console.log(`[Nova] Global theme set to ${theme}`);
     nativeTheme.themeSource = theme;
+  });
+
+  // Securely save/load API keys
+  ipcMain.handle('nova:save-key', (event, key: string) => {
+    try {
+      if (!key) return '';
+      if (safeStorage.isEncryptionAvailable()) {
+        const encrypted = safeStorage.encryptString(key);
+        return encrypted.toString('base64');
+      }
+      return Buffer.from(key).toString('base64'); // Fallback
+    } catch (err) {
+      console.error('[Nova] Failed to save key securely', err);
+      return '';
+    }
+  });
+
+  ipcMain.handle('nova:load-key', (event, base64Key: string) => {
+    try {
+      if (!base64Key) return '';
+      const buffer = Buffer.from(base64Key, 'base64');
+      if (safeStorage.isEncryptionAvailable()) {
+        return safeStorage.decryptString(buffer);
+      }
+      return buffer.toString('utf-8'); // Fallback
+    } catch (err) {
+      console.error('[Nova] Failed to load key', err);
+      return '';
+    }
   });
 
   createWindow();
