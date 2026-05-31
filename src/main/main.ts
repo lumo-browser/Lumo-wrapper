@@ -1,16 +1,15 @@
 /**
  * Electron main process entry point
+ * Self-contained — no shared imports from renderer code
  */
 
 import { app, BrowserWindow, Menu } from 'electron';
 import path from 'path';
-import { logger } from '../utils/logger';
 
-const SCOPE = 'electron:main';
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
-  logger.info(SCOPE, 'Creating main window');
+  console.log('[Nova] Creating main window');
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -20,11 +19,12 @@ function createWindow(): void {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      sandbox: true,
+      sandbox: false,
+      webviewTag: true,
     },
   });
 
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = !app.isPackaged;
   const url = isDev ? 'http://localhost:5173' : `file://${path.join(__dirname, '../index.html')}`;
 
   mainWindow.loadURL(url);
@@ -34,7 +34,7 @@ function createWindow(): void {
   }
 
   mainWindow.on('closed', () => {
-    logger.info(SCOPE, 'Window closed');
+    console.log('[Nova] Window closed');
     mainWindow = null;
   });
 }
@@ -85,25 +85,25 @@ function createMenu(): void {
 }
 
 app.on('ready', () => {
-  logger.info(SCOPE, 'App ready');
+  console.log('[Nova] App ready');
   createWindow();
   createMenu();
 });
 
 app.on('window-all-closed', () => {
-  logger.info(SCOPE, 'All windows closed');
+  console.log('[Nova] All windows closed');
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('activate', () => {
-  logger.info(SCOPE, 'App activated');
+  console.log('[Nova] App activated');
   if (mainWindow === null) {
     createWindow();
   }
 });
 
 app.on('before-quit', () => {
-  logger.info(SCOPE, 'App quitting');
+  console.log('[Nova] App quitting');
 });

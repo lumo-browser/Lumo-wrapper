@@ -34,12 +34,9 @@ contextBridge.exposeInMainWorld('electron', {
   },
 
   // App info
-  appVersion: (): string => process.env.VITE_APP_VERSION || '0.1.0',
+  appVersion: (): string => '0.1.0',
 
   // Platform info
   platform: process.platform,
   arch: process.arch,
 });
-
-// Prevent window from being accessed
-(window as never).nodeRequire = undefined;

@@ -25,15 +25,9 @@ export const TARGET_MEMORY_USAGE = 2 * 1024 * 1024 * 1024; // 2 GB
 export const MEMORY_WARNING_THRESHOLD = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
 export const MEMORY_CRITICAL_THRESHOLD = 1.8 * 1024 * 1024 * 1024; // 1.8 GB
 
-// Helper to safely get environment variables across both Electron (Node) and Vite renderer processes
 const getEnvVar = (key: string): string | undefined => {
   if (typeof process !== 'undefined' && process.env) {
     return process.env[key];
-  }
-  // @ts-ignore - Handled by Vite replacement at build time
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    // @ts-ignore - Handled by Vite
-    return import.meta.env[key];
   }
   return undefined;
 };

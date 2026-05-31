@@ -36,6 +36,61 @@ function InternalPage({ title, children }: { title: string; children: React.Reac
 
 const SCOPE = 'App';
 
+// ── WebviewTab — wraps <webview> with imperative navigation ──────────────────
+interface WebviewTabProps {
+  tabId: string;
+  url: string;
+  onTitleChange: (title: string) => void;
+  onLoadingChange: (loading: boolean) => void;
+  onUrlChange: (url: string) => void;
+}
+
+function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange }: WebviewTabProps) {
+  const ref = useRef<any>(null);
+  const initialUrl = useRef(url);
+
+  // Wire up webview events once on mount
+  useEffect(() => {
+    const wv = ref.current;
+    if (!wv) return;
+
+    const onStartLoad = () => onLoadingChange(true);
+    const onStopLoad  = () => onLoadingChange(false);
+    const onTitleUpd  = (e: any) => onTitleChange(e.title || '');
+    const onNavigated = (e: any) => {
+      onUrlChange(e.url || '');
+      onLoadingChange(false);
+    };
+
+    wv.addEventListener('did-start-loading', onStartLoad);
+    wv.addEventListener('did-stop-loading',  onStopLoad);
+    wv.addEventListener('page-title-updated', onTitleUpd);
+    wv.addEventListener('did-navigate',      onNavigated);
+    wv.addEventListener('did-navigate-in-page', onNavigated);
+
+    return () => {
+      wv.removeEventListener('did-start-loading', onStartLoad);
+      wv.removeEventListener('did-stop-loading',  onStopLoad);
+      wv.removeEventListener('page-title-updated', onTitleUpd);
+      wv.removeEventListener('did-navigate',      onNavigated);
+      wv.removeEventListener('did-navigate-in-page', onNavigated);
+    };
+  }, []);
+
+  return (
+    <webview
+      ref={ref}
+      id={`webview-${tabId}`}
+      src={initialUrl.current || 'about:blank'}
+      className="w-full h-full border-none bg-white"
+      allowpopups="true"
+      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      partition="persist:nova-main"
+    />
+  );
+}
+
+
 // ── Tab helpers ────────────────────────────────────────────────────────────
 let _tabId = 1;
 const mkTab = (overrides: Partial<BrowserTab> = {}): BrowserTab => ({
@@ -161,7 +216,7 @@ export default function App(): React.ReactElement {
     if (!activeTab) return;
     const tabId = activeTab.id;
 
-    // Update tab immediately
+    // Update tab immediately with loading state
     setTabs((prev) =>
       prev.map((t) =>
         t.id === tabId
@@ -177,11 +232,18 @@ export default function App(): React.ReactElement {
       return { ...prev, [tabId]: { stack: newStack, cursor: newStack.length - 1 } };
     });
 
-    // Simulate load completion
+    // Imperatively tell the webview to navigate (this is the key fix!
+    // React cannot update webview src after mount — we must call loadURL directly)
+    const wv = document.getElementById(`webview-${tabId}`) as any;
+    if (wv && typeof wv.loadURL === 'function') {
+      wv.loadURL(url).catch(() => {});
+    }
+
+    // Fallback: simulate load completion for internal pages
     if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
     loadTimerRef.current = setTimeout(() => {
       setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, isLoading: false } : t)));
-    }, 1000);
+    }, 3000);
   }, [activeTab]);
 
   const goBack = useCallback(() => {
@@ -204,10 +266,41 @@ export default function App(): React.ReactElement {
     setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, url, title: url.replace(/^https?:\/\//, '').split('/')[0] } : t));
   }, [activeTab, navHistories]);
 
-  const handleRefresh = () => { if (activeTab?.url) navigate(activeTab.url); };
-  const handleStop    = () => {
+  const handleRefresh = () => {
+    if (!activeTab?.url) return;
+    const wv = document.getElementById(`webview-${activeTab.id}`) as any;
+    if (wv && typeof wv.reload === 'function') {
+      wv.reload();
+    } else {
+      navigate(activeTab.url);
+    }
+  };
+
+  const handleStop = () => {
     if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+    const wv = document.getElementById(`webview-${activeTab?.id}`) as any;
+    if (wv && typeof wv.stop === 'function') wv.stop();
     setTabs((prev) => prev.map((t) => t.isActive ? { ...t, isLoading: false } : t));
+  };
+
+  const handleGoBack = () => {
+    if (!activeTab) return;
+    const wv = document.getElementById(`webview-${activeTab.id}`) as any;
+    if (wv && typeof wv.goBack === 'function') {
+      wv.goBack();
+    } else {
+      goBack();
+    }
+  };
+
+  const handleGoForward = () => {
+    if (!activeTab) return;
+    const wv = document.getElementById(`webview-${activeTab.id}`) as any;
+    if (wv && typeof wv.goForward === 'function') {
+      wv.goForward();
+    } else {
+      goForward();
+    }
   };
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
@@ -304,8 +397,8 @@ export default function App(): React.ReactElement {
           userEmail={currentUser?.email}
           isBookmarked={isBookmarked}
           isAISidebarOpen={showAI}
-          onBack={goBack}
-          onForward={goForward}
+          onBack={handleGoBack}
+          onForward={handleGoForward}
           onRefresh={handleRefresh}
           onStop={handleStop}
           onNavigate={navigate}
@@ -367,13 +460,19 @@ export default function App(): React.ReactElement {
                 {isAbout && <InternalPage title="About Nova Browser">Version 0.1.0<br/>A production-ready AI-native browser built with Chromium and Electron.</InternalPage>}
                 
                 {!isInternal && (
-                  <webview
-                    id={`webview-${tab.id}`}
-                    src={tab.url || 'about:blank'}
-                    className="w-full h-full flex-1 border-none bg-white"
-                    allowpopups="true"
-                    useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                    partition="persist:nova-main"
+                  <WebviewTab
+                    key={tab.id}
+                    tabId={tab.id}
+                    url={tab.url}
+                    onTitleChange={(title) =>
+                      setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, title } : t))
+                    }
+                    onLoadingChange={(loading) =>
+                      setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, isLoading: loading } : t))
+                    }
+                    onUrlChange={(newUrl) =>
+                      setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, url: newUrl } : t))
+                    }
                   />
                 )}
               </div>
