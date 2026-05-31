@@ -3,7 +3,7 @@
  * Self-contained — no shared imports from renderer code
  */
 
-import { app, BrowserWindow, Menu, session, ipcMain } from 'electron';
+import { app, BrowserWindow, Menu, session, ipcMain, nativeTheme } from 'electron';
 import path from 'path';
 
 // Global state for ad blocker
@@ -128,6 +128,12 @@ app.on('ready', () => {
   ipcMain.on('nova:set-ad-blocker', (event, enabled) => {
     console.log(`[Nova] Ad blocker ${enabled ? 'enabled' : 'disabled'}`);
     isAdBlockerEnabled = enabled;
+  });
+
+  // Handle global theme changes from the renderer
+  ipcMain.on('nova:set-theme', (event, theme: 'dark' | 'light' | 'system') => {
+    console.log(`[Nova] Global theme set to ${theme}`);
+    nativeTheme.themeSource = theme;
   });
 
   createWindow();

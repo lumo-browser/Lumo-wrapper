@@ -181,6 +181,7 @@ export default function App(): React.ReactElement {
     // Sync initial ad blocker state to main process
     if (window.electron?.send) {
       window.electron.send('nova:set-ad-blocker', settings.blockAds);
+      window.electron.send('nova:set-theme', settings.theme);
     }
 
     // Restore user
@@ -208,7 +209,11 @@ export default function App(): React.ReactElement {
     setIsDark((prev) => {
       const next = !prev;
       document.documentElement.classList.toggle('dark', next);
-      setSettings((s) => ({ ...s, theme: next ? 'dark' : 'light' }));
+      const theme = next ? 'dark' : 'light';
+      setSettings((s) => ({ ...s, theme }));
+      if (window.electron?.send) {
+        window.electron.send('nova:set-theme', theme);
+      }
       return next;
     });
   }, []);
@@ -222,6 +227,9 @@ export default function App(): React.ReactElement {
         const dark = updates.theme === 'dark' || (updates.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         setIsDark(dark);
         document.documentElement.classList.toggle('dark', dark);
+        if (window.electron?.send) {
+          window.electron.send('nova:set-theme', updates.theme);
+        }
       }
       if (updates.fontSize) {
         document.documentElement.style.fontSize = `${updates.fontSize}px`;
