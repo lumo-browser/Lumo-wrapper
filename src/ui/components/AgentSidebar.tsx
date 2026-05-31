@@ -274,12 +274,14 @@ When you believe the user's goal has been accomplished, call the 'done' tool.
             {log.type === 'success' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />}
             {log.type === 'error' && <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />}
             
-            <div className={\`flex-1 \${
-              log.type === 'error' ? 'text-red-600 dark:text-red-400' :
-              log.type === 'success' ? 'text-green-600 dark:text-green-400' :
-              log.type === 'user' ? 'text-purple-600 dark:text-purple-400 font-bold' :
-              'text-gray-600 dark:text-gray-300'
-            }\`}>
+            <div className={
+              'flex-1 ' + (
+                log.type === 'error' ? 'text-red-600 dark:text-red-400' :
+                log.type === 'success' ? 'text-green-600 dark:text-green-400' :
+                log.type === 'user' ? 'text-purple-600 dark:text-purple-400 font-bold' :
+                'text-gray-600 dark:text-gray-300'
+              )
+            }>
               {log.message}
             </div>
           </div>
