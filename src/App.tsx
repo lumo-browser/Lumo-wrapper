@@ -21,6 +21,9 @@ import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
 import { AISidebar } from '@ui/components/AISidebar';
 import { BrowserMenu } from '@ui/components/BrowserMenu';
 import { NewTabPage } from './pages/NewTabPage';
+import { HistoryPage, type HistoryEntry } from './pages/HistoryPage';
+import { BookmarksPage, type BookmarkEntry } from './pages/BookmarksPage';
+import { SettingsPage, type BrowserSettings, SEARCH_ENGINES } from './pages/SettingsPage';
 
 // ── Internal Pages ─────────────────────────────────────────────────────────
 function InternalPage({ title, children }: { title: string; children: React.ReactNode }) {
@@ -127,15 +130,30 @@ export default function App(): React.ReactElement {
     'tab-1': emptyHistory(),
   });
 
-  // Bookmark state (per URL)
-  const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  // Bookmark state — rich entries with title and timestamp
+  const [bookmarkEntries, setBookmarkEntries] = useState<BookmarkEntry[]>(() => {
+    try { return JSON.parse(localStorage.getItem('nova-bookmarks') || '[]'); } catch { return []; }
+  });
+
+  // History state
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(() => {
+    try { return JSON.parse(localStorage.getItem('nova-history') || '[]'); } catch { return []; }
+  });
+
+  // Settings
+  const [settings, setSettings] = useState<BrowserSettings>(() => {
+    const defaults: BrowserSettings = {
+      theme: 'dark', searchEngine: 'google', fontSize: 14,
+      blockPopups: true, doNotTrack: true, clearOnExit: false,
+    };
+    try { return { ...defaults, ...JSON.parse(localStorage.getItem('nova-settings') || '{}') }; } catch { return defaults; }
+  });
 
   // Panels
   const [showExtensions, setShowExtensions] = useState(false);
   const [showAccount, setShowAccount]       = useState(false);
   const [showAI, setShowAI]                 = useState(false);
   const [showMenu, setShowMenu]             = useState(false);
-  const [showSettings, setShowSettings]     = useState(false);
 
   // Account
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
@@ -149,18 +167,10 @@ export default function App(): React.ReactElement {
   useEffect(() => {
     logger.info(SCOPE, 'Nova Browser started');
 
-    // Restore theme
-    const saved = localStorage.getItem('nova-settings');
-    if (saved) {
-      try {
-        const s = JSON.parse(saved);
-        const dark = s.theme !== 'light';
-        setIsDark(dark);
-        document.documentElement.classList.toggle('dark', dark);
-      } catch { /* noop */ }
-    } else {
-      document.documentElement.classList.add('dark');
-    }
+    // Restore theme from settings
+    const dark = settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    setIsDark(dark);
+    document.documentElement.classList.toggle('dark', dark);
 
     // Restore user
     const savedUser = localStorage.getItem('nova-user');
@@ -177,14 +187,31 @@ export default function App(): React.ReactElement {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Persist bookmarks/history/settings to localStorage
+  useEffect(() => { localStorage.setItem('nova-bookmarks', JSON.stringify(bookmarkEntries)); }, [bookmarkEntries]);
+  useEffect(() => { localStorage.setItem('nova-history', JSON.stringify(historyEntries)); }, [historyEntries]);
+  useEffect(() => { localStorage.setItem('nova-settings', JSON.stringify(settings)); }, [settings]);
+
   // ── Theme ────────────────────────────────────────────────────────────────
   const handleToggleTheme = useCallback(() => {
     setIsDark((prev) => {
       const next = !prev;
       document.documentElement.classList.toggle('dark', next);
-      const saved = localStorage.getItem('nova-settings');
-      const s = saved ? JSON.parse(saved) : {};
-      localStorage.setItem('nova-settings', JSON.stringify({ ...s, theme: next ? 'dark' : 'light' }));
+      setSettings((s) => ({ ...s, theme: next ? 'dark' : 'light' }));
+      return next;
+    });
+  }, []);
+
+  // Settings update handler
+  const handleUpdateSettings = useCallback((updates: Partial<BrowserSettings>) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...updates };
+      // Apply theme change immediately
+      if (updates.theme) {
+        const dark = updates.theme === 'dark' || (updates.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        setIsDark(dark);
+        document.documentElement.classList.toggle('dark', dark);
+      }
       return next;
     });
   }, []);
@@ -216,6 +243,20 @@ export default function App(): React.ReactElement {
     if (!activeTab) return;
     const tabId = activeTab.id;
 
+    // Don't add internal pages to history
+    const isInternal = url.startsWith('nova://');
+
+    // Add to browsing history
+    if (!isInternal && url) {
+      const entry: HistoryEntry = {
+        id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        url,
+        title: url.replace(/^https?:\/\//, '').split('/')[0],
+        timestamp: Date.now(),
+      };
+      setHistoryEntries((prev) => [entry, ...prev].slice(0, 1000));
+    }
+
     // Update tab immediately with loading state
     setTabs((prev) =>
       prev.map((t) =>
@@ -232,8 +273,7 @@ export default function App(): React.ReactElement {
       return { ...prev, [tabId]: { stack: newStack, cursor: newStack.length - 1 } };
     });
 
-    // Imperatively tell the webview to navigate (this is the key fix!
-    // React cannot update webview src after mount — we must call loadURL directly)
+    // Imperatively tell the webview to navigate
     const wv = document.getElementById(`webview-${tabId}`) as any;
     if (wv && typeof wv.loadURL === 'function') {
       wv.loadURL(url).catch(() => {});
@@ -307,12 +347,20 @@ export default function App(): React.ReactElement {
   const toggleBookmark = () => {
     const url = activeTab?.url;
     if (!url) return;
-    setBookmarks((prev) => {
-      const next = new Set(prev);
-      next.has(url) ? next.delete(url) : next.add(url);
-      return next;
-    });
+    const exists = bookmarkEntries.find((b) => b.url === url);
+    if (exists) {
+      setBookmarkEntries((prev) => prev.filter((b) => b.url !== url));
+    } else {
+      setBookmarkEntries((prev) => [{
+        id: `bm-${Date.now()}`,
+        url,
+        title: activeTab?.title || url,
+        timestamp: Date.now(),
+      }, ...prev]);
+    }
   };
+
+  const isBookmarked = bookmarkEntries.some((b) => b.url === activeTab?.url);
 
   // ── Account ───────────────────────────────────────────────────────────────
   const handleLogin = (user: UserAccount) => {
@@ -363,14 +411,16 @@ export default function App(): React.ReactElement {
     }
   }, [activeTab]);
 
-  // ── Derived state ─────────────────────────────────────────────────────────
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
   const canGoBack    = currentHistory.cursor > 0;
   const canGoForward = currentHistory.cursor < currentHistory.stack.length - 1;
   const isSecure     = currentUrl.startsWith('https://');
   const isNtpPage    = !currentUrl;
-  const isBookmarked = bookmarks.has(currentUrl);
+
+  // Search engine URL from settings
+  const searchEngineUrl = SEARCH_ENGINES.find((e) => e.id === settings.searchEngine)?.url
+    || 'https://www.google.com/search?q=';
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -408,6 +458,7 @@ export default function App(): React.ReactElement {
           onToggleAI={() => setShowAI((v) => !v)}
           onToggleBookmark={toggleBookmark}
           onOpenMenu={() => setShowMenu((v) => !v)}
+          searchEngineUrl={searchEngineUrl}
         />
 
         {/* Extensions dropdown */}
@@ -454,10 +505,47 @@ export default function App(): React.ReactElement {
                 className={`absolute inset-0 flex flex-col ${tab.isActive ? 'z-10 visible' : 'z-0 hidden'}`}
               >
                 {isNtp && <NewTabPage onNavigate={navigate} />}
-                {isSettings && <InternalPage title="Settings">Manage your browser preferences, search engine, and privacy settings here.</InternalPage>}
-                {isHistory && <InternalPage title="History">Your browsing history will appear here. Powered by SQLite.</InternalPage>}
-                {isBookmarks && <InternalPage title="Bookmarks">Your saved pages and reading list will appear here.</InternalPage>}
-                {isAbout && <InternalPage title="About Nova Browser">Version 0.1.0<br/>A production-ready AI-native browser built with Chromium and Electron.</InternalPage>}
+                {isSettings && (
+                  <SettingsPage
+                    settings={settings}
+                    onUpdateSettings={handleUpdateSettings}
+                    onClearBrowsingData={() => {
+                      setHistoryEntries([]);
+                      setBookmarkEntries([]);
+                    }}
+                    historyCount={historyEntries.length}
+                    bookmarkCount={bookmarkEntries.length}
+                  />
+                )}
+                {isHistory && (
+                  <HistoryPage
+                    entries={historyEntries}
+                    onNavigate={navigate}
+                    onDeleteEntry={(id) => setHistoryEntries((prev) => prev.filter((e) => e.id !== id))}
+                    onClearAll={() => setHistoryEntries([])}
+                  />
+                )}
+                {isBookmarks && (
+                  <BookmarksPage
+                    bookmarks={bookmarkEntries}
+                    onNavigate={navigate}
+                    onDeleteBookmark={(id) => setBookmarkEntries((prev) => prev.filter((b) => b.id !== id))}
+                    onClearAll={() => setBookmarkEntries([])}
+                  />
+                )}
+                {isAbout && (
+                  <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center mb-4 shadow-lg">
+                      <span className="text-2xl font-bold text-white">N</span>
+                    </div>
+                    <h1 className="text-2xl font-bold mb-1">Nova Browser</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Version 0.1.0</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 text-center max-w-sm">
+                      An AI-native, privacy-first browser built with Chromium and Electron.<br/>
+                      No cloud accounts. No API keys. Your data stays local.
+                    </p>
+                  </div>
+                )}
                 
                 {!isInternal && (
                   <WebviewTab

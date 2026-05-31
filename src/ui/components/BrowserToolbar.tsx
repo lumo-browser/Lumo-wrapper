@@ -45,6 +45,7 @@ interface BrowserToolbarProps {
   onToggleAI: () => void;
   onToggleBookmark: () => void;
   onOpenMenu: () => void;
+  searchEngineUrl?: string;
 }
 
 export function BrowserToolbar({
@@ -69,6 +70,7 @@ export function BrowserToolbar({
   onToggleAI,
   onToggleBookmark,
   onOpenMenu,
+  searchEngineUrl = 'https://www.google.com/search?q=',
 }: BrowserToolbarProps): React.ReactElement {
   const [draftUrl, setDraftUrl] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -101,7 +103,7 @@ export function BrowserToolbar({
     } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(raw) && !raw.includes(' ')) {
       resolved = `https://${raw}`;
     } else {
-      resolved = `https://www.google.com/search?q=${encodeURIComponent(raw)}`;
+      resolved = `${searchEngineUrl}${encodeURIComponent(raw)}`;
     }
 
     onNavigate(resolved);
