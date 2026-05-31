@@ -39,9 +39,28 @@ function useTime() {
 export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement {
   const time = useTime();
   const [query, setQuery] = useState('');
-  const [shortcuts, setShortcuts] = useState<ShortcutItem[]>(DEFAULT_SHORTCUTS);
+  
+  // Persisted shortcuts
+  const [shortcuts, setShortcuts] = useState<ShortcutItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('nova-shortcuts');
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return DEFAULT_SHORTCUTS;
+  });
+
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newUrl, setNewUrl] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Persist when changed
+  useEffect(() => {
+    if (shortcuts !== DEFAULT_SHORTCUTS) {
+      localStorage.setItem('nova-shortcuts', JSON.stringify(shortcuts));
+    }
+  }, [shortcuts]);
 
   // Focus search on mount
   useEffect(() => {
@@ -71,6 +90,29 @@ export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement 
       setShortcuts((prev) => prev.filter((s) => s.id !== id));
       setRemovingId(null);
     }, 200);
+  };
+
+  const handleAddShortcut = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLabel.trim() || !newUrl.trim()) return;
+    
+    let finalUrl = newUrl.trim();
+    if (!/^https?:\/\//i.test(finalUrl)) {
+      finalUrl = 'https://' + finalUrl;
+    }
+
+    const newItem: ShortcutItem = {
+      id: `s-${Date.now()}`,
+      label: newLabel.trim(),
+      url: finalUrl,
+      icon: Globe, // Default generic icon since it's user-added
+      color: 'bg-blue-600',
+    };
+
+    setShortcuts((prev) => [...prev, newItem]);
+    setIsAdding(false);
+    setNewLabel('');
+    setNewUrl('');
   };
 
   const hours = time.getHours();
@@ -138,7 +180,8 @@ export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement 
       <div className="ntp-fade-up flex flex-wrap justify-center gap-3 max-w-xl px-4"
            style={{ animationDelay: '120ms' }}>
         {shortcuts.map((s) => {
-          const Icon = s.icon;
+          // If the icon is an object/string from JSON parsing, fallback to Globe
+          const Icon = (typeof s.icon === 'string' || !s.icon) ? Globe : s.icon;
           return (
             <div
               key={s.id}
@@ -170,14 +213,68 @@ export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement 
         })}
 
         {/* Add shortcut placeholder */}
-        <div className="flex flex-col items-center gap-2 opacity-50 hover:opacity-100 transition-opacity cursor-pointer">
+        <button
+          onClick={() => setIsAdding(true)}
+          className="flex flex-col items-center gap-2 opacity-50 hover:opacity-100 transition-opacity cursor-pointer group"
+        >
           <div className="w-12 h-12 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600
-            flex items-center justify-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
+            flex items-center justify-center group-hover:border-blue-400 dark:group-hover:border-blue-500 transition-colors">
             <Plus className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </div>
           <span className="text-xs text-gray-500 dark:text-gray-500">Add</span>
-        </div>
+        </button>
       </div>
+
+      {/* Add Shortcut Modal */}
+      {isAdding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <form onSubmit={handleAddShortcut} className="bg-white dark:bg-[#2a2a2a] rounded-2xl shadow-2xl p-6 w-80 border border-gray-200 dark:border-[#3a3a3a]">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Add Shortcut</h3>
+            
+            <div className="mb-3">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Name</label>
+              <input
+                autoFocus
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="e.g. Reddit"
+                className="w-full px-3 py-2 text-sm rounded-lg bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                required
+              />
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">URL</label>
+              <input
+                type="text"
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                placeholder="e.g. reddit.com"
+                className="w-full px-3 py-2 text-sm rounded-lg bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                required
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAdding(false)}
+                className="flex-1 px-3 py-2 text-xs font-medium rounded-lg bg-gray-100 dark:bg-[#3a3a3a] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#444] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!newLabel.trim() || !newUrl.trim()}
+                className="flex-1 px-3 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Bottom branding — very subtle */}
       <div className="absolute bottom-4 text-xs text-gray-300 dark:text-gray-700 font-medium tracking-wide">
