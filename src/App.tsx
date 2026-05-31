@@ -369,9 +369,10 @@ export default function App(): React.ReactElement {
                 {!isInternal && (
                   <webview
                     id={`webview-${tab.id}`}
-                    src={tab.url}
+                    src={tab.url || 'about:blank'}
                     className="w-full h-full flex-1 border-none bg-white"
                     allowpopups="true"
+                    useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     partition="persist:nova-main"
                   />
                 )}

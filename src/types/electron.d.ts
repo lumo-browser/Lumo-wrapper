@@ -7,6 +7,7 @@ declare global {
         src?: string;
         allowpopups?: string;
         partition?: string;
+        useragent?: string;
         ref?: React.RefObject<HTMLWebViewElement>;
       };
     }

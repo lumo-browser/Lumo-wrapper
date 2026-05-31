@@ -13,6 +13,7 @@ declare global {
         src?: string;
         allowpopups?: string;
         partition?: string;
+        useragent?: string;
       };
     }
   }
@@ -294,6 +295,7 @@ function ProviderWebview({ provider }: { provider?: typeof AI_PROVIDERS[0] }) {
           title={provider.name}
           allowpopups="true"
           partition={`persist:ai-${provider.id}`}
+          useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         />
       </div>
     </div>
