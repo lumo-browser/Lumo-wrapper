@@ -24,6 +24,7 @@ import { NewTabPage } from './pages/NewTabPage';
 import { HistoryPage, type HistoryEntry } from './pages/HistoryPage';
 import { BookmarksPage, type BookmarkEntry } from './pages/BookmarksPage';
 import { SettingsPage, type BrowserSettings, SEARCH_ENGINES } from './pages/SettingsPage';
+import { ExtensionsPage } from './pages/ExtensionsPage';
 
 // ── Internal Pages ─────────────────────────────────────────────────────────
 function InternalPage({ title, children }: { title: string; children: React.ReactNode }) {
@@ -520,7 +521,13 @@ export default function App(): React.ReactElement {
         {/* Extensions dropdown */}
         {showExtensions && (
           <div ref={extRef} className="absolute right-0 top-full z-50">
-            <ExtensionsPanel onClose={() => setShowExtensions(false)} />
+            <ExtensionsPanel 
+              onClose={() => setShowExtensions(false)} 
+              onNavigate={(url) => {
+                navigate(url);
+                setShowExtensions(false);
+              }}
+            />
           </div>
         )}
 
@@ -550,10 +557,11 @@ export default function App(): React.ReactElement {
           {tabs.map((tab) => {
             const isNtp = !tab.url || tab.url === 'nova://newtab';
             const isSettings = tab.url === 'nova://settings';
-            const isHistory = tab.url === 'nova://history';
-            const isBookmarks = tab.url === 'nova://bookmarks';
-            const isAbout = tab.url === 'nova://about';
-            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout;
+            const isHistory    = tab.url === 'nova://history';
+            const isBookmarks  = tab.url === 'nova://bookmarks';
+            const isAbout      = tab.url === 'nova://about';
+            const isExtensions = tab.url === 'nova://extensions';
+            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions;
 
             return (
               <div
@@ -588,6 +596,9 @@ export default function App(): React.ReactElement {
                     onDeleteBookmark={(id) => setBookmarkEntries((prev) => prev.filter((b) => b.id !== id))}
                     onClearAll={() => setBookmarkEntries([])}
                   />
+                )}
+                {isExtensions && (
+                  <ExtensionsPage onNavigate={navigate} />
                 )}
                 {isAbout && (
                   <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">

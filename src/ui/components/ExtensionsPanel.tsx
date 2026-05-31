@@ -3,149 +3,123 @@
  */
 
 import React, { useState } from 'react';
-import { Puzzle, Power, ExternalLink, Search, X } from 'lucide-react';
+import { Puzzle, MoreVertical, Pin, Settings, X, Shield, Moon, Key, Cpu } from 'lucide-react';
 
 interface Extension {
   id: string;
   name: string;
-  description: string;
-  version: string;
-  enabled: boolean;
-  icon: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isPinned: boolean;
+  color: string;
 }
 
 const DEFAULT_EXTENSIONS: Extension[] = [
   {
-    id: 'nova-ai-assist',
+    id: 'nova-ai',
     name: 'Nova AI Assistant',
-    description: 'Inline AI suggestions and page summaries powered by Nova',
-    version: '1.0.0',
-    enabled: true,
-    icon: 'N',
+    icon: Cpu,
+    isPinned: true,
+    color: 'text-violet-500',
   },
   {
     id: 'ad-blocker',
     name: 'Ad Blocker Pro',
-    description: 'Block intrusive ads and trackers for a faster browsing experience',
-    version: '2.3.1',
-    enabled: true,
-    icon: 'A',
-  },
-  {
-    id: 'password-mgr',
-    name: 'Password Manager',
-    description: 'Securely store and autofill your passwords',
-    version: '1.5.0',
-    enabled: false,
-    icon: 'P',
+    icon: Shield,
+    isPinned: true,
+    color: 'text-red-500',
   },
   {
     id: 'dark-reader',
     name: 'Dark Reader',
-    description: 'Dark mode for every website',
-    version: '4.9.80',
-    enabled: true,
-    icon: 'D',
+    icon: Moon,
+    isPinned: false,
+    color: 'text-indigo-500',
+  },
+  {
+    id: 'password-mgr',
+    name: 'Password Manager',
+    icon: Key,
+    isPinned: false,
+    color: 'text-emerald-500',
   },
 ];
 
 interface ExtensionsPanelProps {
   onClose: () => void;
+  onNavigate: (url: string) => void;
 }
 
-export function ExtensionsPanel({ onClose }: ExtensionsPanelProps): React.ReactElement {
+export function ExtensionsPanel({ onClose, onNavigate }: ExtensionsPanelProps): React.ReactElement {
   const [extensions, setExtensions] = useState<Extension[]>(DEFAULT_EXTENSIONS);
-  const [search, setSearch] = useState('');
 
-  const toggleExtension = (id: string) => {
+  const togglePin = (id: string) => {
     setExtensions((prev) =>
-      prev.map((ext) => (ext.id === id ? { ...ext, enabled: !ext.enabled } : ext))
+      prev.map((ext) => (ext.id === id ? { ...ext, isPinned: !ext.isPinned } : ext))
     );
   };
 
-  const filtered = extensions.filter(
-    (ext) =>
-      ext.name.toLowerCase().includes(search.toLowerCase()) ||
-      ext.description.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const enabledCount = extensions.filter((e) => e.enabled).length;
-
   return (
-    <div className="absolute top-full right-0 mt-1 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+    <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-[#202124] rounded-xl shadow-2xl border border-gray-200 dark:border-[#3c4043] z-50 overflow-hidden font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2">
-          <Puzzle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span className="font-semibold text-sm text-gray-900 dark:text-white">Extensions</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">{enabledCount} active</span>
-        </div>
+      <div className="flex items-center justify-between px-4 py-3">
+        <h2 className="text-[14px] font-medium text-gray-900 dark:text-[#e8eaed]">Extensions</h2>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 dark:text-[#9aa0a6] hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Search */}
-      <div className="px-3 pt-3 pb-1">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
-          <Search className="w-3.5 h-3.5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search extensions..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none"
-          />
-        </div>
-      </div>
+      <div className="h-[1px] w-full bg-gray-200 dark:bg-[#3c4043]" />
 
       {/* Extension List */}
-      <div className="max-h-72 overflow-y-auto p-3 space-y-2">
-        {filtered.map((ext) => (
-          <div
-            key={ext.id}
-            className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-          >
-            {/* Icon */}
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-              {ext.icon}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{ext.name}</p>
-                <span className="text-xs text-gray-400">v{ext.version}</span>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{ext.description}</p>
-            </div>
-
-            {/* Toggle */}
-            <button
-              onClick={() => toggleExtension(ext.id)}
-              className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors
-                ${ext.enabled
-                  ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'
-                  : 'text-gray-300 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              title={ext.enabled ? 'Disable' : 'Enable'}
+      <div className="py-2">
+        {extensions.map((ext) => {
+          const Icon = ext.icon;
+          return (
+            <div
+              key={ext.id}
+              className="group flex items-center justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors cursor-default"
             >
-              <Power className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <Icon className={`w-5 h-5 ${ext.color}`} />
+                </div>
+                <span className="text-[13px] text-gray-900 dark:text-[#e8eaed]">{ext.name}</span>
+              </div>
+              
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => togglePin(ext.id)}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
+                    ${ext.isPinned 
+                      ? 'text-blue-600 dark:text-[#8ab4f8] hover:bg-blue-50 dark:hover:bg-[#8ab4f8]/10' 
+                      : 'text-gray-500 dark:text-[#9aa0a6] hover:bg-gray-200 dark:hover:bg-[#4a4d51]'
+                    }`}
+                  title={ext.isPinned ? "Unpin" : "Pin"}
+                >
+                  <Pin className="w-4 h-4" />
+                </button>
+                <button className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 dark:text-[#9aa0a6] hover:bg-gray-200 dark:hover:bg-[#4a4d51] transition-colors">
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      <div className="h-[1px] w-full bg-gray-200 dark:bg-[#3c4043]" />
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-        <button className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">
-          <ExternalLink className="w-3 h-3" />
-          Manage extensions
-        </button>
-      </div>
+      <button 
+        onClick={() => onNavigate('nova://extensions')}
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors"
+      >
+        <Settings className="w-5 h-5 text-gray-500 dark:text-[#9aa0a6]" />
+        <span className="text-[13px] text-gray-700 dark:text-[#e8eaed]">Manage extensions</span>
+      </button>
     </div>
   );
 }
