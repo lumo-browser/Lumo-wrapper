@@ -103,7 +103,12 @@ export function BrowserToolbar({
     if (!raw) return;
 
     let resolved: string;
-    if (/^https?:\/\//i.test(raw)) {
+    if (raw.toLowerCase().startsWith('compare ')) {
+      const query = raw.slice(8).trim();
+      resolved = `nova://compare?q=${encodeURIComponent(query)}`;
+    } else if (raw.startsWith('nova://')) {
+      resolved = raw;
+    } else if (/^https?:\/\//i.test(raw)) {
       resolved = raw;
     } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(raw) && !raw.includes(' ')) {
       resolved = `https://${raw}`;

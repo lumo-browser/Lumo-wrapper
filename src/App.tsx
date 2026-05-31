@@ -20,6 +20,7 @@ import { ExtensionsPanel } from '@ui/components/ExtensionsPanel';
 import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
 import { AISidebar } from '@ui/components/AISidebar';
 import { AgentSidebar } from '@ui/components/AgentSidebar';
+import { ComparePage } from '@ui/components/ComparePage';
 import { BrowserMenu } from '@ui/components/BrowserMenu';
 import { NewTabPage } from './pages/NewTabPage';
 import { HistoryPage, type HistoryEntry } from './pages/HistoryPage';
@@ -605,7 +606,8 @@ export default function App(): React.ReactElement {
             const isBookmarks  = tab.url === 'nova://bookmarks';
             const isAbout      = tab.url === 'nova://about';
             const isExtensions = tab.url === 'nova://extensions';
-            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions;
+            const isCompare    = tab.url.startsWith('nova://compare');
+            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isCompare;
 
             return (
               <div
@@ -643,6 +645,9 @@ export default function App(): React.ReactElement {
                 )}
                 {isExtensions && (
                   <ExtensionsPage onNavigate={navigate} />
+                )}
+                {isCompare && (
+                  <ComparePage query={new URL(tab.url).searchParams.get('q') || ''} />
                 )}
                 {isAbout && (
                   <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
