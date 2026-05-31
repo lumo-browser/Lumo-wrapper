@@ -41,19 +41,13 @@ const DOM_EXTRACTOR_SCRIPT = `
       let text = el.innerText || el.value || el.placeholder || el.getAttribute('aria-label') || '';
       text = text.trim().substring(0, 50);
       
-      elements.push(\`[\${id}] \${el.tagName.toLowerCase()} - "\${text}"\`);
+      elements.push('[' + id + '] ' + el.tagName.toLowerCase() + ' - "' + text + '"');
 
       // Visually tag the element for the user to see (optional UI flair)
       const tag = document.createElement('div');
       tag.className = 'nova-agent-tag';
       tag.textContent = id;
-      tag.style.cssText = \`
-        position: absolute;
-        top: \${el.getBoundingClientRect().top + window.scrollY}px;
-        left: \${el.getBoundingClientRect().left + window.scrollX}px;
-        background: #ef4444; color: white; font-size: 10px; font-weight: bold;
-        padding: 1px 4px; border-radius: 4px; z-index: 2147483647; pointer-events: none;
-      \`;
+      tag.style.cssText = "position: absolute; top: " + (el.getBoundingClientRect().top + window.scrollY) + "px; left: " + (el.getBoundingClientRect().left + window.scrollX) + "px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 4px; z-index: 2147483647; pointer-events: none;";
       document.body.appendChild(tag);
     });
 
@@ -79,30 +73,30 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
   const executeCommand = async (webview: any, actionName: string, args: any) => {
     if (actionName === 'navigate') {
       webview.loadURL(args.url);
-      addLog('action', \`Navigating to \${args.url}\`);
+      addLog('action', `Navigating to ${args.url}`);
       return new Promise(resolve => setTimeout(resolve, 3000)); // wait for load
     }
     
     if (actionName === 'click') {
-      await webview.executeJavaScript(\`
-        if (window.__novaAgentElements && window.__novaAgentElements[\${args.id}]) {
-          window.__novaAgentElements[\${args.id}].click();
+      await webview.executeJavaScript(`
+        if (window.__novaAgentElements && window.__novaAgentElements[${args.id}]) {
+          window.__novaAgentElements[${args.id}].click();
         }
-      \`);
-      addLog('action', \`Clicked element [\${args.id}]\`);
+      `);
+      addLog('action', `Clicked element [${args.id}]`);
       return new Promise(resolve => setTimeout(resolve, 2000)); // wait for UI update
     }
 
     if (actionName === 'type') {
-      await webview.executeJavaScript(\`
-        if (window.__novaAgentElements && window.__novaAgentElements[\${args.id}]) {
-          const el = window.__novaAgentElements[\${args.id}];
-          el.value = '\${args.text}';
+      await webview.executeJavaScript(`
+        if (window.__novaAgentElements && window.__novaAgentElements[${args.id}]) {
+          const el = window.__novaAgentElements[${args.id}];
+          el.value = '${args.text}';
           el.dispatchEvent(new Event('input', { bubbles: true }));
           el.dispatchEvent(new Event('change', { bubbles: true }));
         }
-      \`);
-      addLog('action', \`Typed "\${args.text}" into element [\${args.id}]\`);
+      `);
+      addLog('action', `Typed "${args.text}" into element [${args.id}]`);
       return new Promise(resolve => setTimeout(resolve, 500));
     }
 
@@ -121,7 +115,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
     }
     if (!activeTab || !goal.trim()) return;
 
-    const wv = document.getElementById(\`webview-\${activeTab.id}\`) as any;
+    const wv = document.getElementById(`webview-${activeTab.id}`) as any;
     if (!wv) {
       addLog('error', 'No active webview found.');
       return;
@@ -130,17 +124,17 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
     setIsRunning(true);
     runningRef.current = true;
     setLogs([]);
-    addLog('user', \`Goal: \${goal}\`);
+    addLog('user', `Goal: ${goal}`);
 
     let messageHistory: any[] = [];
 
-    const systemPrompt = \`
+    const systemPrompt = `
 You are an autonomous web browser agent. Your job is to achieve the user's goal by interacting with the provided simplified web page DOM.
 You must use the provided tools to interact with the page.
 If you are on the wrong page, navigate.
 If you see an element you need to interact with, click or type into it using its numerical [ID].
 When you believe the user's goal has been accomplished, call the 'done' tool.
-\`;
+`;
 
     const tools = [
       {
@@ -183,14 +177,14 @@ When you believe the user's goal has been accomplished, call the 'done' tool.
         // Extract DOM
         const pageContent = await wv.executeJavaScript(DOM_EXTRACTOR_SCRIPT);
         
-        const userPrompt = \`CURRENT URL: \${activeTab.url}\\n\\nCURRENT PAGE ELEMENTS:\\n\${pageContent}\\n\\nWhat is your next action to achieve: "\${goal}"?\`;
+        const userPrompt = `CURRENT URL: ${activeTab.url}\n\nCURRENT PAGE ELEMENTS:\n${pageContent}\n\nWhat is your next action to achieve: "${goal}"?`;
         
         messageHistory.push({ role: 'user', content: userPrompt });
 
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': \`Bearer \${openRouterApiKey}\`,
+            'Authorization': `Bearer ${openRouterApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -204,7 +198,7 @@ When you believe the user's goal has been accomplished, call the 'done' tool.
         const data = await response.json();
         
         if (data.error) {
-          addLog('error', \`API Error: \${data.error.message}\`);
+          addLog('error', `API Error: ${data.error.message}`);
           break;
         }
 
@@ -226,7 +220,7 @@ When you believe the user's goal has been accomplished, call the 'done' tool.
           if (isDone === true) break; // Finished!
         } else {
           // Model didn't use a tool, meaning it might be stuck or conversing
-          addLog('system', \`Agent says: \${message.content}\`);
+          addLog('system', `Agent says: ${message.content}`);
           // Stop if it stops acting
           break;
         }
@@ -248,7 +242,7 @@ When you believe the user's goal has been accomplished, call the 'done' tool.
   };
 
   return (
-    <div className="w-80 h-full bg-white dark:bg-[#1e1e1e] border-l border-gray-200 dark:border-[#333] flex flex-col shadow-xl z-40 relative">
+    <div className="slide-in-right flex w-[350px] h-full bg-white dark:bg-[#1e1e1e] border-l border-gray-200 dark:border-[#333] flex-col flex-shrink-0 shadow-xl z-50 relative">
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200 dark:border-[#333] shrink-0">
         <div className="flex items-center gap-2">

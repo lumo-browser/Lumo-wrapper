@@ -19,6 +19,7 @@ import { BrowserToolbar } from '@ui/components/BrowserToolbar';
 import { ExtensionsPanel } from '@ui/components/ExtensionsPanel';
 import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
 import { AISidebar } from '@ui/components/AISidebar';
+import { AgentSidebar } from '@ui/components/AgentSidebar';
 import { BrowserMenu } from '@ui/components/BrowserMenu';
 import { NewTabPage } from './pages/NewTabPage';
 import { HistoryPage, type HistoryEntry } from './pages/HistoryPage';
@@ -519,6 +520,7 @@ export default function App(): React.ReactElement {
           userEmail={currentUser?.email}
           isBookmarked={isBookmarked}
           isAISidebarOpen={showAI}
+          isAgentOpen={showAgent}
           onBack={handleGoBack}
           onForward={handleGoForward}
           onRefresh={handleRefresh}
@@ -527,7 +529,8 @@ export default function App(): React.ReactElement {
           onToggleTheme={handleToggleTheme}
           onToggleExtensions={() => setShowExtensions((v) => !v)}
           onOpenAccount={() => setShowAccount(true)}
-          onToggleAI={() => setShowAI((v) => !v)}
+          onToggleAI={() => { setShowAI((v) => !v); setShowAgent(false); }}
+          onToggleAgent={() => { setShowAgent((v) => !v); setShowAI(false); }}
           onToggleBookmark={toggleBookmark}
           onOpenMenu={() => setShowMenu((v) => !v)}
           searchEngineUrl={searchEngineUrl}
@@ -660,6 +663,15 @@ export default function App(): React.ReactElement {
             onClose={() => setShowAI(false)}
             currentUrl={currentUrl}
             pageTitle={activeTab?.title ?? ''}
+          />
+        )}
+        
+        {/* Auto-Agent sidebar */}
+        {showAgent && (
+          <AgentSidebar
+            onClose={() => setShowAgent(false)}
+            activeTab={activeTab}
+            openRouterApiKey={settings.openRouterApiKey}
           />
         )}
       </div>
