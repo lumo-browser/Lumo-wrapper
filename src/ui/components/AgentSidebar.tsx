@@ -57,6 +57,7 @@ const DOM_EXTRACTOR_SCRIPT = `
 
 export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSidebarProps): React.ReactElement {
   const [goal, setGoal] = useState('');
+  const [selectedModel, setSelectedModel] = useState('openrouter/free');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -200,7 +201,7 @@ When you believe the user's goal has been accomplished, call the 'done' tool.
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'anthropic/claude-3.5-sonnet:beta', // Excellent at tool calling
+            model: selectedModel, 
             messages: [{ role: 'system', content: systemPrompt }, ...messageHistory],
             tools: tools,
             tool_choice: "auto"
@@ -302,7 +303,25 @@ When you believe the user's goal has been accomplished, call the 'done' tool.
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-gray-200 dark:border-[#333] shrink-0 bg-white dark:bg-[#1e1e1e]">
+      <div className="p-4 border-t border-gray-200 dark:border-[#333] shrink-0 bg-white dark:bg-[#1e1e1e] flex flex-col gap-3">
+        <select
+          value={selectedModel}
+          onChange={(e) => setSelectedModel(e.target.value)}
+          disabled={isRunning}
+          className="w-full text-xs p-2 rounded-lg bg-gray-100 dark:bg-[#2a2a2a] text-gray-900 dark:text-gray-100 border-none outline-none focus:ring-2 focus:ring-blue-500/50"
+        >
+          <optgroup label="Premium (Requires Credits)">
+            <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+            <option value="openai/gpt-4o">GPT-4o</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+          </optgroup>
+          <optgroup label="Free Models">
+            <option value="openrouter/free">Auto-Select Free Model (Recommended)</option>
+            <option value="google/gemma-2-9b-it:free">Google Gemma 2 9B (Free)</option>
+            <option value="meta-llama/llama-3-8b-instruct:free">Llama 3 8B (Free)</option>
+          </optgroup>
+        </select>
+        
         <textarea
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
@@ -317,7 +336,7 @@ When you believe the user's goal has been accomplished, call the 'done' tool.
           }}
         />
         
-        <div className="mt-3 flex gap-2">
+        <div className="flex gap-2">
           {!isRunning ? (
             <button
               onClick={startAgent}
