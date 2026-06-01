@@ -9,7 +9,7 @@ interface LogEntry { id: string; type: 'system'|'user'|'action'|'success'|'error
 
 export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSidebarProps): React.ReactElement {
   const [goal, setGoal] = useState('');
-  const [selectedModel, setSelectedModel] = useState('openrouter/free');
+  const [selectedModel, setSelectedModel] = useState('openrouter/auto');
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -365,8 +365,11 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
             <option value="openai/gpt-4o">GPT-4o</option>
             <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
           </optgroup>
-          <optgroup label="Free">
-            <option value="openrouter/free">Auto-Select Free (Recommended)</option>
+          <optgroup label="Free Models">
+            <option value="openrouter/auto">Auto-Select Free (Recommended)</option>
+            <option value="google/gemma-2-9b-it:free">Google Gemma 2 9B (Free)</option>
+            <option value="meta-llama/llama-3-8b-instruct:free">Llama 3 8B (Free)</option>
+            <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Free)</option>
           </optgroup>
         </select>
 
