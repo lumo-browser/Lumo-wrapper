@@ -433,9 +433,14 @@ export default function App(): React.ReactElement {
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
     if (wv && typeof wv.setZoomLevel === 'function') {
       try {
-        wv.getZoomLevel((level: number) => wv.setZoomLevel(level + 1));
+        const result = wv.getZoomLevel();
+        if (result && typeof result.then === 'function') {
+          result.then((level: number) => wv.setZoomLevel(level + 0.5));
+        } else {
+          wv.setZoomLevel(Number(result) + 0.5);
+        }
       } catch (e) {
-        console.warn('Zoom not supported in this environment');
+        console.warn('Zoom not supported in this environment', e);
       }
     } else {
       console.warn('Zoom not supported in this environment');
@@ -447,9 +452,14 @@ export default function App(): React.ReactElement {
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
     if (wv && typeof wv.setZoomLevel === 'function') {
       try {
-        wv.getZoomLevel((level: number) => wv.setZoomLevel(level - 1));
+        const result = wv.getZoomLevel();
+        if (result && typeof result.then === 'function') {
+          result.then((level: number) => wv.setZoomLevel(level - 0.5));
+        } else {
+          wv.setZoomLevel(Number(result) - 0.5);
+        }
       } catch (e) {
-        console.warn('Zoom not supported in this environment');
+        console.warn('Zoom not supported in this environment', e);
       }
     } else {
       console.warn('Zoom not supported in this environment');
@@ -469,9 +479,7 @@ export default function App(): React.ReactElement {
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if focused on an input/textarea (unless specific shortcuts)
       const target = e.target as HTMLElement;
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
       if (e.ctrlKey && e.key.toLowerCase() === 't') {
         e.preventDefault();
@@ -504,12 +512,27 @@ export default function App(): React.ReactElement {
       } else if (e.ctrlKey && e.key === '-') {
         e.preventDefault();
         handleZoomOut();
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        navigate('nova://bookmarks');
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        navigate('nova://history');
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        navigate('nova://downloads');
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        handlePrint();
+      } else if (e.ctrlKey && e.key === ',') {
+        e.preventDefault();
+        navigate('nova://settings');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut]);
+  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint]);
 
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
