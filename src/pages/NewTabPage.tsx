@@ -185,6 +185,7 @@ export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement 
           return (
             <div
               key={s.id}
+              onClick={() => onNavigate(s.url)}
               className={`group relative flex flex-col items-center gap-2 cursor-pointer transition-opacity duration-200
                 ${removingId === s.id ? 'opacity-0 scale-90' : 'opacity-100'}`}
             >

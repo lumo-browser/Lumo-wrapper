@@ -506,7 +506,7 @@ export default function App(): React.ReactElement {
         handleGoForward();
       } else if (e.key === 'Escape') {
         handleStop();
-      } else if (e.ctrlKey && e.key === '=') {
+      } else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
         e.preventDefault();
         handleZoomIn();
       } else if (e.ctrlKey && e.key === '-') {
