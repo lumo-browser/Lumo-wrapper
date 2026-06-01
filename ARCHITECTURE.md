@@ -116,7 +116,7 @@ nova-browser/
 ├── tsconfig.json
 ├── vite.config.ts
 ├── vitest.config.ts
-├── tailwind.config.ts
+├── tailwind.config.cjs
 ├── electron-builder.json
 └── README.md
 ```

@@ -183,7 +183,7 @@ VITE_GEMINI_API_KEY=your_key_here
 - `tsconfig.json` - TypeScript configuration
 - `vite.config.ts` - Vite build configuration
 - `vitest.config.ts` - Test configuration
-- `tailwind.config.ts` - TailwindCSS configuration
+- `tailwind.config.cjs` - TailwindCSS configuration
 - `electron-builder.json` - Electron packaging config
 - `.eslintrc.json` - ESLint rules
 - `.prettierrc` - Prettier formatting

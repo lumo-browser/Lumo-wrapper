@@ -23,7 +23,7 @@ nova-browser/
 │   ├── tsconfig.json           - Strict TypeScript mode
 │   ├── vite.config.ts          - Fast build system
 │   ├── vitest.config.ts        - Test configuration
-│   ├── tailwind.config.ts      - Styling system
+│   ├── tailwind.config.cjs     - Styling system
 │   ├── electron-builder.json   - Desktop packaging
 │   ├── .eslintrc.json          - Code quality rules
 │   ├── .prettierrc             - Auto-formatting
