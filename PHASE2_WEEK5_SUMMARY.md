@@ -1,7 +1,7 @@
 # Phase 2 Week 5 - Planner Agent Development Summary
 
 ## Overview
-Completed comprehensive AI agent framework and intelligent planning system for Nova Browser. Implemented modular services that work together to transform user goals into executable plans.
+Completed comprehensive AI agent framework and intelligent planning system for Lumo Browser. Implemented modular services that work together to transform user goals into executable plans.
 
 ## Architecture
 
