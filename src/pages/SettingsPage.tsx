@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { GeneralSettingsTab } from './GeneralSettingsTab';
 import { HomeSettingsTab } from './HomeSettingsTab';
 import { SearchSettingsTab } from './SearchSettingsTab';
+import { PrivacySettingsTab } from './PrivacySettingsTab';
 import {
   Sun,
   Moon,
@@ -183,56 +184,13 @@ export function SettingsPage({
           )}
 
           {activeTab === 'privacy' && (
-            <SettingSection title="Privacy & Security" icon={<Shield className="w-4 h-4" />}>
-              <SettingRow label="Block Ads & Trackers" description="Built-in Brave-style ad blocking engine">
-                <Toggle
-                  enabled={settings.blockAds}
-                  onChange={(v) => onUpdateSettings({ blockAds: v })}
-                />
-              </SettingRow>
-
-              <SettingRow label="Block Pop-ups" description="Prevent websites from opening pop-up windows">
-                <Toggle
-                  enabled={settings.blockPopups}
-                  onChange={(v) => onUpdateSettings({ blockPopups: v })}
-                />
-              </SettingRow>
-
-              <SettingRow label="Send Do Not Track" description="Request sites not to track your browsing">
-                <Toggle
-                  enabled={settings.doNotTrack}
-                  onChange={(v) => onUpdateSettings({ doNotTrack: v })}
-                />
-              </SettingRow>
-
-              <SettingRow label="Clear Data on Exit" description="Automatically clear history and cookies when you close Lumo">
-                <Toggle
-                  enabled={settings.clearOnExit}
-                  onChange={(v) => onUpdateSettings({ clearOnExit: v })}
-                />
-              </SettingRow>
-
-              <div className="px-4 py-3.5">
-                <button
-                  onClick={() => setShowClearConfirm(true)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl
-                    bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20
-                    border border-red-100 dark:border-red-900/30
-                    transition-colors group"
-                >
-                  <div className="flex items-center gap-3">
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-red-700 dark:text-red-400">Clear Browsing Data</p>
-                      <p className="text-[10px] text-red-400 dark:text-red-500">
-                        {historyCount} history entries • {bookmarkCount} bookmarks
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-red-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-            </SettingSection>
+            <PrivacySettingsTab
+              settings={settings}
+              onUpdateSettings={onUpdateSettings}
+              historyCount={historyCount}
+              bookmarkCount={bookmarkCount}
+              onClearBrowsingData={onClearBrowsingData}
+            />
           )}
 
           {activeTab === 'sync' && (
