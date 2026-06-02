@@ -212,7 +212,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
       <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200 dark:border-[#333] shrink-0">
         <div className="flex items-center gap-2">
           <Cpu className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">Nova Auto-Agent</span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">Lumo Auto-Agent</span>
           {isRunning && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
           {isPaused && <span className="w-2 h-2 rounded-full bg-yellow-500" />}
         </div>
