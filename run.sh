@@ -1,9 +1,9 @@
 #!/bin/bash
-# Nova Browser launcher script
+# Lumo Browser launcher script
 
 cd "$(dirname "$0")" || exit 1
 
-echo "🚀 Nova Browser Launcher"
+echo "🚀 Lumo Browser Launcher"
 echo "========================"
 
 # Check if node_modules exists
