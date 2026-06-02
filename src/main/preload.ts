@@ -9,14 +9,14 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('electron', {
   // IPC communication
   invoke: (channel: string, ...args: unknown[]): Promise<unknown> => {
-    if (channel.startsWith('nova:')) {
+    if (channel.startsWith('lumo:')) {
       return ipcRenderer.invoke(channel, ...args);
     }
     throw new Error(`Unauthorized IPC channel: ${channel}`);
   },
 
   send: (channel: string, ...args: unknown[]): void => {
-    if (channel.startsWith('nova:')) {
+    if (channel.startsWith('lumo:')) {
       ipcRenderer.send(channel, ...args);
     } else {
       throw new Error(`Unauthorized IPC channel: ${channel}`);
@@ -24,7 +24,7 @@ contextBridge.exposeInMainWorld('electron', {
   },
 
   on: (channel: string, listener: (event: unknown, ...args: unknown[]) => void): (() => void) => {
-    if (channel.startsWith('nova:')) {
+    if (channel.startsWith('lumo:')) {
       ipcRenderer.on(channel, listener);
       return () => {
         ipcRenderer.removeListener(channel, listener);
