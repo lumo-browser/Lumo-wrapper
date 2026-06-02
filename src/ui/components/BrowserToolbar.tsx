@@ -117,8 +117,8 @@ export function BrowserToolbar({
     let resolved: string;
     if (raw.toLowerCase().startsWith('compare ')) {
       const query = raw.slice(8).trim();
-      resolved = `nova://compare?q=${encodeURIComponent(query)}`;
-    } else if (raw.startsWith('nova://')) {
+      resolved = `Lumo://compare?q=${encodeURIComponent(query)}`;
+    } else if (raw.startsWith('Lumo://')) {
       resolved = raw;
     } else if (/^https?:\/\//i.test(raw)) {
       resolved = raw;
@@ -137,7 +137,7 @@ export function BrowserToolbar({
     ? draftUrl
     : url.replace(/^https?:\/\//, '').replace(/\/$/, '') || '';
 
-  const isNtpPage = !url || url === 'nova://newtab';
+  const isNtpPage = !url || url === 'Lumo://newtab';
 
   return (
     <div className="flex items-center gap-1.5 px-3 py-1.5 h-11
@@ -239,7 +239,7 @@ export function BrowserToolbar({
         {/* Agent — Autonomous Browser Control */}
         <NavBtn
           onClick={onToggleAgent}
-          title="Nova Agent (Ctrl+Shift+R)"
+          title="Lumo Agent (Ctrl+Shift+R)"
           id="btn-agent"
           active={isAgentOpen}
         >
@@ -249,7 +249,7 @@ export function BrowserToolbar({
         {/* AI Assistant — primary AI entry point */}
         <NavBtn
           onClick={onToggleAI}
-          title="Nova AI (Ctrl+Shift+A)"
+          title="Lumo AI (Ctrl+Shift+A)"
           id="btn-ai"
           active={isAISidebarOpen}
         >
