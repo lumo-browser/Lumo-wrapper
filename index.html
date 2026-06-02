@@ -3,12 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nova Browser</title>
+    <title>Lumo Browser</title>
+    <script>
+      // Apply dark mode immediately to avoid white flash
+      (function() {
+        const theme = localStorage.getItem('lumo-settings');
+        const isDark = !theme || JSON.parse(theme).theme !== 'light';
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
     <style>
       * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+      }
+      
+      html, body {
+        background-color: #1e1e1e;
+        color: #ffffff;
+      }
+      
+      html:not(.dark) body {
+        background-color: #ffffff;
+        color: #000000;
       }
       
       body {
@@ -27,7 +49,17 @@
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #1e1e1e; color: #ffffff; font-family: system-ui, -apple-system, sans-serif; flex-direction: column; gap: 16px;">
+        <div style="width: 40px; height: 40px; border: 3px solid #404040; border-top-color: #7c3aed; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p>Loading Lumo Browser...</p>
+        <style>
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        </style>
+      </div>
+    </div>
     <script type="module" src="/src/main/renderer.tsx"></script>
   </body>
 </html>
