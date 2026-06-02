@@ -170,12 +170,44 @@ export default function App(): React.ReactElement {
     }
   }, []);
 
-  // Panels
   const [showExtensions, setShowExtensions] = useState(false);
   const [showAccount, setShowAccount]       = useState(false);
   const [showAI, setShowAI]                 = useState(false);
   const [showAgent, setShowAgent]           = useState(false);
   const [showMenu, setShowMenu]             = useState(false);
+
+  // Resizable sidebar
+  const [sidebarWidth, setSidebarWidth] = useState(420);
+  const isResizing = useRef(false);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(420);
+
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = sidebarWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isResizing.current) return;
+      const delta = resizeStartX.current - ev.clientX;
+      const newWidth = Math.min(Math.max(resizeStartWidth.current + delta, 280), 800);
+      setSidebarWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [sidebarWidth]);
 
   // Account
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
@@ -710,23 +742,44 @@ export default function App(): React.ReactElement {
           })}
         </div>
 
-        {/* AI sidebar — slides in from right (BYOA: no Nova account needed) */}
+        {/* AI sidebar — slides in from right */}
         {showAI && (
-          <AISidebar
-            isOpen={showAI}
-            onClose={() => setShowAI(false)}
-            currentUrl={currentUrl}
-            pageTitle={activeTab?.title ?? ''}
-          />
+          <div style={{ width: sidebarWidth }} className="flex flex-shrink-0 h-full relative z-50">
+            {/* Drag handle */}
+            <div
+              onMouseDown={handleResizeMouseDown}
+              className="w-1 h-full cursor-col-resize hover:bg-blue-500/40 active:bg-blue-500/70 transition-colors flex-shrink-0 group"
+              title="Drag to resize"
+            >
+              <div className="w-px h-full bg-gray-200 dark:bg-[#3a3a3a] group-hover:bg-blue-400 transition-colors" />
+            </div>
+            <AISidebar
+              isOpen={showAI}
+              onClose={() => setShowAI(false)}
+              currentUrl={currentUrl}
+              pageTitle={activeTab?.title ?? ''}
+              width={sidebarWidth - 4}
+            />
+          </div>
         )}
         
         {/* Auto-Agent sidebar */}
         {showAgent && (
-          <AgentSidebar
-            onClose={() => setShowAgent(false)}
-            activeTab={activeTab}
-            openRouterApiKey={settings.openRouterApiKey}
-          />
+          <div style={{ width: sidebarWidth }} className="flex flex-shrink-0 h-full relative z-50">
+            {/* Drag handle */}
+            <div
+              onMouseDown={handleResizeMouseDown}
+              className="w-1 h-full cursor-col-resize hover:bg-purple-500/40 active:bg-purple-500/70 transition-colors flex-shrink-0 group"
+              title="Drag to resize"
+            >
+              <div className="w-px h-full bg-gray-200 dark:bg-[#3a3a3a] group-hover:bg-purple-400 transition-colors" />
+            </div>
+            <AgentSidebar
+              onClose={() => setShowAgent(false)}
+              activeTab={activeTab}
+              openRouterApiKey={settings.openRouterApiKey}
+            />
+          </div>
         )}
       </div>
 

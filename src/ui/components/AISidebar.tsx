@@ -62,6 +62,7 @@ interface AISidebarProps {
   onClose: () => void;
   currentUrl: string;
   pageTitle: string;
+  width?: number;
 }
 
 export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarProps): React.ReactElement | null {
@@ -74,7 +75,7 @@ export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarP
   const activeProvider = AI_PROVIDERS.find((p) => p.id === activeTab?.providerId);
 
   return (
-    <div className="slide-in-right flex w-[420px] h-full bg-white dark:bg-[#1e1e1e]
+    <div className="flex w-full h-full bg-white dark:bg-[#1e1e1e]
       border-l border-gray-200 dark:border-[#3a3a3a] flex-shrink-0 z-50">
 
       {/* ── Left Sidebar (Provider Navigation) ── */}

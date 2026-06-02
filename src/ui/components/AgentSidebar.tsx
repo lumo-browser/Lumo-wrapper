@@ -207,7 +207,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
   const products = memory?.extractedProducts || [];
 
   return (
-    <div className="slide-in-right flex w-[380px] h-full bg-white dark:bg-[#1e1e1e] border-l border-gray-200 dark:border-[#333] flex-col flex-shrink-0 shadow-xl z-50 relative">
+    <div className="slide-in-right flex w-full h-full bg-white dark:bg-[#1e1e1e] border-l border-gray-200 dark:border-[#333] flex-col flex-shrink-0 shadow-xl z-50 relative">
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200 dark:border-[#333] shrink-0">
         <div className="flex items-center gap-2">
