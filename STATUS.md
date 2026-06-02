@@ -1,4 +1,4 @@
-# 🚀 Nova Browser - Project Status Dashboard
+# 🚀 Lumo Browser - Project Status Dashboard
 
 **Project Start Date**: May 29, 2026  
 **Current Phase**: Phase 1 - Foundation & MVP  
@@ -232,7 +232,7 @@ feat(browser): implement tab management and navigation
 All documentation is available in the project root:
 
 ```
-nova-browser/
+Lumo-browser/
 ├── README.md                     ← Start here for overview
 ├── ARCHITECTURE.md               ← System design details
 ├── ROADMAP.md                    ← Development timeline
@@ -308,7 +308,7 @@ Check:
 
 **Phase 1 Week 1: Successfully Completed!**
 
-Nova Browser has been initialized with:
+Lumo Browser has been initialized with:
 - ✅ Production-ready project structure
 - ✅ Comprehensive type system
 - ✅ Security-focused utilities
