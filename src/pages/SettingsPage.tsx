@@ -5,6 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { GeneralSettingsTab } from './GeneralSettingsTab';
+import { HomeSettingsTab } from './HomeSettingsTab';
+import { SearchSettingsTab } from './SearchSettingsTab';
 import {
   Sun,
   Moon,
@@ -169,43 +171,7 @@ export function SettingsPage({
         <div className="max-w-2xl">
 
           {activeTab === 'home' && (
-            <SettingSection title="Appearance" icon={<Sun className="w-4 h-4" />}>
-                <SettingRow label="Theme" description="Choose between light, dark, or system theme">
-                  <div className="flex bg-gray-100 dark:bg-[#333] rounded-lg p-0.5 gap-0.5">
-                    {THEME_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        onClick={() => onUpdateSettings({ theme: opt.id })}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                          settings.theme === opt.id
-                            ? 'bg-white dark:bg-[#444] text-gray-900 dark:text-white shadow-sm'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                      >
-                        {opt.icon}
-                        {opt.name}
-                      </button>
-                    ))}
-                  </div>
-                </SettingRow>
-
-                <SettingRow label="Font Size" description={`${settings.fontSize}px — Adjust text size across the browser`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-gray-400">A</span>
-                    <input
-                      type="range"
-                      min={12}
-                      max={20}
-                      value={localFontSize}
-                      onChange={(e) => setLocalFontSize(parseInt(e.target.value))}
-                      onMouseUp={() => onUpdateSettings({ fontSize: localFontSize })}
-                      onTouchEnd={() => onUpdateSettings({ fontSize: localFontSize })}
-                      className="w-28 h-1.5 accent-blue-600 rounded-full cursor-pointer"
-                    />
-                    <span className="text-base text-gray-400 font-bold">A</span>
-                  </div>
-                </SettingRow>
-              </SettingSection>
+            <HomeSettingsTab />
           )}
 
           {activeTab === 'general' && (
@@ -213,30 +179,7 @@ export function SettingsPage({
           )}
 
           {activeTab === 'search' && (
-            <SettingSection title="Search Engine" icon={<Search className="w-4 h-4" />}>
-              {SEARCH_ENGINES.map((engine) => (
-                <button
-                  key={engine.id}
-                  onClick={() => onUpdateSettings({ searchEngine: engine.id })}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-[#333] flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-400">
-                      {engine.icon}
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{engine.name}</p>
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[200px]">{engine.url}...</p>
-                    </div>
-                  </div>
-                  {settings.searchEngine === engine.id && (
-                    <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </SettingSection>
+            <SearchSettingsTab settings={settings} onUpdateSettings={onUpdateSettings} />
           )}
 
           {activeTab === 'privacy' && (
