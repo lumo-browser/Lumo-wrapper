@@ -5,29 +5,12 @@
 
 import { app, BrowserWindow, Menu, session, ipcMain, nativeTheme, safeStorage } from 'electron';
 import path from 'path';
+import { shouldBlock, AdBlockerStats, AdBlockerConfig, DEFAULT_CONFIG } from './adBlocker';
 
-// Global state for ad blocker
-let isAdBlockerEnabled = true;
+// ── Ad Blocker State ──────────────────────────────────────────────────────────
+let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
+const adBlockerStats = new AdBlockerStats();
 
-// Basic ad and tracker blocklist
-const adDomains = [
-  '*://*.doubleclick.net/*',
-  '*://*.googleadservices.com/*',
-  '*://*.googlesyndication.com/*',
-  '*://*.google-analytics.com/*',
-  '*://*.facebook.com/tr*',
-  '*://*.amazon-adsystem.com/*',
-  '*://*.criteo.com/*',
-  '*://*.adnxs.com/*',
-  '*://*.advertising.com/*',
-  '*://*.outbrain.com/*',
-  '*://*.taboola.com/*',
-  '*://*.rubiconproject.com/*',
-  '*://*.openx.net/*',
-  '*://*.moatads.com/*',
-  '*://*.scorecardresearch.com/*',
-  '*://*.quantserve.com/*',
-];
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -50,17 +33,16 @@ function createWindow(): void {
   const isDev = !app.isPackaged;
   const url = isDev ? 'http://127.0.0.1:5173' : `file://${path.join(__dirname, '../index.html')}`;
 
-  // Setup ad blocker
+  // ── Ad Blocker ──────────────────────────────────────────────────────────
   session.defaultSession.webRequest.onBeforeRequest(
-    { urls: adDomains },
+    { urls: ['<all_urls>'] },
     (details, callback) => {
-      if (isAdBlockerEnabled) {
-        // Block the request
-        callback({ cancel: true });
-      } else {
-        // Allow the request
-        callback({ cancel: false });
+      const blocked = shouldBlock(details.url, adBlockerConfig);
+      adBlockerStats.record(blocked);
+      if (blocked) {
+        console.log(`[AdBlock] Blocked: ${details.url}`);
       }
+      callback({ cancel: blocked });
     }
   );
 
@@ -145,10 +127,23 @@ function createMenu(): void {
 app.on('ready', () => {
   console.log('[Lumo] App ready');
 
-  // Handle ad blocker state changes from the renderer
-    ipcMain.on('lumo:set-ad-blocker', (event, enabled) => {
+  // Handle ad blocker toggle + config from renderer
+    ipcMain.on('lumo:set-ad-blocker', (event, enabled: boolean) => {
       console.log(`[Lumo] Ad blocker ${enabled ? 'enabled' : 'disabled'}`);
-      isAdBlockerEnabled = enabled;
+      adBlockerConfig = { ...adBlockerConfig, enabled };
+    });
+
+    ipcMain.on('lumo:set-ad-blocker-config', (event, config: Partial<AdBlockerConfig>) => {
+      adBlockerConfig = { ...adBlockerConfig, ...config };
+      console.log('[Lumo] Ad blocker config updated:', adBlockerConfig);
+    });
+
+    ipcMain.handle('lumo:get-ad-blocker-stats', () => {
+      return adBlockerStats.toJSON();
+    });
+
+    ipcMain.on('lumo:reset-ad-blocker-stats', () => {
+      adBlockerStats.reset();
     });
 
     // Handle global theme changes from the renderer

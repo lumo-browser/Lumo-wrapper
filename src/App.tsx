@@ -298,6 +298,10 @@ export default function App(): React.ReactElement {
       }
       if (updates.blockAds !== undefined && window.electron?.send) {
         window.electron.send('lumo:set-ad-blocker', updates.blockAds);
+        window.electron.send('lumo:set-ad-blocker-config', {
+          enabled: updates.blockAds,
+          blockAds: updates.blockAds,
+        });
       }
       return next;
     });
