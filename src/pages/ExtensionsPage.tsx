@@ -15,8 +15,8 @@ interface ExtensionData {
 
 const INITIAL_EXTENSIONS: ExtensionData[] = [
   {
-    id: 'nova-ai',
-    name: 'Nova AI Assistant',
+    id: 'Lumo-ai',
+    name: 'Lumo AI Assistant',
     description: 'Built-in AI companion for page summaries and intelligent search.',
     version: '1.0.0',
     size: '12.4 MB',
@@ -27,7 +27,7 @@ const INITIAL_EXTENSIONS: ExtensionData[] = [
   },
   {
     id: 'ad-blocker',
-    name: 'Nova Ad Blocker',
+    name: 'Lumo Ad Blocker',
     description: 'Native ad and tracker blocking engine.',
     version: '2.1.0',
     size: '4.1 MB',
@@ -49,7 +49,7 @@ const INITIAL_EXTENSIONS: ExtensionData[] = [
   },
   {
     id: 'password-mgr',
-    name: 'Nova Passwords',
+    name: 'Lumo Passwords',
     description: 'Secure local password management and autofill.',
     version: '1.0.5',
     size: '2.8 MB',
