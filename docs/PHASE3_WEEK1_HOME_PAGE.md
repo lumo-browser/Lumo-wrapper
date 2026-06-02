@@ -4,7 +4,7 @@
 
 ### Overview
 
-Successfully implemented the search-first home page for Nova Browser, establishing the foundation for AI-native browser interaction. The home page serves as the user's landing page and provides quick access to AI services, recent tasks, and workflow shortcuts.
+Successfully implemented the search-first home page for Lumo Browser, establishing the foundation for AI-native browser interaction. The home page serves as the user's landing page and provides quick access to AI services, recent tasks, and workflow shortcuts.
 
 ### Architecture
 
@@ -214,7 +214,7 @@ src/
 ### Features Implemented
 
 ✅ Search-first interface
-✅ Centered Nova logo
+✅ Centered Lumo logo
 ✅ Large search input with placeholder
 ✅ Suggested search shortcuts
 ✅ Recent tasks display
