@@ -12,14 +12,14 @@ interface AISpaceStore {
 }
 
 const DEFAULT_TABS: AISpaceTab[] = [
-  { id: 'tab-nova-main', providerId: 'nova', isPinned: true },
+  { id: 'tab-Lumo-main', providerId: 'Lumo', isPinned: true },
 ];
 
 export const useAISpaceStore = create<AISpaceStore>()(
   persist(
     (set, get) => ({
       tabs: DEFAULT_TABS,
-      activeTabId: 'tab-nova-main',
+      activeTabId: 'tab-Lumo-main',
 
       addTab: (providerId, customUrl, customName) => {
         const id = `ai-tab-${Date.now()}`;
@@ -53,7 +53,7 @@ export const useAISpaceStore = create<AISpaceStore>()(
       },
     }),
     {
-      name: 'nova-ai-space',
+      name: 'Lumo-ai-space',
     }
   )
 );
