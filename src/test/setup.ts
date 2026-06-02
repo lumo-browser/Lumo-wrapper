@@ -8,7 +8,7 @@ import { vi } from 'vitest';
 // Mock electron module
 vi.mock('electron', () => ({
   app: {
-    getName: () => 'Nova Browser',
+    getName: () => 'Lumo Browser',
     getVersion: () => '0.1.0',
   },
   ipcRenderer: {
