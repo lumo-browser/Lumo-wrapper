@@ -3,7 +3,7 @@
  * Appearance, Search Engine, Privacy, Downloads, and About.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sun,
   Moon,
@@ -21,6 +21,8 @@ import {
   Cookie,
   HardDrive,
   Cpu,
+  Home,
+  RefreshCw,
 } from 'lucide-react';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -103,6 +105,23 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
   );
 }
 
+
+function SidebarButton({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        active
+          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#2a2a2a]'
+      }`}
+    >
+      {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4' })}
+      {label}
+    </button>
+  );
+}
+
 export function SettingsPage({
   settings,
   onUpdateSettings,
@@ -111,170 +130,206 @@ export function SettingsPage({
   bookmarkCount,
 }: SettingsPageProps): React.ReactElement {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [localFontSize, setLocalFontSize] = useState(settings.fontSize);
+  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'privacy' | 'sync' | 'about'>('home');
+
+  useEffect(() => {
+    setLocalFontSize(settings.fontSize);
+  }, [settings.fontSize]);
+
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#f8f9fa] dark:bg-[#1a1a1a] overflow-hidden">
-      {/* Header */}
-      <div className="flex-shrink-0 px-8 pt-8 pb-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-[#333] flex items-center justify-center">
-              <Globe className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+    <div className="flex-1 flex h-full bg-[#f8f9fa] dark:bg-[#1a1a1a] overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-64 flex-shrink-0 bg-white dark:bg-[#242424] border-r border-gray-200 dark:border-[#333] flex flex-col">
+        <div className="p-6 border-b border-gray-100 dark:border-[#333]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Customize your Lumo Browser experience</p>
-            </div>
+            <h1 className="text-base font-bold text-gray-900 dark:text-white">Settings</h1>
           </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
+          <nav className="flex flex-col gap-1">
+            <SidebarButton icon={<Home />} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+            <SidebarButton icon={<Search />} label="Search Engine" active={activeTab === 'search'} onClick={() => setActiveTab('search')} />
+            <SidebarButton icon={<Shield />} label="Privacy & Security" active={activeTab === 'privacy'} onClick={() => setActiveTab('privacy')} />
+            <SidebarButton icon={<RefreshCw />} label="Sync" active={activeTab === 'sync'} onClick={() => setActiveTab('sync')} />
+            <SidebarButton icon={<Info />} label="About Lumo" active={activeTab === 'about'} onClick={() => setActiveTab('about')} />
+          </nav>
         </div>
       </div>
 
       {/* Settings content */}
-      <div className="flex-1 overflow-y-auto px-8 pb-8 scrollbar-thin">
-        <div className="max-w-2xl mx-auto">
+      <div className="flex-1 overflow-y-auto px-10 py-8 scrollbar-thin">
+        <div className="max-w-2xl">
 
-          {/* ── Appearance ── */}
-          <SettingSection title="Appearance" icon={<Sun className="w-4 h-4" />}>
-            <SettingRow label="Theme" description="Choose between light, dark, or system theme">
-              <div className="flex bg-gray-100 dark:bg-[#333] rounded-lg p-0.5 gap-0.5">
-                {THEME_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => onUpdateSettings({ theme: opt.id })}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      settings.theme === opt.id
-                        ? 'bg-white dark:bg-[#444] text-gray-900 dark:text-white shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                    }`}
-                  >
-                    {opt.icon}
-                    {opt.name}
-                  </button>
-                ))}
-              </div>
-            </SettingRow>
+          {activeTab === 'home' && (
+            <>
+              {/* ── Appearance ── */}
+              <SettingSection title="Appearance" icon={<Sun className="w-4 h-4" />}>
+                <SettingRow label="Theme" description="Choose between light, dark, or system theme">
+                  <div className="flex bg-gray-100 dark:bg-[#333] rounded-lg p-0.5 gap-0.5">
+                    {THEME_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        onClick={() => onUpdateSettings({ theme: opt.id })}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          settings.theme === opt.id
+                            ? 'bg-white dark:bg-[#444] text-gray-900 dark:text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        {opt.icon}
+                        {opt.name}
+                      </button>
+                    ))}
+                  </div>
+                </SettingRow>
 
-            <SettingRow label="Font Size" description={`${settings.fontSize}px — Adjust text size across the browser`}>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-gray-400">A</span>
-                <input
-                  type="range"
-                  min={12}
-                  max={20}
-                  value={settings.fontSize}
-                  onChange={(e) => onUpdateSettings({ fontSize: parseInt(e.target.value) })}
-                  className="w-28 h-1.5 accent-blue-600 rounded-full cursor-pointer"
+                <SettingRow label="Font Size" description={`${settings.fontSize}px — Adjust text size across the browser`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-gray-400">A</span>
+                    <input
+                      type="range"
+                      min={12}
+                      max={20}
+                      value={localFontSize}
+                      onChange={(e) => setLocalFontSize(parseInt(e.target.value))}
+                      onMouseUp={() => onUpdateSettings({ fontSize: localFontSize })}
+                      onTouchEnd={() => onUpdateSettings({ fontSize: localFontSize })}
+                      className="w-28 h-1.5 accent-blue-600 rounded-full cursor-pointer"
+                    />
+                    <span className="text-base text-gray-400 font-bold">A</span>
+                  </div>
+                </SettingRow>
+              </SettingSection>
+
+              {/* ── AI Auto-Agent ── */}
+              <SettingSection title="AI Auto-Agent" icon={<Cpu className="w-4 h-4" />}>
+                <SettingRow label="OpenRouter API Key" description="Required for Autonomous Agent (GPT-4o / Claude 3.5)">
+                  <input
+                    type="password"
+                    value={settings.openRouterApiKey || ''}
+                    onChange={(e) => onUpdateSettings({ openRouterApiKey: e.target.value })}
+                    placeholder="sk-or-v1-..."
+                    className="w-48 px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                </SettingRow>
+              </SettingSection>
+            </>
+          )}
+
+          {activeTab === 'search' && (
+            <SettingSection title="Search Engine" icon={<Search className="w-4 h-4" />}>
+              {SEARCH_ENGINES.map((engine) => (
+                <button
+                  key={engine.id}
+                  onClick={() => onUpdateSettings({ searchEngine: engine.id })}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-[#333] flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-400">
+                      {engine.icon}
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{engine.name}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[200px]">{engine.url}...</p>
+                    </div>
+                  </div>
+                  {settings.searchEngine === engine.id && (
+                    <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </SettingSection>
+          )}
+
+          {activeTab === 'privacy' && (
+            <SettingSection title="Privacy & Security" icon={<Shield className="w-4 h-4" />}>
+              <SettingRow label="Block Ads & Trackers" description="Built-in Brave-style ad blocking engine">
+                <Toggle
+                  enabled={settings.blockAds}
+                  onChange={(v) => onUpdateSettings({ blockAds: v })}
                 />
-                <span className="text-base text-gray-400 font-bold">A</span>
+              </SettingRow>
+
+              <SettingRow label="Block Pop-ups" description="Prevent websites from opening pop-up windows">
+                <Toggle
+                  enabled={settings.blockPopups}
+                  onChange={(v) => onUpdateSettings({ blockPopups: v })}
+                />
+              </SettingRow>
+
+              <SettingRow label="Send Do Not Track" description="Request sites not to track your browsing">
+                <Toggle
+                  enabled={settings.doNotTrack}
+                  onChange={(v) => onUpdateSettings({ doNotTrack: v })}
+                />
+              </SettingRow>
+
+              <SettingRow label="Clear Data on Exit" description="Automatically clear history and cookies when you close Lumo">
+                <Toggle
+                  enabled={settings.clearOnExit}
+                  onChange={(v) => onUpdateSettings({ clearOnExit: v })}
+                />
+              </SettingRow>
+
+              <div className="px-4 py-3.5">
+                <button
+                  onClick={() => setShowClearConfirm(true)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl
+                    bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20
+                    border border-red-100 dark:border-red-900/30
+                    transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-red-700 dark:text-red-400">Clear Browsing Data</p>
+                      <p className="text-[10px] text-red-400 dark:text-red-500">
+                        {historyCount} history entries • {bookmarkCount} bookmarks
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-red-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
               </div>
-            </SettingRow>
-          </SettingSection>
+            </SettingSection>
+          )}
 
-          {/* ── AI Auto-Agent ── */}
-          <SettingSection title="AI Auto-Agent" icon={<Cpu className="w-4 h-4" />}>
-            <SettingRow label="OpenRouter API Key" description="Required for Autonomous Agent (GPT-4o / Claude 3.5)">
-              <input
-                type="password"
-                value={settings.openRouterApiKey || ''}
-                onChange={(e) => onUpdateSettings({ openRouterApiKey: e.target.value })}
-                placeholder="sk-or-v1-..."
-                className="w-48 px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-              />
-            </SettingRow>
-          </SettingSection>
-
-          {/* ── Search Engine ── */}
-          <SettingSection title="Search Engine" icon={<Search className="w-4 h-4" />}>
-            {SEARCH_ENGINES.map((engine) => (
-              <button
-                key={engine.id}
-                onClick={() => onUpdateSettings({ searchEngine: engine.id })}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-[#333] flex items-center justify-center text-sm font-bold text-gray-500 dark:text-gray-400">
-                    {engine.icon}
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{engine.name}</p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[200px]">{engine.url}...</p>
-                  </div>
+          {activeTab === 'sync' && (
+            <SettingSection title="Sync" icon={<RefreshCw className="w-4 h-4" />}>
+              <div className="p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-[#333] flex items-center justify-center mx-auto mb-4">
+                  <RefreshCw className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                 </div>
-                {settings.searchEngine === engine.id && (
-                  <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
-                  </div>
-                )}
-              </button>
-            ))}
-          </SettingSection>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">Sync is currently unavailable</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+                  Lumo Browser is a local-first browser. Cloud sync features for bookmarks, history, and settings are coming in a future update!
+                </p>
+              </div>
+            </SettingSection>
+          )}
 
-          {/* ── Privacy & Security ── */}
-          <SettingSection title="Privacy & Security" icon={<Shield className="w-4 h-4" />}>
-            <SettingRow label="Block Ads & Trackers" description="Built-in Brave-style ad blocking engine">
-              <Toggle
-                enabled={settings.blockAds}
-                onChange={(v) => onUpdateSettings({ blockAds: v })}
-              />
-            </SettingRow>
-
-            <SettingRow label="Block Pop-ups" description="Prevent websites from opening pop-up windows">
-              <Toggle
-                enabled={settings.blockPopups}
-                onChange={(v) => onUpdateSettings({ blockPopups: v })}
-              />
-            </SettingRow>
-
-            <SettingRow label="Send Do Not Track" description="Request sites not to track your browsing">
-              <Toggle
-                enabled={settings.doNotTrack}
-                onChange={(v) => onUpdateSettings({ doNotTrack: v })}
-              />
-            </SettingRow>
-
-            <SettingRow label="Clear Data on Exit" description="Automatically clear history and cookies when you close Lumo">
-              <Toggle
-                enabled={settings.clearOnExit}
-                onChange={(v) => onUpdateSettings({ clearOnExit: v })}
-              />
-            </SettingRow>
-
-            <div className="px-4 py-3.5">
-              <button
-                onClick={() => setShowClearConfirm(true)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl
-                  bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20
-                  border border-red-100 dark:border-red-900/30
-                  transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-red-700 dark:text-red-400">Clear Browsing Data</p>
-                    <p className="text-[10px] text-red-400 dark:text-red-500">
-                      {historyCount} history entries • {bookmarkCount} bookmarks
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-red-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
-          </SettingSection>
-
-          {/* ── About ── */}
-          <SettingSection title="About" icon={<Info className="w-4 h-4" />}>
-            <SettingRow label="Lumo Browser" description="AI-native browser built with Chromium and Electron">
-              <span className="text-xs text-gray-400 dark:text-gray-500 font-mono bg-gray-100 dark:bg-[#333] px-2 py-1 rounded-md">
-                v0.1.0
-              </span>
-            </SettingRow>
-            <SettingRow label="Rendering Engine" description="Powered by Chromium via Electron">
-              <span className="text-xs text-gray-400 dark:text-gray-500">Chromium</span>
-            </SettingRow>
-            <SettingRow label="Architecture" description="Local-first, privacy-focused, no cloud accounts">
-              <span className="text-xs text-green-500">✓ Local</span>
-            </SettingRow>
-          </SettingSection>
+          {activeTab === 'about' && (
+            <SettingSection title="About" icon={<Info className="w-4 h-4" />}>
+              <SettingRow label="Lumo Browser" description="AI-native browser built with Chromium and Electron">
+                <span className="text-xs text-gray-400 dark:text-gray-500 font-mono bg-gray-100 dark:bg-[#333] px-2 py-1 rounded-md">
+                  v0.1.0
+                </span>
+              </SettingRow>
+              <SettingRow label="Rendering Engine" description="Powered by Chromium via Electron">
+                <span className="text-xs text-gray-400 dark:text-gray-500">Chromium</span>
+              </SettingRow>
+              <SettingRow label="Architecture" description="Local-first, privacy-focused, no cloud accounts">
+                <span className="text-xs text-green-500">✓ Local</span>
+              </SettingRow>
+            </SettingSection>
+          )}
 
         </div>
       </div>
