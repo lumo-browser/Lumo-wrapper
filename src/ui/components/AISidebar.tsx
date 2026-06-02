@@ -1,9 +1,9 @@
 /**
- * Nova AI Space — The ultimate AI integration
+ * Lumo AI Space — The ultimate AI integration
  *
  * No API keys. Users simply select a provider, it opens as a tab in the sidebar,
  * and they log in securely using the provider's official flow.
- * Providers run in webviews alongside the native Nova Assistant.
+ * Providers run in webviews alongside the native Lumo Assistant.
  */
 
 declare global {
@@ -115,7 +115,7 @@ export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarP
                 <span className="flex-1 truncate">{tab.customName || provider.name}</span>
 
                 {/* Actions (Pin/Close) - Only on hover */}
-                {tab.providerId !== 'nova' && (
+                {tab.providerId !== 'Lumo' && (
                   <button
                     onClick={(e) => { e.stopPropagation(); removeTab(tab.id); }}
                     className="w-4 h-4 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-red-900/50 text-gray-400 hover:text-red-500 transition-opacity"
@@ -140,7 +140,7 @@ export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarP
 
             {showAddMenu && (
               <div className="mt-1 flex flex-col gap-0.5">
-                {AI_PROVIDERS.filter((p) => p.id !== 'nova').map((p) => (
+                {AI_PROVIDERS.filter((p) => p.id !== 'Lumo').map((p) => (
                   <button
                     key={p.id}
                     onClick={() => { addTab(p.id); setShowAddMenu(false); }}
@@ -160,8 +160,8 @@ export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarP
 
       {/* ── Main Content Area ── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#2d2d2d]">
-        {activeTab?.providerId === 'nova' ? (
-          <NovaAssistant currentUrl={currentUrl} pageTitle={pageTitle} />
+        {activeTab?.providerId === 'Lumo' ? (
+          <LumoAssistant currentUrl={currentUrl} pageTitle={pageTitle} />
         ) : (
           <ProviderWebview provider={activeProvider} />
         )}
@@ -170,13 +170,13 @@ export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarP
   );
 }
 
-// ── Native Nova Assistant ──────────────────────────────────────────────────
-function NovaAssistant({ currentUrl, pageTitle }: { currentUrl: string; pageTitle: string }) {
+// ── Native Lumo Assistant ──────────────────────────────────────────────────
+function LumoAssistant({ currentUrl, pageTitle }: { currentUrl: string; pageTitle: string }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'greeting',
       role: 'assistant',
-      content: 'Hello! I am your native Nova Assistant. I have full context of your tabs, pages, and browser state. How can I help?',
+      content: 'Hello! I am your native Lumo Assistant. I have full context of your tabs, pages, and browser state. How can I help?',
       timestamp: new Date(),
     }
   ]);
@@ -253,7 +253,7 @@ function NovaAssistant({ currentUrl, pageTitle }: { currentUrl: string; pageTitl
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-            placeholder="Ask Nova Assistant..."
+            placeholder="Ask Lumo Assistant..."
             rows={1}
             disabled={isProcessing}
             className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 outline-none resize-none max-h-28 scrollbar-none"
@@ -281,7 +281,7 @@ function ProviderWebview({ provider }: { provider?: typeof AI_PROVIDERS[0] }) {
       <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 text-center flex-shrink-0">
         <p className="text-[11px] font-medium text-yellow-800 dark:text-yellow-400 flex items-center justify-center gap-1.5">
           <Sparkles className="w-3 h-3" />
-          Log in safely. Nova securely embeds {provider.name} and cannot see your passwords.
+          Log in safely. Lumo securely embeds {provider.name} and cannot see your passwords.
         </p>
       </div>
 
