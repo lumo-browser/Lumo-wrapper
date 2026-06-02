@@ -12,7 +12,7 @@ export function getDatabase(): Database.Database {
 }
 
 export async function initializeDatabase(): Promise<void> {
-  const dbPath = process.env.DATABASE_URL || './data/nova.db';
+  const dbPath = process.env.DATABASE_URL || './data/Lumo.db';
   const fullPath = path.resolve(dbPath);
 
   try {
