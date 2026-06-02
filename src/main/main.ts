@@ -48,7 +48,7 @@ function createWindow(): void {
   });
 
   const isDev = !app.isPackaged;
-  const url = isDev ? 'http://localhost:5173' : `file://${path.join(__dirname, '../index.html')}`;
+  const url = isDev ? 'http://127.0.0.1:5173' : `file://${path.join(__dirname, '../index.html')}`;
 
   // Setup ad blocker
   session.defaultSession.webRequest.onBeforeRequest(
