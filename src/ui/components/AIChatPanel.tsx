@@ -1,5 +1,5 @@
 /**
- * AIChatPanel — Real-time AI chat sidebar powered by the Nova planning engine
+ * AIChatPanel — Real-time AI chat sidebar powered by the Lumo planning engine
  * Uses existing PlannerAgent and GoalParsingService infrastructure
  */
 
@@ -31,7 +31,7 @@ const GREETING: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
   content:
-    'Hello! I am Nova, your AI browsing assistant. I can help you plan tasks, research topics, fill forms, extract data, or automate workflows. What would you like to accomplish?',
+    'Hello! I am Lumo, your AI browsing assistant. I can help you plan tasks, research topics, fill forms, extract data, or automate workflows. What would you like to accomplish?',
   timestamp: new Date(),
 };
 
@@ -159,7 +159,7 @@ export function AIChatPanel({ isOpen, onClose, isLoggedIn, onRequestLogin }: AIC
             <Bot className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Nova AI</p>
+            <p className="text-sm font-semibold text-white">Lumo AI</p>
             {!isMinimized && (
               <p className="text-xs text-blue-100">{isLoggedIn ? 'Connected' : 'Sign in to unlock'}</p>
             )}
@@ -225,7 +225,7 @@ export function AIChatPanel({ isOpen, onClose, isLoggedIn, onRequestLogin }: AIC
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isLoggedIn ? 'Describe your goal... (Enter to send)' : 'Sign in to chat with Nova AI'}
+                placeholder={isLoggedIn ? 'Describe your goal... (Enter to send)' : 'Sign in to chat with Lumo AI'}
                 disabled={!isLoggedIn || isProcessing}
                 rows={1}
                 className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 outline-none resize-none max-h-24 disabled:opacity-50"
