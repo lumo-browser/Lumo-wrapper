@@ -1,10 +1,10 @@
-# Nova AI Browser - Complete Development Roadmap
+# Lumo AI Browser - Complete Development Roadmap
 
 > Building a production-grade AI-native browser that competes with Perplexity Comet, Arc Browser, and OpenAI Operator.
 
 ## Vision
 
-**Nova is not a traditional browser. It's an AI-first operating system for the web.**
+**Lumo is not a traditional browser. It's an AI-first operating system for the web.**
 
 The Flow:
 ```
