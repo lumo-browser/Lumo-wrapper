@@ -63,7 +63,7 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Nova Browser')).toBeTruthy();
+      expect(screen.getByText('Lumo Browser')).toBeTruthy();
     });
   });
 
