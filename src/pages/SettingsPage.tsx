@@ -23,6 +23,7 @@ import {
   Cpu,
   Home,
   RefreshCw,
+  Settings,
 } from 'lucide-react';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -131,7 +132,7 @@ export function SettingsPage({
 }: SettingsPageProps): React.ReactElement {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [localFontSize, setLocalFontSize] = useState(settings.fontSize);
-  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'privacy' | 'sync' | 'about'>('home');
+  const [activeTab, setActiveTab] = useState<'general' | 'home' | 'search' | 'privacy' | 'sync' | 'about'>('general');
 
   useEffect(() => {
     setLocalFontSize(settings.fontSize);
@@ -152,6 +153,7 @@ export function SettingsPage({
         </div>
         <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
           <nav className="flex flex-col gap-1">
+            <SidebarButton icon={<Settings />} label="General" active={activeTab === 'general'} onClick={() => setActiveTab('general')} />
             <SidebarButton icon={<Home />} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
             <SidebarButton icon={<Search />} label="Search Engine" active={activeTab === 'search'} onClick={() => setActiveTab('search')} />
             <SidebarButton icon={<Shield />} label="Privacy & Security" active={activeTab === 'privacy'} onClick={() => setActiveTab('privacy')} />
@@ -166,9 +168,7 @@ export function SettingsPage({
         <div className="max-w-2xl">
 
           {activeTab === 'home' && (
-            <>
-              {/* ── Appearance ── */}
-              <SettingSection title="Appearance" icon={<Sun className="w-4 h-4" />}>
+            <SettingSection title="Appearance" icon={<Sun className="w-4 h-4" />}>
                 <SettingRow label="Theme" description="Choose between light, dark, or system theme">
                   <div className="flex bg-gray-100 dark:bg-[#333] rounded-lg p-0.5 gap-0.5">
                     {THEME_OPTIONS.map((opt) => (
@@ -205,20 +205,20 @@ export function SettingsPage({
                   </div>
                 </SettingRow>
               </SettingSection>
+          )}
 
-              {/* ── AI Auto-Agent ── */}
-              <SettingSection title="AI Auto-Agent" icon={<Cpu className="w-4 h-4" />}>
-                <SettingRow label="OpenRouter API Key" description="Required for Autonomous Agent (GPT-4o / Claude 3.5)">
-                  <input
-                    type="password"
-                    value={settings.openRouterApiKey || ''}
-                    onChange={(e) => onUpdateSettings({ openRouterApiKey: e.target.value })}
-                    placeholder="sk-or-v1-..."
-                    className="w-48 px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                  />
-                </SettingRow>
-              </SettingSection>
-            </>
+          {activeTab === 'general' && (
+            <SettingSection title="AI Auto-Agent" icon={<Cpu className="w-4 h-4" />}>
+              <SettingRow label="OpenRouter API Key" description="Required for Autonomous Agent (GPT-4o / Claude 3.5)">
+                <input
+                  type="password"
+                  value={settings.openRouterApiKey || ''}
+                  onChange={(e) => onUpdateSettings({ openRouterApiKey: e.target.value })}
+                  placeholder="sk-or-v1-..."
+                  className="w-48 px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                />
+              </SettingRow>
+            </SettingSection>
           )}
 
           {activeTab === 'search' && (
