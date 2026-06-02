@@ -1,6 +1,6 @@
 /**
  * AIAssistantBar — Floating AI assistant trigger button + quick action bar
- * Provides quick access to Nova AI features from anywhere in the browser
+ * Provides quick access to Lumo AI features from anywhere in the browser
  */
 
 import React, { useState } from 'react';
@@ -137,7 +137,7 @@ export function AIAssistantBar({ isLoggedIn, onOpenChat, onRequestLogin }: AIAss
         {/* Tooltip */}
         {showTooltip && !isExpanded && (
           <div className="absolute left-14 bg-gray-900 text-white text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
-            Nova AI Assistant
+            Lumo AI Assistant
             <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-gray-900 rotate-45" />
           </div>
         )}
