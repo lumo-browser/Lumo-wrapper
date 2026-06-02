@@ -32,7 +32,7 @@ export const DOM_EXTRACTOR_SCRIPT = `
     }
 
     // Remove old tags
-    var oldTags = document.querySelectorAll('.nova-agent-tag');
+    var oldTags = document.querySelectorAll('.Lumo-agent-tag');
     for (var i = 0; i < oldTags.length; i++) oldTags[i].remove();
 
     var selectors = 'a, button, input, textarea, select, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [onclick], label[for], summary, details';
@@ -43,8 +43,8 @@ export const DOM_EXTRACTOR_SCRIPT = `
       if (!isVisible(el)) continue;
       var id = idCounter++;
 
-      window.__novaAgentElements = window.__novaAgentElements || {};
-      window.__novaAgentElements[id] = el;
+      window.__LumoAgentElements = window.__LumoAgentElements || {};
+      window.__LumoAgentElements[id] = el;
 
       var text = (el.innerText || el.value || el.placeholder || el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('alt') || '').trim().substring(0, 80);
       var tagName = el.tagName.toLowerCase();
@@ -62,7 +62,7 @@ export const DOM_EXTRACTOR_SCRIPT = `
 
       // Visual tags
       var tag = document.createElement('div');
-      tag.className = 'nova-agent-tag';
+      tag.className = 'Lumo-agent-tag';
       tag.textContent = String(id);
       var rect = el.getBoundingClientRect();
       tag.style.cssText = 'position:absolute;top:' + (rect.top + window.scrollY - 2) + 'px;left:' + (rect.left + window.scrollX - 2) + 'px;background:#ef4444;color:white;font-size:9px;font-weight:bold;padding:0 3px;border-radius:3px;z-index:2147483647;pointer-events:none;line-height:14px;';
@@ -194,8 +194,8 @@ export async function executeToolCall(
       case 'click': {
         const clickId = args.id;
         await webview.executeJavaScript(
-          'if(window.__novaAgentElements && window.__novaAgentElements[' + clickId + ']){' +
-          'var el=window.__novaAgentElements[' + clickId + '];' +
+          'if(window.__LumoAgentElements && window.__LumoAgentElements[' + clickId + ']){' +
+          'var el=window.__LumoAgentElements[' + clickId + '];' +
           'el.scrollIntoView({block:"center"});' +
           'el.focus();' +
           'el.click();' +
@@ -214,8 +214,8 @@ export async function executeToolCall(
         const pressEnter = args.press_enter === true;
 
         await webview.executeJavaScript(
-          'if(window.__novaAgentElements && window.__novaAgentElements[' + typeId + ']){' +
-          'var el=window.__novaAgentElements[' + typeId + '];' +
+          'if(window.__LumoAgentElements && window.__LumoAgentElements[' + typeId + ']){' +
+          'var el=window.__LumoAgentElements[' + typeId + '];' +
           'el.scrollIntoView({block:"center"});' +
           'el.focus();' +
           (clearFirst ? 'el.value="";' : '') +
