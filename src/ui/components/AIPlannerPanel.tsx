@@ -42,7 +42,7 @@ export function AIPlannerPanel(): React.ReactElement {
         sessionId: `session-${Date.now()}`,
         pageContext: {
           url: 'http://localhost:5173',
-          title: 'Nova Browser',
+          title: 'Lumo Browser',
         },
         previousResults: [],
         variables: {},
