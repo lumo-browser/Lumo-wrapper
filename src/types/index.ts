@@ -1,5 +1,5 @@
 /**
- * Core type definitions for Nova Browser
+ * Core type definitions for Lumo Browser
  * These types are shared across all layers
  */
 
