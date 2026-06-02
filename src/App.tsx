@@ -139,12 +139,12 @@ export default function App(): React.ReactElement {
 
   // Bookmark state — rich entries with title and timestamp
   const [bookmarkEntries, setBookmarkEntries] = useState<BookmarkEntry[]>(() => {
-    try { return JSON.parse(localStorage.getItem('nova-bookmarks') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('lumo-bookmarks') || '[]'); } catch { return []; }
   });
 
   // History state
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(() => {
-    try { return JSON.parse(localStorage.getItem('nova-history') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('lumo-history') || '[]'); } catch { return []; }
   });
 
   // Settings
@@ -155,16 +155,16 @@ export default function App(): React.ReactElement {
       blockAds: true, blockPopups: true, doNotTrack: true, clearOnExit: false,
     };
     try { 
-      const parsed = JSON.parse(localStorage.getItem('nova-settings') || '{}');
+      const parsed = JSON.parse(localStorage.getItem('lumo-settings') || '{}');
       return { ...defaults, ...parsed, openRouterApiKey: '' }; // Keep api key blank initially
     } catch { return defaults; }
   });
 
   // Securely load API Key on boot
   useEffect(() => {
-    const encryptedKey = localStorage.getItem('nova-api-key-secure');
+    const encryptedKey = localStorage.getItem('lumo-api-key-secure');
     if (encryptedKey && window.electron?.invoke) {
-      window.electron.invoke('nova:load-key', encryptedKey).then(decrypted => {
+      window.electron.invoke('lumo:load-key', encryptedKey).then(decrypted => {
         if (decrypted) setSettings(s => ({ ...s, openRouterApiKey: decrypted }));
       });
     }
@@ -229,12 +229,12 @@ export default function App(): React.ReactElement {
 
     // Sync initial ad blocker state to main process
     if (window.electron?.send) {
-      window.electron.send('nova:set-ad-blocker', settings.blockAds);
-      window.electron.send('nova:set-theme', settings.theme);
+      window.electron.send('lumo:set-ad-blocker', settings.blockAds);
+      window.electron.send('lumo:set-theme', settings.theme);
     }
 
     // Restore user
-    const savedUser = localStorage.getItem('nova-user');
+    const savedUser = localStorage.getItem('lumo-user');
     if (savedUser) {
       try { setCurrentUser(JSON.parse(savedUser)); } catch { /* noop */ }
     }
@@ -249,20 +249,20 @@ export default function App(): React.ReactElement {
   }, []);
 
   // Persist bookmarks/history/settings to localStorage
-  useEffect(() => { localStorage.setItem('nova-bookmarks', JSON.stringify(bookmarkEntries)); }, [bookmarkEntries]);
-  useEffect(() => { localStorage.setItem('nova-history', JSON.stringify(historyEntries)); }, [historyEntries]);
+  useEffect(() => { localStorage.setItem('lumo-bookmarks', JSON.stringify(bookmarkEntries)); }, [bookmarkEntries]);
+  useEffect(() => { localStorage.setItem('lumo-history', JSON.stringify(historyEntries)); }, [historyEntries]);
   
   useEffect(() => { 
     const { openRouterApiKey, ...safeSettings } = settings;
-    localStorage.setItem('nova-settings', JSON.stringify(safeSettings)); 
+    localStorage.setItem('lumo-settings', JSON.stringify(safeSettings)); 
     
     // Securely encrypt the key if it exists
     if (window.electron?.invoke && openRouterApiKey) {
-      window.electron.invoke('nova:save-key', openRouterApiKey).then(encrypted => {
-        if (encrypted) localStorage.setItem('nova-api-key-secure', encrypted);
+      window.electron.invoke('lumo:save-key', openRouterApiKey).then(encrypted => {
+        if (encrypted) localStorage.setItem('lumo-api-key-secure', encrypted);
       });
     } else if (!openRouterApiKey) {
-      localStorage.removeItem('nova-api-key-secure');
+      localStorage.removeItem('lumo-api-key-secure');
     }
   }, [settings]);
 
@@ -274,7 +274,7 @@ export default function App(): React.ReactElement {
       const theme = next ? 'dark' : 'light';
       setSettings((s) => ({ ...s, theme }));
       if (window.electron?.send) {
-        window.electron.send('nova:set-theme', theme);
+        window.electron.send('lumo:set-theme', theme);
       }
       return next;
     });
@@ -290,14 +290,14 @@ export default function App(): React.ReactElement {
         setIsDark(dark);
         document.documentElement.classList.toggle('dark', dark);
         if (window.electron?.send) {
-          window.electron.send('nova:set-theme', updates.theme);
+          window.electron.send('lumo:set-theme', updates.theme);
         }
       }
       if (updates.fontSize) {
         document.documentElement.style.fontSize = `${updates.fontSize}px`;
       }
       if (updates.blockAds !== undefined && window.electron?.send) {
-        window.electron.send('nova:set-ad-blocker', updates.blockAds);
+        window.electron.send('lumo:set-ad-blocker', updates.blockAds);
       }
       return next;
     });
@@ -331,7 +331,7 @@ export default function App(): React.ReactElement {
     const tabId = activeTab.id;
 
     // Don't add internal pages to history
-    const isInternal = url.startsWith('nova://');
+    const isInternal = url.startsWith('lumo://');
 
     // Add to browsing history
     if (!isInternal && url) {
@@ -452,11 +452,11 @@ export default function App(): React.ReactElement {
   // ── Account ───────────────────────────────────────────────────────────────
   const handleLogin = (user: UserAccount) => {
     setCurrentUser(user);
-    localStorage.setItem('nova-user', JSON.stringify(user));
+    localStorage.setItem('lumo-user', JSON.stringify(user));
   };
   const handleLogout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('nova-user');
+    localStorage.removeItem('lumo-user');
   };
 
   // ── Menu Actions ──────────────────────────────────────────────────────────
@@ -640,7 +640,7 @@ export default function App(): React.ReactElement {
             onClose={() => setShowMenu(false)}
             onToggleTheme={handleToggleTheme}
             onOpenAccount={() => { setShowAccount(true); setShowMenu(false); }}
-            onOpenSettings={() => { navigate('nova://settings'); setShowMenu(false); }}
+            onOpenSettings={() => { navigate('lumo://settings'); setShowMenu(false); }}
             onNavigate={navigate}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
@@ -655,13 +655,13 @@ export default function App(): React.ReactElement {
         {/* Page content (WebViews) */}
         <div className="flex-1 overflow-hidden bg-white dark:bg-[#1e1e1e] relative">
           {tabs.map((tab) => {
-            const isNtp = !tab.url || tab.url === 'nova://newtab';
-            const isSettings = tab.url === 'nova://settings';
-            const isHistory    = tab.url === 'nova://history';
-            const isBookmarks  = tab.url === 'nova://bookmarks';
-            const isAbout      = tab.url === 'nova://about';
-            const isExtensions = tab.url === 'nova://extensions';
-            const isCompare    = tab.url.startsWith('nova://compare');
+            const isNtp = !tab.url || tab.url === 'lumo://newtab';
+            const isSettings = tab.url === 'lumo://settings';
+            const isHistory    = tab.url === 'lumo://history';
+            const isBookmarks  = tab.url === 'lumo://bookmarks';
+            const isAbout      = tab.url === 'lumo://about';
+            const isExtensions = tab.url === 'lumo://extensions';
+            const isCompare    = tab.url.startsWith('lumo://compare');
             const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isCompare;
 
             return (
@@ -706,10 +706,10 @@ export default function App(): React.ReactElement {
                 )}
                 {isAbout && (
                   <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center mb-4 shadow-lg">
-                      <span className="text-2xl font-bold text-white">N</span>
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg">
+                      <span className="text-2xl font-bold text-white">L</span>
                     </div>
-                    <h1 className="text-2xl font-bold mb-1">Nova Browser</h1>
+                    <h1 className="text-2xl font-bold mb-1">Lumo Browser</h1>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Version 0.1.0</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 text-center max-w-sm">
                       An AI-native, privacy-first browser built with Chromium and Electron.<br/>
