@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { GeneralSettingsTab } from './GeneralSettingsTab';
 import {
   Sun,
   Moon,
@@ -208,17 +209,7 @@ export function SettingsPage({
           )}
 
           {activeTab === 'general' && (
-            <SettingSection title="AI Auto-Agent" icon={<Cpu className="w-4 h-4" />}>
-              <SettingRow label="OpenRouter API Key" description="Required for Autonomous Agent (GPT-4o / Claude 3.5)">
-                <input
-                  type="password"
-                  value={settings.openRouterApiKey || ''}
-                  onChange={(e) => onUpdateSettings({ openRouterApiKey: e.target.value })}
-                  placeholder="sk-or-v1-..."
-                  className="w-48 px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                />
-              </SettingRow>
-            </SettingSection>
+            <GeneralSettingsTab settings={settings} onUpdateSettings={onUpdateSettings} />
           )}
 
           {activeTab === 'search' && (
