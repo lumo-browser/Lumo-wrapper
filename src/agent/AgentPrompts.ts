@@ -8,7 +8,7 @@
 import { type TaskMemory } from './AgentMemory';
 
 export function buildSystemPrompt(): string {
-  return `You are Nova, an elite autonomous web browser agent. You take full control of a real Chromium browser to achieve the user's goal step-by-step.
+  return `You are Lumo, an elite autonomous web browser agent. You take full control of a real Chromium browser to achieve the user's goal step-by-step.
 
 ## CORE CAPABILITIES
 - Navigate to any URL

@@ -123,7 +123,7 @@ export function SettingsPage({
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Customize your Nova Browser experience</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Customize your Lumo Browser experience</p>
             </div>
           </div>
         </div>
@@ -232,7 +232,7 @@ export function SettingsPage({
               />
             </SettingRow>
 
-            <SettingRow label="Clear Data on Exit" description="Automatically clear history and cookies when you close Nova">
+            <SettingRow label="Clear Data on Exit" description="Automatically clear history and cookies when you close Lumo">
               <Toggle
                 enabled={settings.clearOnExit}
                 onChange={(v) => onUpdateSettings({ clearOnExit: v })}
@@ -263,7 +263,7 @@ export function SettingsPage({
 
           {/* ── About ── */}
           <SettingSection title="About" icon={<Info className="w-4 h-4" />}>
-            <SettingRow label="Nova Browser" description="AI-native browser built with Chromium and Electron">
+            <SettingRow label="Lumo Browser" description="AI-native browser built with Chromium and Electron">
               <span className="text-xs text-gray-400 dark:text-gray-500 font-mono bg-gray-100 dark:bg-[#333] px-2 py-1 rounded-md">
                 v0.1.0
               </span>

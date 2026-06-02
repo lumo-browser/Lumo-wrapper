@@ -1,7 +1,7 @@
 {
-  "name": "nova-browser-backend",
+  "name": "Lumo-browser-backend",
   "version": "0.1.0",
-  "description": "Backend API for Nova Browser",
+  "description": "Backend API for Lumo Browser",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

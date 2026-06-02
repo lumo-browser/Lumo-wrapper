@@ -1,6 +1,6 @@
 /**
  * SearchBar Component - Professional Version
- * Main search input for Nova Browser home page
+ * Main search input for Lumo Browser home page
  */
 
 import React, { useState } from 'react';

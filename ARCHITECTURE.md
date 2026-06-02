@@ -1,8 +1,8 @@
-# Nova Browser Architecture
+# Lumo Browser Architecture
 
 ## Vision
 
-Nova Browser is a production-ready, AI-native browser that transforms natural language goals into browser automation workflows. Built on Chromium and Electron, it combines traditional browser functionality with AI-powered agent systems for intelligent task completion.
+Lumo Browser is a production-ready, AI-native browser that transforms natural language goals into browser automation workflows. Built on Chromium and Electron, it combines traditional browser functionality with AI-powered agent systems for intelligent task completion.
 
 ## Core Principles
 
@@ -16,7 +16,7 @@ Nova Browser is a production-ready, AI-native browser that transforms natural la
 ## Project Structure
 
 ```
-nova-browser/
+Lumo-browser/
 ├── src/
 │   ├── core/                 # Core domain logic and shared abstractions
 │   │   ├── types.ts          # Shared types and interfaces

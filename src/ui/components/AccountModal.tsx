@@ -10,7 +10,7 @@ interface AccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   // We keep the old props for compatibility with App.tsx if needed, 
-  // but they are unused since we removed Nova accounts.
+  // but they are unused since we removed Lumo accounts.
   currentUser?: UserAccount | null;
   onLogin?: (u: UserAccount) => void;
   onLogout?: () => void;
@@ -57,7 +57,7 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps): React.Reac
         {/* Content */}
         <div className="p-6 flex flex-col gap-5">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Nova is a local-first browser. You don't need a cloud account.
+            Lumo is a local-first browser. You don't need a cloud account.
             Instead, seamlessly move your data from your previous browser.
           </p>
 

@@ -1,5 +1,5 @@
 /**
- * Logger utility for Nova Browser
+ * Logger utility for Lumo Browser
  * Provides structured logging with levels and formatting
  */
 

@@ -1,7 +1,7 @@
 {
-  "name": "nova-browser",
+  "name": "lumo-browser",
   "version": "0.1.0",
-  "description": "A production-ready AI-native browser built with Chromium and Electron",
+  "description": "Lumo Browser - An AI-native, production-ready browser built with Chromium and Electron",
   "main": "dist/main/main.js",
   "homepage": "./",
   "scripts": {

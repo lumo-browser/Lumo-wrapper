@@ -1,5 +1,5 @@
 /**
- * Electron main process entry point
+ * Lumo Browser - Electron main process entry point
  * Self-contained — no shared imports from renderer code
  */
 
@@ -32,7 +32,7 @@ const adDomains = [
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
-  console.log('[Nova] Creating main window');
+  console.log('[Lumo] Creating main window');
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -66,12 +66,33 @@ function createWindow(): void {
 
   mainWindow.loadURL(url);
 
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('[Lumo] Window content loaded successfully');
+  });
+
+  mainWindow.webContents.on('crashed', () => {
+    console.error('[Lumo] Renderer process crashed');
+  });
+
+  mainWindow.webContents.on('unresponsive', () => {
+    console.error('[Lumo] Renderer process unresponsive');
+  });
+
+  mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
+    console.error('[Lumo] Preload error:', preloadPath, error);
+  });
+
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('[Lumo] Render process gone:', details);
+  });
+
+  // DevTools can be opened manually with Ctrl+Shift+I if needed
+  // if (isDev) {
+  //   mainWindow.webContents.openDevTools();
+  // }
 
   mainWindow.on('closed', () => {
-    console.log('[Nova] Window closed');
+    console.log('[Lumo] Window closed');
     mainWindow = null;
   });
 }
@@ -122,67 +143,66 @@ function createMenu(): void {
 }
 
 app.on('ready', () => {
-  console.log('[Nova] App ready');
+  console.log('[Lumo] App ready');
 
   // Handle ad blocker state changes from the renderer
-  ipcMain.on('nova:set-ad-blocker', (event, enabled) => {
-    console.log(`[Nova] Ad blocker ${enabled ? 'enabled' : 'disabled'}`);
-    isAdBlockerEnabled = enabled;
-  });
+    ipcMain.on('lumo:set-ad-blocker', (event, enabled) => {
+      console.log(`[Lumo] Ad blocker ${enabled ? 'enabled' : 'disabled'}`);
+      isAdBlockerEnabled = enabled;
+    });
 
-  // Handle global theme changes from the renderer
-  ipcMain.on('nova:set-theme', (event, theme: 'dark' | 'light' | 'system') => {
-    console.log(`[Nova] Global theme set to ${theme}`);
-    nativeTheme.themeSource = theme;
+    // Handle global theme changes from the renderer
+    ipcMain.on('lumo:set-theme', (event, theme: 'dark' | 'light' | 'system') => {
+      console.log(`[Lumo] Global theme set to ${theme}`);
   });
 
   // Securely save/load API keys
-  ipcMain.handle('nova:save-key', (event, key: string) => {
-    try {
-      if (!key) return '';
-      if (safeStorage.isEncryptionAvailable()) {
-        const encrypted = safeStorage.encryptString(key);
-        return encrypted.toString('base64');
+    ipcMain.handle('lumo:save-key', (event, key: string) => {
+      try {
+        if (!key) return '';
+        if (safeStorage.isEncryptionAvailable()) {
+          const encrypted = safeStorage.encryptString(key);
+          return encrypted.toString('base64');
+        }
+        return Buffer.from(key).toString('base64'); // Fallback
+      } catch (err) {
+        console.error('[Lumo] Failed to save key securely', err);
+        return '';
       }
-      return Buffer.from(key).toString('base64'); // Fallback
-    } catch (err) {
-      console.error('[Nova] Failed to save key securely', err);
-      return '';
-    }
-  });
+    });
 
-  ipcMain.handle('nova:load-key', (event, base64Key: string) => {
-    try {
-      if (!base64Key) return '';
-      const buffer = Buffer.from(base64Key, 'base64');
-      if (safeStorage.isEncryptionAvailable()) {
-        return safeStorage.decryptString(buffer);
-      }
-      return buffer.toString('utf-8'); // Fallback
-    } catch (err) {
-      console.error('[Nova] Failed to load key', err);
-      return '';
+    ipcMain.handle('lumo:load-key', (event, base64Key: string) => {
+      try {
+        if (!base64Key) return '';
+        const buffer = Buffer.from(base64Key, 'base64');
+        if (safeStorage.isEncryptionAvailable()) {
+          return safeStorage.decryptString(buffer);
+        }
+        return buffer.toString('utf-8'); // Fallback
+      } catch (err) {
+        console.error('[Lumo] Failed to load key', err);
     }
   });
 
   createWindow();
-  createMenu();
+  // Disable native menu bar — Lumo uses custom menu in UI
+  // createMenu();
 });
 
 app.on('window-all-closed', () => {
-  console.log('[Nova] All windows closed');
+  console.log('[Lumo] All windows closed');
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('activate', () => {
-  console.log('[Nova] App activated');
+  console.log('[Lumo] App activated');
   if (mainWindow === null) {
     createWindow();
   }
 });
 
 app.on('before-quit', () => {
-  console.log('[Nova] App quitting');
+  console.log('[Lumo] App quitting');
 });

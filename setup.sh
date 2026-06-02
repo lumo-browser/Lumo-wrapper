@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Development Setup Script for Nova Browser
+# Development Setup Script for Lumo Browser
 
 set -e
 
-echo "🚀 Nova Browser Development Setup"
+echo "🚀 Lumo Browser Development Setup"
 echo "=================================="
 
 # Check Node.js

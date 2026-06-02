@@ -33,7 +33,7 @@ export function SettingsPanel({ onThemeChange }: SettingsPanelProps): React.Reac
 
   useEffect(() => {
     // Load settings from localStorage
-    const saved = localStorage.getItem('nova-browser-settings');
+    const saved = localStorage.getItem('Lumo-browser-settings');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -48,7 +48,7 @@ export function SettingsPanel({ onThemeChange }: SettingsPanelProps): React.Reac
     setSettings((prev) => {
       const updated = { ...prev, [key]: value };
       // Save to localStorage
-      localStorage.setItem('nova-browser-settings', JSON.stringify(updated));
+      localStorage.setItem('Lumo-browser-settings', JSON.stringify(updated));
       setSettingsSaved(true);
       setTimeout(() => setSettingsSaved(false), 2000);
 
@@ -182,7 +182,7 @@ export function SettingsPanel({ onThemeChange }: SettingsPanelProps): React.Reac
         {/* Info */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
           <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-            <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">About Nova Browser</p>
+            <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">About Lumo Browser</p>
             <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
               <li>• Version: 0.1.0</li>
               <li>• Phase: 2 Week 5 (Planning Layer)</li>

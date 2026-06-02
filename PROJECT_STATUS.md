@@ -1,7 +1,7 @@
 
 ╔════════════════════════════════════════════════════════════════════════════════╗
 ║                                                                                ║
-║                       🚀 NOVA AI BROWSER - PROJECT STATUS 🚀                   ║
+║                       🚀 Lumo AI BROWSER - PROJECT STATUS 🚀                   ║
 ║                                                                                ║
 ║         Production-Grade AI-Native Browser Platform - May 30, 2026             ║
 ║                                                                                ║
@@ -12,7 +12,7 @@
 ┃ PROJECT OVERVIEW                                                             ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-NOVA is an AI-first Chromium browser that combines:
+Lumo is an AI-first Chromium browser that combines:
   • Chromium Browsing Engine
   • Multi-Model AI Chat (OpenAI, Claude, Gemini, Perplexity, DeepSeek, Grok)
   • Autonomous AI Agents

@@ -1,6 +1,6 @@
 /**
  * HomePage - Professional Version
- * Search-first home page for Nova Browser
+ * Search-first home page for Lumo Browser
  */
 
 import React from 'react';
@@ -35,7 +35,7 @@ export function HomePage(): React.ReactElement {
         {/* Header */}
         <div className="py-8 sm:py-12 border-b border-gray-200 dark:border-gray-800">
           <div className="space-y-3">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">Nova Browser</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">Lumo Browser</h1>
             <p className="text-gray-600 dark:text-gray-400 text-lg">
               AI-powered autonomous browsing and research
             </p>
@@ -177,9 +177,9 @@ export function HomePage(): React.ReactElement {
           </div>
           <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Nova Browser v0.1.0 • Phase 3 Week 1
+              Lumo Browser v0.1.0 • Phase 3 Week 1
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">© 2026 Nova Inc. All rights reserved.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">© 2026 Lumo Inc. All rights reserved.</p>
           </div>
         </div>
       </div>

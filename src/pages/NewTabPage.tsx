@@ -16,8 +16,12 @@ import {
 
 interface ShortcutItem {
   id: string; label: string; url: string;
-  icon: React.ComponentType<{ className?: string }>; color: string;
+  icon: string; color: string;
 }
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag, Globe,
+};
 
 interface Widget {
   id: string;
@@ -37,12 +41,12 @@ interface DashboardConfig {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_SHORTCUTS: ShortcutItem[] = [
-  { id: 's1', label: 'YouTube',  url: 'https://youtube.com',      icon: Youtube,     color: 'bg-red-500' },
-  { id: 's2', label: 'GitHub',   url: 'https://github.com',       icon: Github,      color: 'bg-gray-800' },
-  { id: 's3', label: 'Trending', url: 'https://trends.google.com',icon: TrendingUp,  color: 'bg-emerald-500' },
-  { id: 's4', label: 'News',     url: 'https://news.google.com',  icon: Newspaper,   color: 'bg-blue-500' },
-  { id: 's5', label: 'Dev.to',   url: 'https://dev.to',           icon: Code2,       color: 'bg-violet-600' },
-  { id: 's6', label: 'Amazon',   url: 'https://amazon.in',        icon: ShoppingBag, color: 'bg-amber-500' },
+  { id: 's1', label: 'YouTube',  url: 'https://youtube.com',      icon: 'Youtube',     color: 'bg-red-500' },
+  { id: 's2', label: 'GitHub',   url: 'https://github.com',       icon: 'Github',      color: 'bg-gray-800' },
+  { id: 's3', label: 'Trending', url: 'https://trends.google.com',icon: 'TrendingUp',  color: 'bg-emerald-500' },
+  { id: 's4', label: 'News',     url: 'https://news.google.com',  icon: 'Newspaper',   color: 'bg-blue-500' },
+  { id: 's5', label: 'Dev.to',   url: 'https://dev.to',           icon: 'Code2',       color: 'bg-violet-600' },
+  { id: 's6', label: 'Amazon',   url: 'https://amazon.in',        icon: 'ShoppingBag', color: 'bg-amber-500' },
 ];
 
 const DEFAULT_CONFIG: DashboardConfig = {
@@ -97,7 +101,7 @@ function useTime() {
 function useConfig() {
   const [config, setConfig] = useState<DashboardConfig>(() => {
     try {
-      const saved = localStorage.getItem('nova-dashboard-config');
+      const saved = localStorage.getItem('Lumo-dashboard-config');
       if (saved) return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
     } catch { /* ignore */ }
     return DEFAULT_CONFIG;
@@ -106,7 +110,7 @@ function useConfig() {
   const updateConfig = useCallback((updates: Partial<DashboardConfig>) => {
     setConfig(prev => {
       const next = { ...prev, ...updates };
-      localStorage.setItem('nova-dashboard-config', JSON.stringify(next));
+      localStorage.setItem('Lumo-dashboard-config', JSON.stringify(next));
       return next;
     });
   }, []);
@@ -178,7 +182,7 @@ function SearchWidget({ onNavigate, accent }: { onNavigate: (url: string) => voi
 function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) {
   const [shortcuts, setShortcuts] = useState<ShortcutItem[]>(() => {
     try {
-      const s = localStorage.getItem('nova-shortcuts');
+      const s = localStorage.getItem('Lumo-shortcuts');
       if (s) return JSON.parse(s);
     } catch { /* ignore */ }
     return DEFAULT_SHORTCUTS;
@@ -188,7 +192,7 @@ function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) 
   const [newUrl, setNewUrl] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('nova-shortcuts', JSON.stringify(shortcuts));
+    localStorage.setItem('Lumo-shortcuts', JSON.stringify(shortcuts));
   }, [shortcuts]);
 
   const remove = (id: string) => setShortcuts(prev => prev.filter(s => s.id !== id));
@@ -198,7 +202,7 @@ function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) 
     if (!newLabel.trim() || !newUrl.trim()) return;
     let url = newUrl.trim();
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    setShortcuts(prev => [...prev, { id: `s-${Date.now()}`, label: newLabel.trim(), url, icon: Globe, color: 'bg-blue-600' }]);
+    setShortcuts(prev => [...prev, { id: `s-${Date.now()}`, label: newLabel.trim(), url, icon: 'Globe', color: 'bg-blue-600' }]);
     setIsAdding(false); setNewLabel(''); setNewUrl('');
   };
 
@@ -206,7 +210,7 @@ function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) 
     <div className="w-full max-w-2xl mx-auto">
       <div className="flex flex-wrap justify-center gap-4">
         {shortcuts.map(s => {
-          const Icon = (typeof s.icon === 'string' || !s.icon) ? Globe : s.icon;
+          const Icon = ICON_MAP[s.icon] || Globe;
           return (
             <div key={s.id} className="group relative flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => onNavigate(s.url)}>
               <button onClick={e => { e.stopPropagation(); remove(s.id); }}
@@ -252,8 +256,8 @@ function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) 
 }
 
 function NotesWidget() {
-  const [notes, setNotes] = useState(() => localStorage.getItem('nova-quick-notes') || '');
-  useEffect(() => { localStorage.setItem('nova-quick-notes', notes); }, [notes]);
+  const [notes, setNotes] = useState(() => localStorage.getItem('Lumo-quick-notes') || '');
+  useEffect(() => { localStorage.setItem('Lumo-quick-notes', notes); }, [notes]);
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="flex items-center gap-2 mb-2">
@@ -341,7 +345,7 @@ export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement 
       </div>
 
       {/* Bottom brand */}
-      <div className="absolute bottom-4 text-xs text-white/20 font-medium tracking-widest uppercase">Nova</div>
+      <div className="absolute bottom-4 text-xs text-white/20 font-medium tracking-widest uppercase">Lumo</div>
 
 
     </div>
