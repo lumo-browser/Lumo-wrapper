@@ -1,6 +1,6 @@
-# Nova Browser Backend API
+# Lumo Browser Backend API
 
-Professional-grade REST API backend for Nova Browser, built with Express.js and SQLite.
+Professional-grade REST API backend for Lumo Browser, built with Express.js and SQLite.
 
 ## Overview
 
