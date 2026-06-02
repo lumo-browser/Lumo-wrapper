@@ -1,6 +1,6 @@
 /**
  * Base Agent Framework
- * Abstract base class for all AI agents in Nova Browser
+ * Abstract base class for all AI agents in Lumo Browser
  * Provides common interface for agent lifecycle, execution, and communication
  */
 
