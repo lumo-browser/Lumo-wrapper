@@ -36,6 +36,8 @@ interface DashboardConfig {
   accentColor: string;
   showGreeting: boolean;
   clockFormat: '12' | '24';
+  showDate?: boolean;
+  customBgImage?: string;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -61,6 +63,8 @@ const DEFAULT_CONFIG: DashboardConfig = {
   accentColor: '#3b82f6',
   showGreeting: true,
   clockFormat: '24',
+  showDate: true,
+  customBgImage: '',
 };
 
 const BACKGROUNDS = [
@@ -120,7 +124,7 @@ function useConfig() {
 
 // ── Widget Components ─────────────────────────────────────────────────────────
 
-function ClockWidget({ format, accent }: { format: '12'|'24'; accent: string }) {
+function ClockWidget({ format, accent, showDate, showGreeting }: { format: '12'|'24'; accent: string; showDate?: boolean; showGreeting?: boolean }) {
   const time = useTime();
   const h = format === '12'
     ? time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
@@ -135,8 +139,8 @@ function ClockWidget({ format, accent }: { format: '12'|'24'; accent: string }) 
       <div className="text-7xl font-thin tracking-tight text-white tabular-nums drop-shadow-lg" style={{ textShadow: `0 0 40px ${accent}60` }}>
         {h}
       </div>
-      <div className="text-white/60 text-sm mt-2 font-medium">{date}</div>
-      <div className="text-white/80 text-lg font-light mt-1">{greeting}</div>
+      {showDate !== false && <div className="text-white/60 text-sm mt-2 font-medium">{date}</div>}
+      {showGreeting !== false && <div className="text-white/80 text-lg font-light mt-1">{greeting}</div>}
     </div>
   );
 }
@@ -171,9 +175,12 @@ function SearchWidget({ onNavigate, accent }: { onNavigate: (url: string) => voi
           placeholder="Search or enter a URL..."
           className="w-full pl-11 pr-4 py-4 rounded-2xl text-sm text-white placeholder-white/40
             bg-white/10 backdrop-blur-xl border border-white/20 hover:border-white/40
-            focus:border-white/60 focus:bg-white/15 outline-none transition-all duration-200 shadow-lg"
+            focus:bg-white/15 outline-none transition-all duration-200 shadow-lg"
           style={{ caretColor: accent }}
         />
+        <style>{`
+          input:focus { border-color: ${accent} !important; box-shadow: 0 0 0 1px ${accent} !important; }
+        `}</style>
       </div>
     </form>
   );
@@ -238,15 +245,21 @@ function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) 
             <h3 className="text-sm font-bold text-white mb-4">Add Shortcut</h3>
             <input autoFocus type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
               placeholder="Label (e.g. Reddit)" required
-              className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white mb-3 focus:outline-none focus:border-blue-500" />
+              className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white mb-3 focus:outline-none"
+              style={{ '--tw-ring-color': 'var(--accent-color)', focusRing: '2px solid var(--accent-color)' } as any} />
             <input type="text" value={newUrl} onChange={e => setNewUrl(e.target.value)}
               placeholder="URL (e.g. reddit.com)" required
-              className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white mb-5 focus:outline-none focus:border-blue-500" />
+              className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white mb-5 focus:outline-none"
+              style={{ '--tw-ring-color': 'var(--accent-color)' } as any} />
+            <style>{`
+              form input:focus { border-color: var(--accent-color) !important; box-shadow: 0 0 0 1px var(--accent-color) !important; }
+            `}</style>
             <div className="flex gap-2">
               <button type="button" onClick={() => setIsAdding(false)}
                 className="flex-1 py-2 text-xs rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">Cancel</button>
               <button type="submit" disabled={!newLabel.trim() || !newUrl.trim()}
-                className="flex-1 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">Add</button>
+                className="flex-1 py-2 text-xs rounded-lg text-white disabled:opacity-50 transition-colors hover:brightness-110"
+                style={{ backgroundColor: 'var(--accent-color)' }}>Add</button>
             </div>
           </form>
         </div>
@@ -314,7 +327,10 @@ export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement 
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto py-12 px-4"
-      style={{ background: bg.style }}>
+      style={{
+        background: config.customBgImage ? `url(${config.customBgImage}) center/cover no-repeat` : bg.style,
+        ['--accent-color' as any]: config.accentColor
+      }}>
 
       {/* Noise overlay for depth */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
@@ -325,7 +341,7 @@ export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement 
       <div className="flex flex-col items-center gap-10 w-full max-w-2xl">
         {enabledWidgets.map(w => (
           <div key={w.id} className="w-full flex justify-center animate-fade-in">
-            {w.type === 'clock'     && <ClockWidget format={config.clockFormat} accent={config.accentColor} />}
+            {w.type === 'clock'     && <ClockWidget format={config.clockFormat} accent={config.accentColor} showDate={config.showDate} showGreeting={config.showGreeting} />}
             {w.type === 'search'    && <SearchWidget onNavigate={onNavigate} accent={config.accentColor} />}
             {w.type === 'shortcuts' && <ShortcutsWidget onNavigate={onNavigate} />}
             {w.type === 'notes'     && <NotesWidget />}
