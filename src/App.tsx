@@ -194,11 +194,8 @@ export default function App(): React.ReactElement {
     return () => window.removeEventListener('lumo:settings-changed', handler);
   }, []);
 
-  // Resizable AI sidebar — persists width across sessions
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    const saved = parseInt(localStorage.getItem('lumo-sidebar-width') || '420', 10);
-    return isNaN(saved) ? 420 : Math.min(Math.max(saved, 280), 800);
-  });
+  // Resizable sidebar
+  const [sidebarWidth, setSidebarWidth] = useState(420);
   const isResizing = useRef(false);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(420);
@@ -213,11 +210,9 @@ export default function App(): React.ReactElement {
 
     const onMouseMove = (ev: MouseEvent) => {
       if (!isResizing.current) return;
-      // Dragging LEFT increases width (panel is on the right side)
       const delta = resizeStartX.current - ev.clientX;
-      const newWidth = Math.min(Math.max(resizeStartWidth.current + delta, 280), 800);
+      const newWidth = Math.min(Math.max(resizeStartWidth.current + delta, 280), 640);
       setSidebarWidth(newWidth);
-      localStorage.setItem('lumo-sidebar-width', String(newWidth));
     };
 
     const onMouseUp = () => {
@@ -680,10 +675,11 @@ export default function App(): React.ReactElement {
         )}
       </div>
 
-      {/* ── Content area: vertical sidebar + main content + AI sidebar ── */}
-      <div className={`flex flex-1 overflow-hidden relative ${isVertical ? 'flex-row' : 'flex-col'}`}>
+      {/* ── Content area: always flex-row ── */}
+      {/*   [vertical-tabs?] | [page content] | [AI/Agent sidebar on RIGHT] */}
+      <div className="flex flex-row flex-1 overflow-hidden">
 
-        {/* Vertical tab sidebar (shown only in vertical mode) */}
+        {/* Vertical tab sidebar (left, only in vertical layout mode) */}
         {isVertical && (
           <BrowserTabBar
             tabs={tabs}
@@ -694,8 +690,8 @@ export default function App(): React.ReactElement {
           />
         )}
 
-        {/* Page content (WebViews) */}
-        <div className="flex-1 overflow-hidden bg-white dark:bg-[#1e1e1e] relative">
+        {/* ── Page content — fills remaining space ── */}
+        <div className="flex-1 overflow-hidden bg-white dark:bg-[#1e1e1e] relative min-w-0">
           {tabs.map((tab) => {
             const isNtp = !tab.url || tab.url === 'lumo://newtab';
             const isSettings = tab.url === 'lumo://settings';
@@ -752,14 +748,13 @@ export default function App(): React.ReactElement {
                       <span className="text-2xl font-bold text-white">L</span>
                     </div>
                     <h1 className="text-2xl font-bold mb-1">Lumo Browser</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Version 0.1.0</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Version 0.2.0</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 text-center max-w-sm">
                       An AI-native, privacy-first browser built with Chromium and Electron.<br/>
                       No cloud accounts. No API keys. Your data stays local.
                     </p>
                   </div>
                 )}
-                
                 {!isInternal && (
                   <WebviewTab
                     key={tab.id}
@@ -783,49 +778,49 @@ export default function App(): React.ReactElement {
             );
           })}
         </div>
-        {/* ── AI / Agent panel — right-aligned, resizable ── */}
-        {(showAI || showAgent) && (
+
+        {/* ── AI Sidebar — RIGHT side, resizable ── */}
+        {showAI && (
           <div
-            style={{ width: sidebarWidth }}
-            className="flex flex-shrink-0 h-full relative z-50"
+            style={{ width: sidebarWidth, minWidth: 280, maxWidth: 640 }}
+            className="flex flex-shrink-0 h-full border-l border-gray-200 dark:border-[#333] bg-white dark:bg-[#1e1e1e]"
           >
-            {/* Drag handle — left edge of the panel */}
+            {/* Drag handle on the LEFT edge of the sidebar */}
             <div
               onMouseDown={handleResizeMouseDown}
-              className="w-3 h-full cursor-col-resize flex-shrink-0 flex items-center justify-center group relative select-none"
+              className="w-1.5 h-full cursor-col-resize hover:bg-blue-500/50 active:bg-blue-600/70 transition-colors flex-shrink-0"
               title="Drag to resize"
-            >
-              {/* Track */}
-              <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-gray-200 dark:bg-[#2e2e2e] group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-colors" />
-              {/* Grip dots */}
-              <div className="relative z-10 flex flex-col gap-[3px] opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                {[0,1,2,3,4].map(i => (
-                  <div key={i} className="w-[3px] h-[3px] rounded-full bg-blue-500 dark:bg-blue-400" />
-                ))}
-              </div>
-            </div>
-
-            {/* Panel body */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-[#1a1a1a] border-l border-gray-200 dark:border-[#2e2e2e] shadow-[-6px_0_30px_rgba(0,0,0,0.07)] dark:shadow-[-6px_0_30px_rgba(0,0,0,0.5)]">
-              {showAI && (
-                <AISidebar
-                  isOpen={showAI}
-                  onClose={() => setShowAI(false)}
-                  currentUrl={currentUrl}
-                  pageTitle={activeTab?.title ?? ''}
-                  width={sidebarWidth - 12}
-                />
-              )}
-              {showAgent && (
-                <AgentSidebar
-                  onClose={() => setShowAgent(false)}
-                  activeTab={activeTab}
-                  openRouterApiKey={settings.openRouterApiKey}
-                />
-              )}
-            </div>
+            />
+            <AISidebar
+              isOpen={showAI}
+              onClose={() => setShowAI(false)}
+              currentUrl={currentUrl}
+              pageTitle={activeTab?.title ?? ''}
+              width={sidebarWidth - 6}
+            />
           </div>
         )}
+
+        {/* ── Agent Sidebar — RIGHT side, resizable ── */}
+        {showAgent && (
+          <div
+            style={{ width: sidebarWidth, minWidth: 280, maxWidth: 640 }}
+            className="flex flex-shrink-0 h-full border-l border-gray-200 dark:border-[#333] bg-white dark:bg-[#1e1e1e]"
+          >
+            {/* Drag handle on the LEFT edge of the sidebar */}
+            <div
+              onMouseDown={handleResizeMouseDown}
+              className="w-1.5 h-full cursor-col-resize hover:bg-purple-500/50 active:bg-purple-600/70 transition-colors flex-shrink-0"
+              title="Drag to resize"
+            />
+            <AgentSidebar
+              onClose={() => setShowAgent(false)}
+              activeTab={activeTab}
+              openRouterApiKey={settings.openRouterApiKey}
+            />
+          </div>
+        )}
+
       </div>
 
 
