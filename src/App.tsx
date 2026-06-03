@@ -78,12 +78,123 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
     wv.addEventListener('did-navigate',      onNavigated);
     wv.addEventListener('did-navigate-in-page', onNavigated);
 
+    const onDomReady = () => {
+      // Inject Picture-in-Picture overlay for all videos
+      const pipScript = `
+        (function() {
+          if (window._lumoPipSetup) return;
+          window._lumoPipSetup = true;
+
+          function createPipButton(video) {
+            if (video.parentElement && video.parentElement.querySelector('.lumo-pip-btn')) return;
+            
+            const btn = document.createElement('button');
+            btn.className = 'lumo-pip-btn';
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="12" y="12" width="8" height="6" rx="1" ry="1"/></svg>';
+            btn.title = "Picture-in-Picture";
+            
+            Object.assign(btn.style, {
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              zIndex: '2147483647',
+              background: 'rgba(28, 28, 30, 0.75)',
+              color: 'white',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+              padding: '6px',
+              cursor: 'pointer',
+              opacity: '0',
+              backdropFilter: 'blur(8px)',
+              transition: 'opacity 0.2s ease, transform 0.1s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            });
+
+            btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
+            btn.onmouseout = () => btn.style.transform = 'scale(1)';
+
+            btn.onclick = async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              try {
+                if (document.pictureInPictureElement) {
+                  await document.exitPictureInPicture();
+                } else {
+                  await video.requestPictureInPicture();
+                }
+              } catch (err) {
+                console.error('Lumo PiP failed:', err);
+              }
+            };
+
+            // Needs wrapper to position correctly
+            if (video.parentElement) {
+              const style = window.getComputedStyle(video.parentElement);
+              if (style.position === 'static') {
+                video.parentElement.style.position = 'relative';
+              }
+            }
+
+            // Show on hover of video or button
+            let hoverTimeout;
+            const show = () => {
+              clearTimeout(hoverTimeout);
+              btn.style.opacity = '1';
+            };
+            const hide = () => {
+              hoverTimeout = setTimeout(() => btn.style.opacity = '0', 800);
+            };
+            
+            video.addEventListener('mousemove', show);
+            video.addEventListener('mouseleave', hide);
+            btn.addEventListener('mouseenter', show);
+            btn.addEventListener('mouseleave', hide);
+
+            // Important: handle fullscreen changes because PiP btn shouldn't mess up native fullscreen
+            document.addEventListener('fullscreenchange', () => {
+              if (document.fullscreenElement) {
+                btn.style.display = 'none';
+              } else {
+                btn.style.display = 'flex';
+              }
+            });
+
+            video.parentElement?.appendChild(btn);
+          }
+
+          const processVideos = () => {
+            document.querySelectorAll('video').forEach(v => {
+              // Ignore tiny hidden videos used for tracking/audio
+              if (!v._pipProcessed && v.offsetWidth > 150) {
+                v._pipProcessed = true;
+                createPipButton(v);
+              }
+            });
+          };
+
+          const observer = new MutationObserver(() => processVideos());
+          if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+
+          // Process initial
+          setInterval(processVideos, 2000);
+          processVideos();
+        })();
+      `;
+      wv.executeJavaScript(pipScript).catch(() => {});
+    };
+
+    wv.addEventListener('dom-ready', onDomReady);
+
     return () => {
       wv.removeEventListener('did-start-loading', onStartLoad);
       wv.removeEventListener('did-stop-loading',  onStopLoad);
       wv.removeEventListener('page-title-updated', onTitleUpd);
       wv.removeEventListener('did-navigate',      onNavigated);
       wv.removeEventListener('did-navigate-in-page', onNavigated);
+      wv.removeEventListener('dom-ready',         onDomReady);
     };
   }, []);
 
