@@ -1,6 +1,6 @@
 {
-  "appId": "com.novabrowser.app",
-  "productName": "Nova Browser",
+  "appId": "com.lumobrowser.app",
+  "productName": "Lumo Browser",
   "directories": {
     "buildResources": "assets",
     "output": "out"

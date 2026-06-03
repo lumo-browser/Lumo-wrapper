@@ -140,7 +140,7 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
       {/* ── Enhanced Tracking Protection ── */}
       <Section title="Enhanced Tracking Protection" icon={<Shield className="w-4 h-4" />}>
         <p className="px-4 pt-3 pb-2 text-[11px] text-gray-400 dark:text-gray-500 leading-relaxed">
-          Trackers follow you around online to collect information about your browsing habits. Nova blocks many of these trackers and other malicious scripts.
+          Trackers follow you around online to collect information about your browsing habits. Lumo blocks many of these trackers and other malicious scripts.
         </p>
 
         {/* Level cards */}
@@ -166,7 +166,7 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
 
         {/* What's blocked info */}
         <div className="px-4 pb-3">
-          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-2">Nova blocks the following:</p>
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-2">Lumo blocks the following:</p>
           <div className="flex flex-wrap gap-2">
             {['Social media trackers','Cross-site cookies','Tracking in Private Windows','Cryptominers','Fingerprinters'].map(item => (
               <span key={item} className="text-[10px] px-2 py-1 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 rounded-full border border-green-100 dark:border-green-900/20">
@@ -207,7 +207,7 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
 
       {/* ── Cookies & Site Data ── */}
       <Section title="Cookies & Site Data" icon={<Cookie className="w-4 h-4" />}>
-        <Row label="Delete cookies and site data when Nova is closed">
+        <Row label="Delete cookies and site data when Lumo is closed">
           <Toggle enabled={deleteCookiesOnClose} onChange={v => { setDeleteCookiesOnClose(v); onUpdateSettings({ clearOnExit: v }); }} />
         </Row>
         <div className="px-4 py-3.5">
@@ -235,7 +235,7 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
         <Row label="Show alerts about passwords for breached websites" description="Notifies you if your saved passwords appear in known data breaches">
           <Toggle enabled={breachAlerts} onChange={setBreachAlerts} />
         </Row>
-        <Row label="Use a Primary Password" description="Require a password before Nova fills in saved credentials">
+        <Row label="Use a Primary Password" description="Require a password before Lumo fills in saved credentials">
           <Toggle enabled={primaryPassword} onChange={setPrimaryPassword} />
         </Row>
       </Section>
@@ -243,7 +243,7 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
       {/* ── History ── */}
       <Section title="History" icon={<Clock className="w-4 h-4" />}>
         <div className="px-4 py-3">
-          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Nova will:</p>
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Lumo will:</p>
           {([
             ['remember', 'Remember browsing, download, form, and search history'],
             ['never',    'Never remember history'],
@@ -280,7 +280,7 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
         <Row label="Warn about unwanted and uncommon software">
           <Toggle enabled={warnUnwanted} onChange={setWarnUnwanted} />
         </Row>
-        <Row label="HTTPS-Only Mode" description="Only allows secure connections. Nova will ask before connecting insecurely.">
+        <Row label="HTTPS-Only Mode" description="Only allows secure connections. Lumo will ask before connecting insecurely.">
           <Toggle enabled={httpsOnly} onChange={setHttpsOnly} />
         </Row>
       </Section>
@@ -293,9 +293,9 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
         <div className="px-4 py-3">
           {([
             ['off',       'Off',                'Use your default system DNS resolver'],
-            ['default',   'Default Protection',  'Nova decides when to use secure DNS to protect your privacy'],
+            ['default',   'Default Protection',  'Lumo decides when to use secure DNS to protect your privacy'],
             ['increased', 'Increased Protection','You control when to use secure DNS and choose your provider'],
-            ['max',       'Max Protection',      'Nova will always use secure DNS'],
+            ['max',       'Max Protection',      'Lumo will always use secure DNS'],
           ] as const).map(([val, lbl, desc]) => (
             <label key={val} className="flex items-start gap-2.5 py-2 cursor-pointer">
               <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${dnsMode === val ? 'border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
@@ -327,9 +327,9 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
       {/* ── Data Collection ── */}
       <Section title="Data Collection and Use" icon={<Database className="w-4 h-4" />}>
         <p className="px-4 pt-3 pb-1 text-[11px] text-gray-400 dark:text-gray-500">
-          We collect only the minimal data necessary to improve Nova for everyone.
+          We collect only the minimal data necessary to improve Lumo for everyone.
         </p>
-        <Row label="Send technical and interaction data" description="Helps improve Nova features, performance, and stability">
+        <Row label="Send technical and interaction data" description="Helps improve Lumo features, performance, and stability">
           <Toggle enabled={sendTelemetry} onChange={setSendTelemetry} />
         </Row>
         <Row label="Automatically send crash reports" description="Helps diagnose and fix issues. Reports may include personal data.">

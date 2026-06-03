@@ -1,4 +1,4 @@
-# Nova Browser
+# Lumo Browser
 
 > **An AI-native, production-ready browser built on Chromium and Electron**  
 > Full-featured browsing + autonomous AI agent + production-grade privacy engine
@@ -33,7 +33,7 @@
 
 ## 🎯 Overview
 
-Nova Browser combines a full-featured Chromium browser with a modular AI autonomous agent and a production-grade privacy engine. Users can browse normally or hand control to the AI agent to automate multi-step tasks across the web.
+Lumo Browser combines a full-featured Chromium browser with a modular AI autonomous agent and a production-grade privacy engine. Users can browse normally or hand control to the AI agent to automate multi-step tasks across the web.
 
 ### Vision
 
@@ -74,7 +74,7 @@ Nova Browser combines a full-featured Chromium browser with a modular AI autonom
 - ✅ **Quick Notes** — persistent scratchpad stored in localStorage
 
 ### Settings System
-Nova has a fully modular settings architecture organized into a sidebar layout:
+Lumo has a fully modular settings architecture organized into a sidebar layout:
 
 | Tab | Contents |
 |-----|----------|
@@ -485,6 +485,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-**Made with 💡 by the Nova Team**
+**Made with 💡 by the Lumo Team**
 
 [⬆ Back to top](#nova-browser)

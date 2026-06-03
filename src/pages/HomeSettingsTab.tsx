@@ -1,5 +1,5 @@
 /**
- * HomeSettingsTab — Controls the Nova New Tab Page (dashboard) configuration.
+ * HomeSettingsTab — Controls the Lumo New Tab Page (dashboard) configuration.
  * Reads/writes the same 'Lumo-dashboard-config' key that NewTabPage.tsx uses,
  * so changes take effect immediately on the next new tab.
  */
@@ -165,7 +165,7 @@ export function HomeSettingsTab() {
         <div className="px-4 py-3">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">When opening a new tab or window, show:</p>
           {([
-            ['newtab',   'Nova Home (New Tab page)'],
+            ['newtab',   'Lumo Home (New Tab page)'],
             ['homepage', 'Homepage URL'],
             ['previous', 'Previous windows and tabs'],
           ] as const).map(([val, lbl]) => (
@@ -310,7 +310,7 @@ export function HomeSettingsTab() {
 
       {/* ── Home Screen Content ── */}
       <Section title="Home Screen Content" icon={<LayoutGrid className="w-4 h-4" />}>
-        <p className="px-4 pt-3 pb-1 text-[11px] text-gray-400 dark:text-gray-500">Choose which widgets appear on your Nova Home screen.</p>
+        <p className="px-4 pt-3 pb-1 text-[11px] text-gray-400 dark:text-gray-500">Choose which widgets appear on your Lumo Home screen.</p>
         {(Object.entries(WIDGET_INFO) as [WidgetType, typeof WIDGET_INFO[WidgetType]][]).map(([type, info]) => (
           <Row key={type} label={info.label} description={info.desc}>
             <Toggle

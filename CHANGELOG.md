@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Nova Browser are documented here.  
+All notable changes to Lumo Browser are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
@@ -64,7 +64,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.1.0] — 2026-05-01
 
 ### Added
-- Initial release of Nova Browser (formerly Lumo Browser)
+- Initial release of Lumo Browser (formerly Lumo Browser)
 - Multi-tab Chromium browser core using Electron `<webview>` tags
 - Smart address bar with URL/search/`nova://` handling
 - Navigation controls: back, forward, reload, stop
