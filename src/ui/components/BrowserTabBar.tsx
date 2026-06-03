@@ -1,5 +1,5 @@
 /**
- * BrowserTabBar — Pixel-accurate Chrome/Edge-style tab strip
+ * BrowserTabBar — Supports both horizontal (top) and vertical (left sidebar) layouts
  */
 
 import React from 'react';
@@ -21,6 +21,7 @@ interface BrowserTabBarProps {
   onTabSelect: (id: string) => void;
   onTabClose: (id: string) => void;
   onTabAdd: () => void;
+  vertical?: boolean;
 }
 
 export function BrowserTabBar({
@@ -28,7 +29,79 @@ export function BrowserTabBar({
   onTabSelect,
   onTabClose,
   onTabAdd,
+  vertical = false,
 }: BrowserTabBarProps): React.ReactElement {
+
+  // ── Vertical layout ────────────────────────────────────────────────────────
+  if (vertical) {
+    return (
+      <div className="flex flex-col w-52 h-full bg-[#f0f2f5] dark:bg-[#1a1a1a] border-r border-gray-200 dark:border-[#2a2a2a] overflow-y-auto overflow-x-hidden select-none flex-shrink-0 scrollbar-thin">
+        {/* Tab list */}
+        <div className="flex flex-col gap-0.5 p-2 flex-1">
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              onClick={() => onTabSelect(tab.id)}
+              role="tab"
+              aria-selected={tab.isActive}
+              className={`
+                group relative flex items-center gap-2 h-9 px-2.5 rounded-lg cursor-pointer select-none transition-colors duration-100
+                ${tab.isActive
+                  ? 'bg-white dark:bg-[#2d2d2d] text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-white/60 dark:hover:bg-[#2a2a2a]'
+                }
+              `}
+            >
+              {/* Favicon / Spinner */}
+              <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+                {tab.isLoading ? (
+                  <div className="w-3.5 h-3.5 border-[1.5px] border-current border-t-transparent rounded-full animate-spin opacity-60" />
+                ) : tab.favicon ? (
+                  <img src={tab.favicon} alt="" className="w-4 h-4 rounded-sm" />
+                ) : (
+                  <Globe className="w-3.5 h-3.5 opacity-50" />
+                )}
+              </div>
+
+              {/* Title */}
+              <span className="flex-1 text-xs font-medium truncate leading-none">
+                {tab.title || 'New Tab'}
+              </span>
+
+              {/* Close button */}
+              <button
+                onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
+                className={`
+                  flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center transition-all duration-100
+                  hover:bg-gray-300/80 dark:hover:bg-gray-600/80
+                  ${tab.isActive ? 'opacity-50 hover:opacity-100' : 'opacity-0 group-hover:opacity-50 hover:!opacity-100'}
+                `}
+                aria-label="Close tab"
+              >
+                <X className="w-[11px] h-[11px]" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* New Tab Button */}
+        <div className="p-2 border-t border-gray-200 dark:border-[#2a2a2a]">
+          <button
+            onClick={onTabAdd}
+            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs text-gray-500 dark:text-gray-400
+              hover:bg-white/70 dark:hover:bg-[#2a2a2a] transition-colors duration-100"
+            title="New tab (Ctrl+T)"
+            aria-label="New tab"
+          >
+            <Plus className="w-4 h-4" />
+            New tab
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Horizontal layout (default) ────────────────────────────────────────────
   return (
     <div className="flex items-end h-10 bg-[#dee1e6] dark:bg-[#1e1e1e] px-2 overflow-x-auto scrollbar-none select-none flex-shrink-0">
       <div className="flex items-end h-full gap-px">
@@ -74,10 +147,7 @@ export function BrowserTabBar({
 
               {/* Close button */}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTabClose(tab.id);
-                }}
+                onClick={(e) => { e.stopPropagation(); onTabClose(tab.id); }}
                 className={`
                   flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center
                   transition-all duration-100
