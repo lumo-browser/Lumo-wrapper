@@ -136,11 +136,11 @@ function ClockWidget({ format, accent, showDate, showGreeting }: { format: '12'|
 
   return (
     <div className="text-center mb-2">
-      <div className="text-7xl font-thin tracking-tight text-white tabular-nums drop-shadow-lg" style={{ textShadow: `0 0 40px ${accent}60` }}>
+      <div className="text-8xl md:text-[7.5rem] font-thin tracking-tight text-white tabular-nums drop-shadow-lg" style={{ textShadow: `0 0 40px ${accent}60` }}>
         {h}
       </div>
-      {showDate !== false && <div className="text-white/60 text-sm mt-2 font-medium">{date}</div>}
-      {showGreeting !== false && <div className="text-white/80 text-lg font-light mt-1">{greeting}</div>}
+      {showDate !== false && <div className="text-white/60 text-base mt-2 font-medium">{date}</div>}
+      {showGreeting !== false && <div className="text-white/80 text-xl font-light mt-1">{greeting}</div>}
     </div>
   );
 }
@@ -164,16 +164,16 @@ function SearchWidget({ onNavigate, accent }: { onNavigate: (url: string) => voi
   };
 
   return (
-    <form onSubmit={handleSearch} className="w-full max-w-2xl mx-auto">
+    <form onSubmit={handleSearch} className="w-full max-w-3xl mx-auto">
       <div className="relative flex items-center">
-        <Search className="absolute left-4 w-4 h-4 text-white/50 pointer-events-none" />
+        <Search className="absolute left-5 w-5 h-5 text-white/50 pointer-events-none" />
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search or enter a URL..."
-          className="w-full pl-11 pr-4 py-4 rounded-2xl text-sm text-white placeholder-white/40
+          className="w-full pl-14 pr-6 py-5 rounded-3xl text-base text-white placeholder-white/40
             bg-white/10 backdrop-blur-xl border border-white/20 hover:border-white/40
             focus:bg-white/15 outline-none transition-all duration-200 shadow-lg"
           style={{ caretColor: accent }}
@@ -214,28 +214,28 @@ function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) 
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="flex flex-wrap justify-center gap-4">
+    <div className="w-full max-w-3xl mx-auto">
+      <div className="flex flex-wrap justify-center gap-8">
         {shortcuts.map(s => {
           const Icon = ICON_MAP[s.icon] || Globe;
           return (
-            <div key={s.id} className="group relative flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => onNavigate(s.url)}>
+            <div key={s.id} className="group relative flex flex-col items-center gap-2 cursor-pointer" onClick={() => onNavigate(s.url)}>
               <button onClick={e => { e.stopPropagation(); remove(s.id); }}
-                className="absolute -top-1 -right-1 z-10 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <X className="w-2.5 h-2.5" />
+                className="absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <X className="w-3.5 h-3.5" />
               </button>
-              <div className={`w-12 h-12 rounded-2xl ${s.color} flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-150`}>
-                <Icon className="w-6 h-6 text-white" />
+              <div className={`w-16 h-16 rounded-3xl ${s.color} flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-150`}>
+                <Icon className="w-7 h-7 text-white" />
               </div>
-              <span className="text-xs text-white/70 font-medium max-w-[60px] truncate">{s.label}</span>
+              <span className="text-sm text-white/80 font-medium max-w-[72px] truncate">{s.label}</span>
             </div>
           );
         })}
-        <button onClick={() => setIsAdding(true)} className="flex flex-col items-center gap-1.5 group">
-          <div className="w-12 h-12 rounded-2xl border-2 border-dashed border-white/30 flex items-center justify-center hover:border-white/60 hover:bg-white/10 transition-all">
-            <Plus className="w-5 h-5 text-white/50 group-hover:text-white/80" />
+        <button onClick={() => setIsAdding(true)} className="flex flex-col items-center gap-2 group">
+          <div className="w-16 h-16 rounded-3xl border-2 border-dashed border-white/30 flex items-center justify-center hover:border-white/60 hover:bg-white/10 transition-all">
+            <Plus className="w-6 h-6 text-white/50 group-hover:text-white/80" />
           </div>
-          <span className="text-xs text-white/40 group-hover:text-white/60">Add</span>
+          <span className="text-sm text-white/40 group-hover:text-white/60">Add</span>
         </button>
       </div>
 
