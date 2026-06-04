@@ -85,102 +85,120 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
           if (window._lumoPipSetup) return;
           window._lumoPipSetup = true;
 
-          function createPipButton(video) {
-            if (video.parentElement && video.parentElement.querySelector('.lumo-pip-btn')) return;
-            
-            const btn = document.createElement('button');
-            btn.className = 'lumo-pip-btn';
-            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="12" y="12" width="8" height="6" rx="1" ry="1"/></svg>';
-            btn.title = "Picture-in-Picture";
-            
-            Object.assign(btn.style, {
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              zIndex: '2147483647',
-              background: 'rgba(28, 28, 30, 0.75)',
-              color: 'white',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              padding: '6px',
-              cursor: 'pointer',
-              opacity: '0',
-              backdropFilter: 'blur(8px)',
-              transition: 'opacity 0.2s ease, transform 0.1s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-            });
+          const btn = document.createElement('button');
+          btn.className = 'lumo-pip-btn';
+          btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="12" y="12" width="8" height="6" rx="1" ry="1"/></svg>';
+          btn.title = "Picture-in-Picture";
+          
+          Object.assign(btn.style, {
+            position: 'fixed',
+            zIndex: '2147483647', // Max z-index
+            background: 'rgba(28, 28, 30, 0.75)',
+            color: 'white',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '8px',
+            padding: '6px',
+            cursor: 'pointer',
+            opacity: '0',
+            backdropFilter: 'blur(8px)',
+            transition: 'opacity 0.2s ease, transform 0.1s ease',
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+          });
 
-            btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
-            btn.onmouseout = () => btn.style.transform = 'scale(1)';
+          btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
+          btn.onmouseout = () => btn.style.transform = 'scale(1)';
 
-            btn.onclick = async (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              try {
-                if (document.pictureInPictureElement) {
-                  await document.exitPictureInPicture();
-                } else {
-                  await video.requestPictureInPicture();
-                }
-              } catch (err) {
-                console.error('Lumo PiP failed:', err);
-              }
-            };
+          let currentTargetVideo = null;
 
-            // Needs wrapper to position correctly
-            if (video.parentElement) {
-              const style = window.getComputedStyle(video.parentElement);
-              if (style.position === 'static') {
-                video.parentElement.style.position = 'relative';
-              }
-            }
-
-            // Show on hover of video or button
-            let hoverTimeout;
-            const show = () => {
-              clearTimeout(hoverTimeout);
-              btn.style.opacity = '1';
-            };
-            const hide = () => {
-              hoverTimeout = setTimeout(() => btn.style.opacity = '0', 800);
-            };
-            
-            video.addEventListener('mousemove', show);
-            video.addEventListener('mouseleave', hide);
-            btn.addEventListener('mouseenter', show);
-            btn.addEventListener('mouseleave', hide);
-
-            // Important: handle fullscreen changes because PiP btn shouldn't mess up native fullscreen
-            document.addEventListener('fullscreenchange', () => {
-              if (document.fullscreenElement) {
-                btn.style.display = 'none';
+          btn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!currentTargetVideo) return;
+            try {
+              if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
               } else {
-                btn.style.display = 'flex';
+                await currentTargetVideo.requestPictureInPicture();
               }
-            });
-
-            video.parentElement?.appendChild(btn);
-          }
-
-          const processVideos = () => {
-            document.querySelectorAll('video').forEach(v => {
-              // Ignore tiny hidden videos used for tracking/audio
-              if (!v._pipProcessed && v.offsetWidth > 150) {
-                v._pipProcessed = true;
-                createPipButton(v);
-              }
-            });
+            } catch (err) {
+              console.error('Lumo PiP failed:', err);
+            }
           };
 
-          const observer = new MutationObserver(() => processVideos());
-          if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+          const ensureButton = () => {
+            if (!btn.isConnected && document.body) {
+              document.body.appendChild(btn);
+            }
+          };
 
-          // Process initial
-          setInterval(processVideos, 2000);
-          processVideos();
+          let hoverTimeout;
+          let isHovering = false;
+
+          // Track the largest visible video on the screen
+          setInterval(() => {
+            ensureButton();
+            
+            const videos = Array.from(document.querySelectorAll('video')).filter(v => 
+              v.offsetWidth > 150 && 
+              v.offsetHeight > 100 && 
+              window.getComputedStyle(v).display !== 'none'
+            );
+            
+            let bestVideo = null;
+            let maxArea = 0;
+            videos.forEach(v => {
+              const rect = v.getBoundingClientRect();
+              const area = rect.width * rect.height;
+              // Check if at least partially in viewport
+              if (area > maxArea && rect.top < window.innerHeight && rect.bottom > 0) {
+                maxArea = area;
+                bestVideo = v;
+              }
+            });
+
+            currentTargetVideo = bestVideo;
+
+            if (!currentTargetVideo || document.fullscreenElement) {
+              btn.style.display = 'none';
+              return;
+            }
+
+            btn.style.display = 'flex';
+            const rect = currentTargetVideo.getBoundingClientRect();
+            btn.style.top = (rect.top + 12) + 'px';
+            btn.style.left = (rect.right - 44) + 'px';
+          }, 200);
+
+          // Global mouse tracker
+          document.addEventListener('mousemove', (e) => {
+            if (!currentTargetVideo || document.fullscreenElement) return;
+            
+            const rect = currentTargetVideo.getBoundingClientRect();
+            const isOverVideo = e.clientX >= rect.left && e.clientX <= rect.right &&
+                                e.clientY >= rect.top && e.clientY <= rect.bottom;
+                                
+            const isOverBtn = btn.contains(e.target);
+
+            if (isOverVideo || isOverBtn) {
+              clearTimeout(hoverTimeout);
+              if (!isHovering) {
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+                isHovering = true;
+              }
+            } else {
+              if (isHovering) {
+                hoverTimeout = setTimeout(() => { 
+                  btn.style.opacity = '0'; 
+                  btn.style.pointerEvents = 'none'; 
+                  isHovering = false;
+                }, 800);
+              }
+            }
+          }, { passive: true });
         })();
       `;
       wv.executeJavaScript(pipScript).catch(() => {});
@@ -205,7 +223,7 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
       src={initialUrl.current || 'about:blank'}
       className="w-full h-full border-none bg-white"
       allowpopups="true"
-      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
       partition="persist:nova-main"
     />
   );

@@ -14,6 +14,9 @@ const adBlockerStats = new AdBlockerStats();
 
 let mainWindow: BrowserWindow | null = null;
 
+// Bypass Google's "unsupported browser" by globally spoofing a modern Chrome user agent
+app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
+
 function createWindow(): void {
   console.log('[Lumo] Creating main window');
 
