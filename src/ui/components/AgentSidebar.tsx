@@ -9,7 +9,7 @@ interface LogEntry { id: string; type: 'system'|'user'|'action'|'success'|'error
 
 export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSidebarProps): React.ReactElement {
   const [goal, setGoal] = useState('');
-  const [selectedModel, setSelectedModel] = useState('openrouter/auto');
+  const [selectedModel, setSelectedModel] = useState('openrouter/free');
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -366,10 +366,10 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
             <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
           </optgroup>
           <optgroup label="Free Models">
-            <option value="openrouter/auto">Auto-Select Free (Recommended)</option>
-            <option value="google/gemma-2-9b-it:free">Google Gemma 2 9B (Free)</option>
-            <option value="meta-llama/llama-3-8b-instruct:free">Llama 3 8B (Free)</option>
-            <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (Free)</option>
+            <option value="openrouter/free">Auto-Select Free Model (Best)</option>
+            <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
+            <option value="google/gemini-2.0-pro-exp-02-05:free">Gemini 2.0 Pro Exp (Free)</option>
+            <option value="deepseek/deepseek-chat:free">DeepSeek V3 (Free)</option>
           </optgroup>
         </select>
 
