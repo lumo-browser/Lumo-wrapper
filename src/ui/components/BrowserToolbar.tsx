@@ -132,10 +132,33 @@ export function BrowserToolbar({
     inputRef.current?.blur();
   };
 
-  // Displayed in the bar when not focused — strip protocol for cleanliness
-  const displayValue = isFocused
-    ? draftUrl
-    : url.replace(/^https?:\/\//, '').replace(/\/$/, '') || '';
+  // Format URL for clean display when not focused (Safari-style)
+  const getDisplayValue = () => {
+    if (isFocused) return draftUrl;
+    if (!url || url === 'Lumo://newtab') return '';
+    
+    try {
+      const u = new URL(url);
+      
+      // 1. Extract and show search queries for known search engines
+      const searchEngines = ['google.com', 'search.brave.com', 'bing.com', 'duckduckgo.com', 'ecosia.org'];
+      if (searchEngines.some(domain => u.hostname.includes(domain)) && u.pathname.startsWith('/search')) {
+        const q = u.searchParams.get('q');
+        if (q) return q;
+      }
+
+      // 2. For all other URLs, show domain + path (strip complex query strings & hashes)
+      // e.g. "mail.google.com/mail/u/0/#inbox" -> "mail.google.com/mail/u/0"
+      let clean = u.hostname.replace(/^www\./, '');
+      if (u.pathname !== '/') clean += u.pathname;
+      return clean.replace(/\/$/, ''); // strip trailing slash
+    } catch {
+      // Fallback for invalid URLs or internal Lumo:// URLs
+      return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    }
+  };
+
+  const displayValue = getDisplayValue();
 
   const isNtpPage = !url || url === 'Lumo://newtab';
 
@@ -257,33 +280,39 @@ export function BrowserToolbar({
         </NavBtn>
 
         {/* Extensions */}
-        <NavBtn
-          onClick={onToggleExtensions}
-          title="Extensions"
-          id="btn-extensions"
-        >
-          <Puzzle className="w-4 h-4" />
-        </NavBtn>
+        <div className="hidden sm:block">
+          <NavBtn
+            onClick={onToggleExtensions}
+            title="Extensions"
+            id="btn-extensions"
+          >
+            <Puzzle className="w-4 h-4" />
+          </NavBtn>
+        </div>
 
         {/* Theme toggle */}
-        <NavBtn
-          onClick={onToggleTheme}
-          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          id="btn-theme"
-        >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </NavBtn>
+        <div className="hidden md:block">
+          <NavBtn
+            onClick={onToggleTheme}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            id="btn-theme"
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </NavBtn>
+        </div>
 
         {/* Data Sync */}
-        <button
-          onClick={onOpenAccount}
-          id="btn-account"
-          title="Import Browser Data"
-          className="ml-0.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold
-            transition-all duration-150 bg-gray-200 dark:bg-[#3a3a3a] hover:bg-gray-300 dark:hover:bg-[#444] text-gray-600 dark:text-gray-400"
-        >
-          <RefreshCcw className="w-3.5 h-3.5" />
-        </button>
+        <div className="hidden lg:block">
+          <button
+            onClick={onOpenAccount}
+            id="btn-account"
+            title="Import Browser Data"
+            className="ml-0.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold
+              transition-all duration-150 bg-gray-200 dark:bg-[#3a3a3a] hover:bg-gray-300 dark:hover:bg-[#444] text-gray-600 dark:text-gray-400"
+          >
+            <RefreshCcw className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         {/* Menu (3-dot) */}
         <NavBtn

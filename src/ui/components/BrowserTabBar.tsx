@@ -116,8 +116,8 @@ export function BrowserTabBar({
               role="tab"
               aria-selected={tab.isActive}
               className={`
-                group relative flex items-center gap-2 h-[34px] min-w-[120px] max-w-[240px]
-                px-3 cursor-pointer select-none flex-shrink-0
+                group relative flex items-center gap-2 h-[34px] flex-1 min-w-[48px] max-w-[240px]
+                px-2 sm:px-3 cursor-pointer select-none flex-shrink
                 rounded-t-[10px] transition-colors duration-100
                 ${tab.isActive
                   ? 'bg-white dark:bg-[#2d2d2d] text-gray-900 dark:text-gray-100 shadow-[0_1px_0_0_white] dark:shadow-[0_1px_0_0_#2d2d2d] z-10'
