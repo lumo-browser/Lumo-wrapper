@@ -137,6 +137,41 @@ export const AGENT_TOOLS = [
   {
     type: 'function' as const,
     function: {
+      name: 'click_by_text',
+      description: 'Click any element on the page by matching its visible text. PREFERRED for quiz/exam pages where answer options are labels or divs (not just radio buttons). Use this when you know the text of the answer choice you want to select.',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'The text content of the element to click (e.g., the answer option text like "Right-click on the desktop")' },
+        },
+        required: ['text'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'quiz_answer',
+      description: 'PRIMARY TOOL FOR QUIZZES AND EXAMS. Selects the correct answer option AND automatically clicks the Next/Submit button in one step. Use this for every single quiz question. Call read_page_text first to read the question, then call quiz_answer with the correct answer text.',
+      parameters: {
+        type: 'object',
+        properties: {
+          answer: {
+            type: 'string',
+            description: 'The exact text of the correct answer option as it appears on the page (e.g., "Right-click on the desktop, select Change Desktop Background and select a wallpaper"). Use a distinctive substring if the full text is very long.',
+          },
+          question_summary: {
+            type: 'string',
+            description: 'Brief summary of what the question was about (for logging)',
+          },
+        },
+        required: ['answer'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'request_user_confirmation',
       description: 'CRITICAL: You MUST call this before ANY purchase, payment, checkout, account change, form submission with personal data, or other irreversible action. The agent will pause and wait for the user to approve or reject. Describe exactly what will happen if the user approves.',
       parameters: {

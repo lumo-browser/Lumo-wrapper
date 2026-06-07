@@ -23,6 +23,8 @@ export const DOM_EXTRACTOR_SCRIPT = `
     var idCounter = 1;
 
     function isVisible(el) {
+      // Always include radio/checkbox even if visually hidden (quiz sites hide them with CSS)
+      if (el.type === 'radio' || el.type === 'checkbox') return true;
       var rect = el.getBoundingClientRect();
       var style = window.getComputedStyle(el);
       return rect.width > 0 && rect.height > 0
@@ -35,7 +37,9 @@ export const DOM_EXTRACTOR_SCRIPT = `
     var oldTags = document.querySelectorAll('.Lumo-agent-tag');
     for (var i = 0; i < oldTags.length; i++) oldTags[i].remove();
 
-    var selectors = 'a, button, input, textarea, select, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [onclick], label[for], summary, details';
+    window.__LumoAgentElements = {};
+
+    var selectors = 'a, button, input, textarea, select, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [onclick], label, summary, details';
     var interactables = document.querySelectorAll(selectors);
 
     for (var j = 0; j < interactables.length; j++) {
@@ -43,30 +47,51 @@ export const DOM_EXTRACTOR_SCRIPT = `
       if (!isVisible(el)) continue;
       var id = idCounter++;
 
-      window.__LumoAgentElements = window.__LumoAgentElements || {};
       window.__LumoAgentElements[id] = el;
 
-      var text = (el.innerText || el.value || el.placeholder || el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('alt') || '').trim().substring(0, 80);
+      var text = '';
       var tagName = el.tagName.toLowerCase();
       var type = el.getAttribute('type') || '';
+
+      // For radio/checkbox — read associated label text for meaningful context
+      if (type === 'radio' || type === 'checkbox') {
+        var labelEl = el.id ? document.querySelector('label[for="' + el.id + '"]') : el.closest('label');
+        if (labelEl) {
+          text = labelEl.innerText.trim().substring(0, 120);
+        }
+        if (!text) {
+          var parent = el.parentElement;
+          for (var p = 0; p < 4 && parent; p++) {
+            var pt = parent.innerText.trim();
+            if (pt.length > 1 && pt.length < 200) { text = pt.substring(0, 120); break; }
+            parent = parent.parentElement;
+          }
+        }
+      } else {
+        text = (el.innerText || el.value || el.placeholder || el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('alt') || '').trim().substring(0, 80);
+      }
+
       var role = el.getAttribute('role') || '';
       var href = el.getAttribute('href') || '';
+      var checked = (type === 'radio' || type === 'checkbox') ? (el.checked ? ' [CHECKED]' : ' [UNCHECKED]') : '';
 
       var desc = '[' + id + '] <' + tagName;
       if (type) desc += ' type="' + type + '"';
       if (role) desc += ' role="' + role + '"';
       if (href && href.length < 80) desc += ' href="' + href + '"';
-      desc += '> "' + text + '"';
+      desc += '>' + checked + ' "' + text + '"';
 
       elements.push(desc);
 
-      // Visual tags
-      var tag = document.createElement('div');
-      tag.className = 'Lumo-agent-tag';
-      tag.textContent = String(id);
+      // Visual tags only for visible elements
       var rect = el.getBoundingClientRect();
-      tag.style.cssText = 'position:absolute;top:' + (rect.top + window.scrollY - 2) + 'px;left:' + (rect.left + window.scrollX - 2) + 'px;background:#ef4444;color:white;font-size:9px;font-weight:bold;padding:0 3px;border-radius:3px;z-index:2147483647;pointer-events:none;line-height:14px;';
-      document.body.appendChild(tag);
+      if (rect.width > 0 && rect.height > 0) {
+        var tag = document.createElement('div');
+        tag.className = 'Lumo-agent-tag';
+        tag.textContent = String(id);
+        tag.style.cssText = 'position:absolute;top:' + (rect.top + window.scrollY - 2) + 'px;left:' + (rect.left + window.scrollX - 2) + 'px;background:#ef4444;color:white;font-size:9px;font-weight:bold;padding:0 3px;border-radius:3px;z-index:2147483647;pointer-events:none;line-height:14px;';
+        document.body.appendChild(tag);
+      }
     }
 
     return elements.join('\\n');
@@ -309,7 +334,97 @@ export async function executeToolCall(
         break;
       }
 
-      // ── Request User Confirmation (CRITICAL SAFETY GATE) ─────
+      // ── Click By Text ─────────────────────────────────────────
+      // Fallback for quiz/form pages where radio inputs are visually hidden.
+      // Finds any label, li, div, or element whose text matches and clicks it.
+      case 'click_by_text': {
+        const searchText = (args.text || '').replace(/'/g, "\\'").replace(/\n/g, ' ').substring(0, 100).toLowerCase();
+        const clickResult = await webview.executeJavaScript(
+          '(function() {' +
+          '  var candidates = document.querySelectorAll("label, [role=\\"radio\\"], [role=\\"option\\"], li, .answer, .option, .choice, .a-label, td, th, div, span, p");' +
+          '  for (var i = 0; i < candidates.length; i++) {' +
+          '    var t = (candidates[i].innerText || "").toLowerCase().trim();' +
+          '    if (t.indexOf("' + searchText + '") !== -1 && t.length < 300) {' +
+          '      candidates[i].click();' +
+          '      return "clicked:" + candidates[i].innerText.trim().substring(0, 80);' +
+          '    }' +
+          '  }' +
+          '  return "not_found";' +
+          '})()'
+        );
+        await sleep(1500);
+        if ((clickResult || '').startsWith('not_found')) {
+          output = 'Could not find element with text: ' + args.text;
+        } else {
+          output = 'Clicked by text: ' + (clickResult || '').replace('clicked:', '');
+        }
+        break;
+      }
+
+      // ── Quiz Answer ───────────────────────────────────────────
+      // Atomic: selects the answer option by text AND clicks Next/Submit.
+      // This is the most reliable way to handle quiz pages.
+      case 'quiz_answer': {
+        const answerText = (args.answer || '').toLowerCase().replace(/'/g, "\\'");
+        const quizResult = await webview.executeJavaScript(
+          '(function() {' +
+          '  var result = { selected: false, advanced: false, msg: "" };' +
+
+          // Step 1: Find and click the answer option
+          '  var candidates = document.querySelectorAll(' +
+          '    "label, [role=\'radio\'], [role=\'option\'], li, td, .answer, .option, .choice, ' +
+          '    .a-label, input[type=\'radio\'], input[type=\'checkbox\'], div, span, p, a, button"' +
+          '  );' +
+          '  for (var i = 0; i < candidates.length; i++) {' +
+          '    var el = candidates[i];' +
+          '    var t = (el.innerText || el.textContent || el.value || "").toLowerCase().trim();' +
+          '    if (t.indexOf("' + answerText + '") !== -1 && t.length < 400) {' +
+          '      el.click();' +
+          '      result.selected = true;' +
+          '      result.msg = "Selected: " + (el.innerText || el.value || "").trim().substring(0, 80);' +
+          '      break;' +
+          '    }' +
+          '  }' +
+
+          // Step 2: Wait briefly then find and click Next/Submit/Continue
+          '  if (result.selected) {' +
+          '    var nextBtns = document.querySelectorAll("button, input[type=\'submit\'], input[type=\'button\'], a, [role=\'button\']");' +
+          '    var nextKeywords = ["next", "submit", "continue", "ok", "proceed", "finish", "done", "save", "forward", "check"];' +
+          '    for (var j = 0; j < nextBtns.length; j++) {' +
+          '      var bt = nextBtns[j];' +
+          '      var bt_text = (bt.innerText || bt.value || bt.getAttribute("aria-label") || "").toLowerCase().trim();' +
+          '      for (var k = 0; k < nextKeywords.length; k++) {' +
+          '        if (bt_text.indexOf(nextKeywords[k]) !== -1) {' +
+          '          bt.click();' +
+          '          result.advanced = true;' +
+          '          result.msg += " | Clicked: " + bt_text;' +
+          '          break;' +
+          '        }' +
+          '      }' +
+          '      if (result.advanced) break;' +
+          '    }' +
+          '  }' +
+
+          '  return JSON.stringify(result);' +
+          '})()'
+        );
+        await sleep(2500);
+        try {
+          const qr = JSON.parse(quizResult);
+          if (!qr.selected) {
+            output = 'Could not find answer option matching: "' + args.answer + '". Try a shorter or different text.';
+          } else if (!qr.advanced) {
+            output = qr.msg + ' | (No Next button found — may need manual click)';
+          } else {
+            output = qr.msg;
+          }
+        } catch {
+          output = 'Quiz answer result: ' + quizResult;
+        }
+        break;
+      }
+
+
       case 'request_user_confirmation': {
         return {
           success: true,

@@ -4,6 +4,7 @@
  */
 
 import { app, BrowserWindow, Menu, session, ipcMain, nativeTheme, safeStorage } from 'electron';
+import https from 'https';
 import path from 'path';
 import { shouldBlock, AdBlockerStats, AdBlockerConfig, DEFAULT_CONFIG } from './adBlocker';
 
@@ -275,6 +276,85 @@ app.on('ready', () => {
         return buffer.toString('utf-8'); // Fallback
       } catch (err) {
         console.error('[Lumo] Failed to load key', err);
+    }
+  });
+
+  ipcMain.handle('lumo:openrouter-chat', async (_event, payload: {
+    apiKey: string;
+    model: string;
+    messages: Array<{ role: string; content: string }>;
+    tools?: unknown[];
+    tool_choice?: string;
+  }) => {
+    try {
+      const apiKey = (payload.apiKey || '').trim().replace(/^Bearer\s+/i, '');
+      if (!apiKey) {
+        return { error: { message: 'Missing OpenRouter API key. Please go to Settings and enter your OpenRouter API key.' } };
+      }
+
+      // Validate key looks like a real OpenRouter key (starts with sk-)
+      if (!apiKey.startsWith('sk-')) {
+        console.warn('[Lumo] OpenRouter API key does not start with sk-, sending anyway...');
+      }
+
+      console.log(`[Lumo] OpenRouter request: model=${payload.model}, apiKey=${apiKey.substring(0, 8)}...`);
+
+      const body = JSON.stringify({
+        model: payload.model,
+        messages: payload.messages,
+        tools: payload.tools,
+        tool_choice: payload.tool_choice || 'auto',
+      });
+
+      const data = await new Promise<any>((resolve) => {
+        const req = https.request(
+          {
+            hostname: 'openrouter.ai',
+            path: '/api/v1/chat/completions',
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(body),
+              'HTTP-Referer': 'https://nova-browser.local',
+              'X-Title': 'Nova Browser',
+            },
+          },
+          (res) => {
+            let raw = '';
+            res.setEncoding('utf8');
+            res.on('data', chunk => { raw += chunk; });
+            res.on('end', () => {
+              let parsed: any = null;
+              try {
+                parsed = raw ? JSON.parse(raw) : null;
+              } catch {
+                parsed = { raw };
+              }
+
+              if ((res.statusCode || 500) >= 400) {
+                const message = parsed?.error?.message || parsed?.message || `OpenRouter request failed with status ${res.statusCode}`;
+                resolve({ error: { message, status: res.statusCode } });
+                return;
+              }
+
+              resolve({ data: parsed });
+            });
+          }
+        );
+
+        req.on('error', (err) => {
+          resolve({ error: { message: err.message } });
+        });
+
+        req.write(body);
+        req.end();
+      });
+
+      return data;
+    } catch (err: any) {
+      console.error('[Lumo] OpenRouter request failed', err);
+      return { error: { message: err?.message || 'OpenRouter request failed' } };
     }
   });
 

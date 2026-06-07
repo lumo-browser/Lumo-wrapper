@@ -289,15 +289,26 @@ export default function App(): React.ReactElement {
     } catch { return defaults; }
   });
 
-  // Securely load API Key on boot
+  // Securely load API Key on boot — try encrypted first, fall back to plain
   useEffect(() => {
     const encryptedKey = localStorage.getItem('lumo-api-key-secure');
+    const plainKey = localStorage.getItem('lumo-api-key-plain');
     if (encryptedKey && window.electron?.invoke) {
-      window.electron.invoke('lumo:load-key', encryptedKey).then(decrypted => {
-        if (decrypted) setSettings(s => ({ ...s, openRouterApiKey: decrypted }));
+      window.electron.invoke('lumo:load-key', encryptedKey).then((decrypted: string) => {
+        const key = (decrypted || plainKey || '').trim().replace(/^Bearer\s+/i, '');
+        if (key) setSettings(s => ({ ...s, openRouterApiKey: key }));
+      }).catch(() => {
+        // Decryption failed — use plain fallback
+        const key = (plainKey || '').trim().replace(/^Bearer\s+/i, '');
+        if (key) setSettings(s => ({ ...s, openRouterApiKey: key }));
       });
+    } else if (plainKey) {
+      // No electron IPC available — just use plain key
+      const key = plainKey.trim().replace(/^Bearer\s+/i, '');
+      if (key) setSettings(s => ({ ...s, openRouterApiKey: key }));
     }
   }, []);
+
 
   const [showExtensions, setShowExtensions] = useState(false);
   const [showAccount, setShowAccount]       = useState(false);
@@ -403,15 +414,22 @@ export default function App(): React.ReactElement {
     const { openRouterApiKey, ...safeSettings } = settings;
     localStorage.setItem('lumo-settings', JSON.stringify(safeSettings)); 
     
-    // Securely encrypt the key if it exists
-    if (window.electron?.invoke && openRouterApiKey) {
-      window.electron.invoke('lumo:save-key', openRouterApiKey).then(encrypted => {
-        if (encrypted) localStorage.setItem('lumo-api-key-secure', encrypted);
-      });
-    } else if (!openRouterApiKey) {
+    if (openRouterApiKey) {
+      // Always store a plain copy so the key loads reliably on boot
+      localStorage.setItem('lumo-api-key-plain', openRouterApiKey);
+
+      // Also attempt encrypted storage
+      if (window.electron?.invoke) {
+        window.electron.invoke('lumo:save-key', openRouterApiKey).then((encrypted: string) => {
+          if (encrypted) localStorage.setItem('lumo-api-key-secure', encrypted);
+        });
+      }
+    } else {
       localStorage.removeItem('lumo-api-key-secure');
+      localStorage.removeItem('lumo-api-key-plain');
     }
   }, [settings]);
+
 
   // ── Theme ────────────────────────────────────────────────────────────────
   const handleToggleTheme = useCallback(() => {
@@ -430,7 +448,13 @@ export default function App(): React.ReactElement {
   // Settings update handler
   const handleUpdateSettings = useCallback((updates: Partial<BrowserSettings>) => {
     setSettings((prev) => {
-      const next = { ...prev, ...updates };
+      const next = {
+        ...prev,
+        ...updates,
+        openRouterApiKey: updates.openRouterApiKey !== undefined
+          ? updates.openRouterApiKey.trim().replace(/^Bearer\s+/i, '')
+          : prev.openRouterApiKey,
+      };
       // Apply theme change immediately
       if (updates.theme) {
         const dark = updates.theme === 'dark' || (updates.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);

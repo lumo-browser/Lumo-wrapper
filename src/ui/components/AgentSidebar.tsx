@@ -24,6 +24,10 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
   const memoryRef = useRef<TaskMemory | null>(null);
   const confirmResolveRef = useRef<((v: boolean) => void) | null>(null);
 
+  const normalizeApiKey = useCallback((key: string): string => {
+    return key.trim().replace(/^Bearer\s+/i, '');
+  }, []);
+
   useEffect(() => { logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
   useEffect(() => { memoryRef.current = memory; }, [memory]);
 
@@ -62,7 +66,8 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
   }, [addLog]);
 
   const startAgent = useCallback(async () => {
-    if (!openRouterApiKey) { addLog('error', 'Please set your OpenRouter API Key in Settings.'); return; }
+    const apiKey = normalizeApiKey(openRouterApiKey);
+    if (!apiKey) { addLog('error', 'Please set your OpenRouter API Key in Settings.'); return; }
     if (!activeTab || !goal.trim()) return;
     const wv = findWebview();
     if (!wv) { addLog('error', 'Navigate to a real website first (e.g. google.com).'); return; }
@@ -108,22 +113,25 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
           conversationHistory = conversationHistory.slice(-20);
         }
 
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + openRouterApiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: [{ role: 'system', content: systemPrompt }, ...conversationHistory],
-            tools: AGENT_TOOLS,
-            tool_choice: 'auto',
-          }),
+        const apiResponse = await window.electron?.invoke?.('lumo:openrouter-chat', {
+          apiKey,
+          model: selectedModel,
+          messages: [{ role: 'system', content: systemPrompt }, ...conversationHistory],
+          tools: AGENT_TOOLS,
+          tool_choice: 'auto',
         });
 
-        const data = await response.json();
-        if (data.error) { addLog('error', 'API Error: ' + data.error.message); break; }
+        const data = apiResponse?.data;
+        if (apiResponse?.error) { addLog('error', 'API Error: ' + apiResponse.error.message); currentMemory.errorCount++; if (currentMemory.errorCount >= currentMemory.maxErrors) break; continue; }
 
-        const msg = data.choices?.[0]?.message;
-        if (!msg) { addLog('error', 'Empty API response.'); break; }
+        // Retry up to 2 times on empty response (free models occasionally drop responses)
+        if (!data || !data.choices?.[0]?.message) {
+          addLog('system', 'Empty response, retrying...');
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+
+        const msg = data.choices[0].message;
 
         conversationHistory.push(msg);
 
@@ -136,6 +144,13 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
             let args: Record<string, any> = {};
             try { args = JSON.parse(toolCall.function.arguments || '{}'); } catch { args = {}; }
             const toolName = toolCall.function.name;
+
+            // Guard: reject click calls with no valid id
+            if (toolName === 'click' && (args.id === undefined || args.id === null || isNaN(Number(args.id)))) {
+              addLog('error', 'Agent tried to click with no element ID. Skipping and retrying.');
+              conversationHistory.push({ role: 'tool', tool_call_id: toolCall.id, content: 'ERROR: click() called with no id. You MUST read the DOM first and use a valid numeric [ID] from the element list. Use click_by_text instead if you know the answer text.' });
+              continue;
+            }
 
             addLog('action', toolName + '(' + JSON.stringify(args).substring(0, 120) + ')');
 
@@ -198,7 +213,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
     if (iteration >= MAX_ITERATIONS) addLog('error', 'Reached maximum iterations (' + MAX_ITERATIONS + ').');
     setIsRunning(false);
     runningRef.current = false;
-  }, [openRouterApiKey, activeTab, goal, selectedModel, isPaused, findWebview, addLog, waitForConfirmation]);
+  }, [openRouterApiKey, normalizeApiKey, activeTab, goal, selectedModel, isPaused, findWebview, addLog, waitForConfirmation]);
 
   const pauseAgent = useCallback(() => { runningRef.current = false; setIsRunning(false); setIsPaused(true); addLog('system', 'Agent paused.'); }, [addLog]);
   const stopAgent = useCallback(() => { runningRef.current = false; setIsRunning(false); setIsPaused(false); setAwaitingConfirmation(false); setMemory(null); addLog('system', 'Agent stopped.'); }, [addLog]);
@@ -380,7 +395,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
 
         <div className="flex gap-2">
           {!isRunning ? (
-            <button onClick={startAgent} disabled={!goal.trim() || !openRouterApiKey || awaitingConfirmation}
+            <button onClick={startAgent} disabled={!goal.trim() || !normalizeApiKey(openRouterApiKey) || awaitingConfirmation}
               className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50">
               <Play className="w-4 h-4 fill-current" />
               {isPaused ? 'Resume' : 'Run Agent'}
