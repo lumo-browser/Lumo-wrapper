@@ -13,11 +13,13 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '@utils/logger';
+import { ArrowLeft, ArrowRight, RotateCw, Sparkles, Download, CheckSquare, Copy, Code } from 'lucide-react';
 
 import { BrowserTabBar, type BrowserTab } from '@ui/components/BrowserTabBar';
 import { BrowserToolbar } from '@ui/components/BrowserToolbar';
 import { ExtensionsPanel } from '@ui/components/ExtensionsPanel';
 import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
+import { ContextMenu } from '@ui/components/ContextMenu';
 import { AISidebar } from '@ui/components/AISidebar';
 import { AgentSidebar } from '@ui/components/AgentSidebar';
 import { ComparePage } from '@ui/components/ComparePage';
@@ -202,9 +204,48 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
         })();
       `;
       wv.executeJavaScript(pipScript).catch(() => {});
+
+      // Inject YouTube video ad skipper & cosmetic filter
+      const ytAdScript = `
+        (function() {
+          if (window._lumoYtAdSetup || window.location.hostname.indexOf('youtube.com') === -1) return;
+          window._lumoYtAdSetup = true;
+
+          setInterval(() => {
+            const skipButton = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-text.ytp-ad-skip-button-text');
+            const adContainer = document.querySelector('.ad-showing, .ad-interrupting');
+            const video = document.querySelector('video');
+            
+            // 1. Click skip if available
+            if (skipButton) {
+              skipButton.click();
+            } 
+            // 2. Otherwise fast-forward unskippable ads to instantly end them
+            else if (adContainer && video && !isNaN(video.duration)) {
+              video.currentTime = video.duration;
+            }
+            
+            // 3. Destroy static banner ads and overlays
+            const overlays = document.querySelectorAll('.ytp-ad-overlay-container, #player-ads, ytd-ad-slot-renderer, ytd-promoted-sparkles-web-renderer, ytd-banner-promo-renderer');
+            overlays.forEach(el => {
+               el.style.display = 'none';
+               el.remove();
+            });
+          }, 300);
+        })();
+      `;
+      wv.executeJavaScript(ytAdScript).catch(() => {});
+    };
+
+    const onContextMenu = (e: any) => {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('lumo:show-context-menu', {
+        detail: { x: e.params.x, y: e.params.y, params: e.params, tabId }
+      }));
     };
 
     wv.addEventListener('dom-ready', onDomReady);
+    wv.addEventListener('context-menu', onContextMenu);
 
     return () => {
       wv.removeEventListener('did-start-loading', onStartLoad);
@@ -213,6 +254,7 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
       wv.removeEventListener('did-navigate',      onNavigated);
       wv.removeEventListener('did-navigate-in-page', onNavigated);
       wv.removeEventListener('dom-ready',         onDomReady);
+      wv.removeEventListener('context-menu',      onContextMenu);
     };
   }, []);
 
@@ -256,7 +298,26 @@ const emptyHistory = (): NavHistory => ({ stack: [], cursor: -1 });
 export default function App(): React.ReactElement {
   // Theme
   const [isDark, setIsDark] = useState(true);
+  const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number; params: any; tabId: string | null }>({ show: false, x: 0, y: 0, params: null, tabId: null });
 
+  useEffect(() => {
+    const handler = (e: any) => {
+      setContextMenu({
+        show: true,
+        x: e.detail.x,
+        y: e.detail.y,
+        params: e.detail.params,
+        tabId: e.detail.tabId
+      });
+    };
+    const clickHandler = () => setContextMenu(prev => ({ ...prev, show: false }));
+    window.addEventListener('lumo:show-context-menu', handler);
+    window.addEventListener('click', clickHandler);
+    return () => {
+      window.removeEventListener('lumo:show-context-menu', handler);
+      window.removeEventListener('click', clickHandler);
+    };
+  }, []);
   // Tabs
   const [tabs, setTabs] = useState<BrowserTab[]>(INITIAL_TABS);
   const activeTab = tabs.find((t) => t.isActive) ?? tabs[0];
@@ -985,6 +1046,66 @@ export default function App(): React.ReactElement {
         onLogin={handleLogin}
         onLogout={handleLogout}
       />
+
+      {contextMenu.show && contextMenu.params && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(prev => ({ ...prev, show: false }))}
+          items={[
+            // Navigation
+            { 
+              id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left',
+              disabled: !contextMenu.params.editFlags?.canGoBack,
+              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.goBack(); }
+            },
+            { 
+              id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right',
+              disabled: !contextMenu.params.editFlags?.canGoForward,
+              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.goForward(); }
+            },
+            { 
+              id: 'reload', label: 'Reload', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R',
+              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.reload(); }
+            },
+            { id: 's1', label: '', isSeparator: true },
+            
+            // AI Space
+            {
+              id: 'ai-space', label: 'Send to AI Space', icon: <Sparkles size={15} />,
+              onClick: () => setShowAgent(true)
+            },
+            { id: 's2', label: '', isSeparator: true },
+
+            // Page Actions
+            {
+              id: 'save', label: 'Save Page As...', icon: <Download size={15} />, shortcut: 'Ctrl+S',
+              onClick: () => {}
+            },
+            {
+              id: 'select-all', label: 'Select All', icon: <CheckSquare size={15} />, shortcut: 'Ctrl+A',
+              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.selectAll(); }
+            },
+
+            // Clipboard (conditional)
+            ...(contextMenu.params.selectionText?.trim()?.length > 0 ? [
+              { id: 's3', label: '', isSeparator: true },
+              {
+                id: 'copy', label: 'Copy', icon: <Copy size={15} />, shortcut: 'Ctrl+C',
+                onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.copy(); }
+              }
+            ] : []),
+
+            { id: 's4', label: '', isSeparator: true },
+
+            // Developer
+            {
+              id: 'inspect', label: 'Inspect', icon: <Code size={15} />, shortcut: 'Ctrl+Shift+I',
+              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.inspectElement(contextMenu.params.x, contextMenu.params.y); }
+            }
+          ]}
+        />
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@
  * Self-contained — no shared imports from renderer code
  */
 
-import { app, BrowserWindow, Menu, session, ipcMain, nativeTheme, safeStorage } from 'electron';
+import { app, BrowserWindow, Menu, MenuItem, session, ipcMain, nativeTheme, safeStorage } from 'electron';
 import https from 'https';
 import path from 'path';
 import { shouldBlock, AdBlockerStats, AdBlockerConfig, DEFAULT_CONFIG } from './adBlocker';
