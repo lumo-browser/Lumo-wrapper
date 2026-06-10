@@ -20,6 +20,7 @@ import { BrowserToolbar } from '@ui/components/BrowserToolbar';
 import { ExtensionsPanel } from '@ui/components/ExtensionsPanel';
 import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
 import { ContextMenu } from '@ui/components/ContextMenu';
+import { WelcomePage, type OnboardingPrefs } from '@ui/components/WelcomePage';
 import { AISidebar } from '@ui/components/AISidebar';
 import { AgentSidebar } from '@ui/components/AgentSidebar';
 import { ComparePage } from '@ui/components/ComparePage';
@@ -283,8 +284,13 @@ const mkTab = (overrides: Partial<BrowserTab> = {}): BrowserTab => ({
   ...overrides,
 });
 
+const _isFirstLaunch = (() => {
+  try { return !JSON.parse(localStorage.getItem('nova-onboarding') || '{}').complete; }
+  catch { return true; }
+})();
+
 const INITIAL_TABS: BrowserTab[] = [
-  mkTab({ id: 'tab-1', title: 'New Tab', url: '', isActive: true }),
+  mkTab({ id: 'tab-1', title: _isFirstLaunch ? 'Welcome to Nova' : 'New Tab', url: _isFirstLaunch ? 'lumo://welcome' : '', isActive: true }),
 ];
 
 // ── Navigation history per tab ─────────────────────────────────────────────
@@ -298,6 +304,13 @@ const emptyHistory = (): NavHistory => ({ stack: [], cursor: -1 });
 export default function App(): React.ReactElement {
   // Theme
   const [isDark, setIsDark] = useState(true);
+
+  const handleOnboardingComplete = (prefs: OnboardingPrefs) => {
+    setSettings(s => ({ ...s, searchEngine: prefs.searchEngine, blockAds: prefs.adBlockEnabled }));
+    window.electron?.send?.('lumo:set-ad-blocker', prefs.adBlockEnabled);
+    // Navigate the welcome tab to new tab page
+    navigate('');
+  };
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number; params: any; tabId: string | null }>({ show: false, x: 0, y: 0, params: null, tabId: null });
 
   useEffect(() => {
@@ -914,14 +927,16 @@ export default function App(): React.ReactElement {
             const isAbout      = tab.url === 'lumo://about';
             const isExtensions = tab.url === 'lumo://extensions';
             const isCompare    = tab.url.startsWith('lumo://compare');
-            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isCompare;
+            const isWelcome   = tab.url === 'lumo://welcome';
+            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isCompare || isWelcome;
 
             return (
               <div
                 key={tab.id}
                 className={`absolute inset-0 flex flex-col ${tab.isActive ? 'z-10 visible' : 'z-0 hidden'}`}
               >
-                {isNtp && <NewTabPage onNavigate={navigate} />}
+                {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
+                {isNtp && !isWelcome && <NewTabPage onNavigate={navigate} />}
                 {isSettings && (
                   <SettingsPage
                     settings={settings}
@@ -1106,6 +1121,7 @@ export default function App(): React.ReactElement {
           ]}
         />
       )}
+
     </div>
   );
 }
