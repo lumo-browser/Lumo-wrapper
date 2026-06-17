@@ -1,98 +1,49 @@
 /**
- * NewTabPage — Fully customizable home dashboard
- * Widgets: Clock, Search, Shortcuts, Weather, Quick Notes, Top Sites
- * Features: Edit mode, widget toggle, theme selector, background picker
+ * NewTabPage — Premium Redesign
+ * Clean, glassmorphic new-tab dashboard with clock, search, shortcuts, and AI tips.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, Globe, Plus, X,
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag,
-  Clock, StickyNote, LayoutGrid, Palette,
-  Image as ImageIcon,
+  Layers, Sparkles, Command,
 } from 'lucide-react';
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface ShortcutItem {
-  id: string; label: string; url: string;
-  icon: string; color: string;
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface ShortcutItem { id: string; label: string; url: string; icon: string; color: string; }
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag, Globe,
 };
 
-interface Widget {
-  id: string;
-  type: 'clock' | 'search' | 'shortcuts' | 'notes' | 'topSites';
-  enabled: boolean;
-  order: number;
-}
-
-interface DashboardConfig {
-  widgets: Widget[];
-  background: string;
-  accentColor: string;
-  showGreeting: boolean;
-  clockFormat: '12' | '24';
-  showDate?: boolean;
-  customBgImage?: string;
-}
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
+// ── Constants ─────────────────────────────────────────────────────────────────
 const DEFAULT_SHORTCUTS: ShortcutItem[] = [
-  { id: 's1', label: 'YouTube',  url: 'https://youtube.com',      icon: 'Youtube',     color: 'bg-red-500' },
-  { id: 's2', label: 'GitHub',   url: 'https://github.com',       icon: 'Github',      color: 'bg-gray-800' },
-  { id: 's3', label: 'Trending', url: 'https://trends.google.com',icon: 'TrendingUp',  color: 'bg-emerald-500' },
-  { id: 's4', label: 'News',     url: 'https://news.google.com',  icon: 'Newspaper',   color: 'bg-blue-500' },
-  { id: 's5', label: 'Dev.to',   url: 'https://dev.to',           icon: 'Code2',       color: 'bg-violet-600' },
-  { id: 's6', label: 'Amazon',   url: 'https://amazon.in',        icon: 'ShoppingBag', color: 'bg-amber-500' },
+  { id: 's1', label: 'YouTube',  url: 'https://youtube.com',       icon: 'Youtube',     color: '#ef4444' },
+  { id: 's2', label: 'GitHub',   url: 'https://github.com',        icon: 'Github',      color: '#6366f1' },
+  { id: 's3', label: 'Trending', url: 'https://trends.google.com', icon: 'TrendingUp',  color: '#10b981' },
+  { id: 's4', label: 'News',     url: 'https://news.google.com',   icon: 'Newspaper',   color: '#3b82f6' },
+  { id: 's5', label: 'Dev.to',   url: 'https://dev.to',            icon: 'Code2',       color: '#8b5cf6' },
+  { id: 's6', label: 'Amazon',   url: 'https://amazon.in',         icon: 'ShoppingBag', color: '#f59e0b' },
 ];
 
-const DEFAULT_CONFIG: DashboardConfig = {
-  widgets: [
-    { id: 'clock',     type: 'clock',     enabled: true,  order: 0 },
-    { id: 'search',    type: 'search',    enabled: true,  order: 1 },
-    { id: 'shortcuts', type: 'shortcuts', enabled: true,  order: 2 },
-    { id: 'notes',     type: 'notes',     enabled: false, order: 3 },
-    { id: 'topSites',  type: 'topSites',  enabled: false, order: 4 },
-  ],
-  background: 'gradient-1',
-  accentColor: '#3b82f6',
-  showGreeting: true,
-  clockFormat: '24',
-  showDate: true,
-  customBgImage: '',
-};
+const AI_TIPS = [
+  'Press Ctrl+Shift+A to open the AI chat sidebar.',
+  'Press Ctrl+Shift+G to group your open tabs with AI.',
+  'Press Ctrl+L to instantly focus the address bar.',
+  'Press Ctrl+Tab to cycle through your open tabs.',
+  'The AI agent can read and summarize any webpage for you.',
+  'Press Ctrl+1-9 to jump to a specific tab instantly.',
+];
 
 const BACKGROUNDS = [
-  { id: 'gradient-1', label: 'Ocean',      style: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)' },
-  { id: 'gradient-2', label: 'Sunset',     style: 'linear-gradient(135deg, #f093fb, #f5576c, #fda085)' },
-  { id: 'gradient-3', label: 'Forest',     style: 'linear-gradient(135deg, #134e5e, #71b280)' },
-  { id: 'gradient-4', label: 'Midnight',   style: 'linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)' },
-  { id: 'gradient-5', label: 'Aurora',     style: 'linear-gradient(135deg, #007991, #78ffd6)' },
-  { id: 'gradient-6', label: 'Volcano',    style: 'linear-gradient(135deg, #1d1d1d, #8b0000, #ff4500)' },
-  { id: 'solid-light',label: 'Light',      style: '#f8fafc' },
-  { id: 'solid-dark', label: 'Dark',       style: '#0f0f0f' },
+  'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+  'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+  'linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1c2526 100%)',
+  'linear-gradient(135deg, #0a0a0f 0%, #1a0533 50%, #0d1117 100%)',
 ];
 
-const ACCENT_COLORS = [
-  '#3b82f6','#8b5cf6','#ec4899','#10b981','#f59e0b','#ef4444','#06b6d4','#f97316',
-];
-
-const TOP_SITES = [
-  { label: 'Google',    url: 'https://google.com',      favicon: 'https://www.google.com/favicon.ico' },
-  { label: 'YouTube',   url: 'https://youtube.com',     favicon: 'https://www.youtube.com/favicon.ico' },
-  { label: 'Wikipedia', url: 'https://wikipedia.org',   favicon: 'https://www.wikipedia.org/favicon.ico' },
-  { label: 'Reddit',    url: 'https://reddit.com',      favicon: 'https://www.reddit.com/favicon.ico' },
-  { label: 'X / Twitter',url:'https://x.com',           favicon: 'https://x.com/favicon.ico' },
-  { label: 'LinkedIn',  url: 'https://linkedin.com',    favicon: 'https://www.linkedin.com/favicon.ico' },
-];
-
-// ── Hooks ────────────────────────────────────────────────────────────────────
-
+// ── Clock Hook ────────────────────────────────────────────────────────────────
 function useTime() {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
@@ -102,56 +53,43 @@ function useTime() {
   return time;
 }
 
-function useConfig() {
-  const [config, setConfig] = useState<DashboardConfig>(() => {
-    try {
-      const saved = localStorage.getItem('Lumo-dashboard-config');
-      if (saved) return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
-    } catch { /* ignore */ }
-    return DEFAULT_CONFIG;
-  });
-
-  const updateConfig = useCallback((updates: Partial<DashboardConfig>) => {
-    setConfig(prev => {
-      const next = { ...prev, ...updates };
-      localStorage.setItem('Lumo-dashboard-config', JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  return { config, updateConfig };
-}
-
-// ── Widget Components ─────────────────────────────────────────────────────────
-
-function ClockWidget({ format, accent, showDate, showGreeting }: { format: '12'|'24'; accent: string; showDate?: boolean; showGreeting?: boolean }) {
+// ── Clock Widget ──────────────────────────────────────────────────────────────
+function ClockWidget() {
   const time = useTime();
-  const h = format === '12'
-    ? time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-    : time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-
+  const hh = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const [hr, min] = hh.split(':');
   const date = time.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  const hours = time.getHours();
-  const greeting = hours < 5 ? 'Good night' : hours < 12 ? 'Good morning' : hours < 17 ? 'Good afternoon' : hours < 21 ? 'Good evening' : 'Good night';
+  const h = time.getHours();
+  const greeting =
+    h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night';
 
   return (
-    <div className="text-center mb-2">
-      <div className="text-8xl md:text-[7.5rem] font-thin tracking-tight text-white tabular-nums drop-shadow-lg" style={{ textShadow: `0 0 40px ${accent}60` }}>
-        {h}
+    <div className="text-center select-none">
+      <p className="text-white/50 text-sm font-medium tracking-widest uppercase mb-3">{greeting}</p>
+      <div className="flex items-center justify-center gap-3 tabular-nums">
+        <span className="text-[7rem] md:text-[9rem] font-thin text-white leading-none"
+          style={{ textShadow: '0 0 60px rgba(139,92,246,0.4)' }}>{hr}</span>
+        <span className="text-[5rem] md:text-[7rem] font-thin text-violet-400/70 leading-none animate-pulse">:</span>
+        <span className="text-[7rem] md:text-[9rem] font-thin text-white leading-none"
+          style={{ textShadow: '0 0 60px rgba(139,92,246,0.4)' }}>{min}</span>
       </div>
-      {showDate !== false && <div className="text-white/60 text-base mt-2 font-medium">{date}</div>}
-      {showGreeting !== false && <div className="text-white/80 text-xl font-light mt-1">{greeting}</div>}
+      <p className="text-white/40 text-base mt-3 font-light tracking-wide">{date}</p>
     </div>
   );
 }
 
-function SearchWidget({ onNavigate, accent }: { onNavigate: (url: string) => void; accent: string }) {
+// ── Search Widget ─────────────────────────────────────────────────────────────
+function SearchWidget({ onNavigate }: { onNavigate: (url: string) => void }) {
   const [query, setQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus(), 150);
-    return () => clearTimeout(t);
+    const t = setTimeout(() => inputRef.current?.focus(), 200);
+    // Listen for global focus event
+    const onFocus = () => inputRef.current?.focus();
+    window.addEventListener('lumo:focus-address-bar', onFocus);
+    return () => { clearTimeout(t); window.removeEventListener('lumo:focus-address-bar', onFocus); };
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -164,102 +102,122 @@ function SearchWidget({ onNavigate, accent }: { onNavigate: (url: string) => voi
   };
 
   return (
-    <form onSubmit={handleSearch} className="w-full max-w-3xl mx-auto">
-      <div className="relative flex items-center">
-        <Search className="absolute left-5 w-5 h-5 text-white/50 pointer-events-none" />
+    <form onSubmit={handleSearch} className="w-full max-w-2xl mx-auto">
+      <div
+        className="relative flex items-center rounded-2xl transition-all duration-300"
+        style={{
+          background: 'rgba(255,255,255,0.07)',
+          backdropFilter: 'blur(20px)',
+          border: isFocused ? '1px solid rgba(139,92,246,0.7)' : '1px solid rgba(255,255,255,0.1)',
+          boxShadow: isFocused ? '0 0 0 3px rgba(139,92,246,0.15), 0 20px 60px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.3)',
+        }}
+      >
+        <Search className="absolute left-5 w-5 h-5 text-white/40 pointer-events-none" />
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search or enter a URL..."
-          className="w-full pl-14 pr-6 py-5 rounded-3xl text-base text-white placeholder-white/40
-            bg-white/10 backdrop-blur-xl border border-white/20 hover:border-white/40
-            focus:bg-white/15 outline-none transition-all duration-200 shadow-lg"
-          style={{ caretColor: accent }}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder="Search the web or type a URL..."
+          id="newtab-search-input"
+          className="w-full pl-14 pr-24 py-5 bg-transparent text-white text-base placeholder-white/25 outline-none"
         />
-        <style>{`
-          input:focus { border-color: ${accent} !important; box-shadow: 0 0 0 1px ${accent} !important; }
-        `}</style>
+        {query && (
+          <button type="button" onClick={() => setQuery('')}
+            className="absolute right-16 text-white/30 hover:text-white/60 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+        <button type="submit"
+          className="absolute right-3 px-3 py-2 rounded-xl text-white text-xs font-semibold transition-all"
+          style={{ background: 'rgba(139,92,246,0.6)', backdropFilter: 'blur(8px)' }}>
+          Go
+        </button>
       </div>
     </form>
   );
 }
 
+// ── Shortcuts Widget ──────────────────────────────────────────────────────────
 function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) {
   const [shortcuts, setShortcuts] = useState<ShortcutItem[]>(() => {
-    try {
-      const s = localStorage.getItem('Lumo-shortcuts');
-      if (s) return JSON.parse(s);
-    } catch { /* ignore */ }
+    try { const s = localStorage.getItem('lumo-shortcuts-v2'); if (s) return JSON.parse(s); } catch { /* ignore */ }
     return DEFAULT_SHORTCUTS;
   });
   const [isAdding, setIsAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const [newUrl, setNewUrl] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('Lumo-shortcuts', JSON.stringify(shortcuts));
-  }, [shortcuts]);
+  useEffect(() => { localStorage.setItem('lumo-shortcuts-v2', JSON.stringify(shortcuts)); }, [shortcuts]);
 
   const remove = (id: string) => setShortcuts(prev => prev.filter(s => s.id !== id));
-
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLabel.trim() || !newUrl.trim()) return;
     let url = newUrl.trim();
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    setShortcuts(prev => [...prev, { id: `s-${Date.now()}`, label: newLabel.trim(), url, icon: 'Globe', color: 'bg-blue-600' }]);
+    setShortcuts(prev => [...prev, { id: `s-${Date.now()}`, label: newLabel.trim(), url, icon: 'Globe', color: '#6366f1' }]);
     setIsAdding(false); setNewLabel(''); setNewUrl('');
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      <div className="flex flex-wrap justify-center gap-8">
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="flex flex-wrap justify-center gap-6">
         {shortcuts.map(s => {
           const Icon = ICON_MAP[s.icon] || Globe;
           return (
-            <div key={s.id} className="group relative flex flex-col items-center gap-2 cursor-pointer" onClick={() => onNavigate(s.url)}>
+            <div key={s.id} className="group relative flex flex-col items-center gap-2.5 cursor-pointer"
+              onClick={() => onNavigate(s.url)}>
               <button onClick={e => { e.stopPropagation(); remove(s.id); }}
-                className="absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <X className="w-3.5 h-3.5" />
+                className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center
+                  opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
+                <X className="w-3 h-3" />
               </button>
-              <div className={`w-16 h-16 rounded-3xl ${s.color} flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-150`}>
-                <Icon className="w-7 h-7 text-white" />
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg
+                hover:scale-110 active:scale-95 transition-all duration-200"
+                style={{
+                  background: `${s.color}22`,
+                  border: `1px solid ${s.color}55`,
+                  boxShadow: `0 8px 24px ${s.color}30`,
+                }}>
+                <Icon className="w-6 h-6" style={{ color: s.color }} />
               </div>
-              <span className="text-sm text-white/80 font-medium max-w-[72px] truncate">{s.label}</span>
+              <span className="text-xs text-white/60 font-medium max-w-[64px] truncate text-center">{s.label}</span>
             </div>
           );
         })}
-        <button onClick={() => setIsAdding(true)} className="flex flex-col items-center gap-2 group">
-          <div className="w-16 h-16 rounded-3xl border-2 border-dashed border-white/30 flex items-center justify-center hover:border-white/60 hover:bg-white/10 transition-all">
-            <Plus className="w-6 h-6 text-white/50 group-hover:text-white/80" />
+        <button onClick={() => setIsAdding(true)} className="flex flex-col items-center gap-2.5 group">
+          <div className="w-14 h-14 rounded-2xl border border-dashed border-white/20 flex items-center justify-center
+            hover:border-white/40 hover:bg-white/5 transition-all duration-200">
+            <Plus className="w-5 h-5 text-white/30 group-hover:text-white/60 transition-colors" />
           </div>
-          <span className="text-sm text-white/40 group-hover:text-white/60">Add</span>
+          <span className="text-xs text-white/30 group-hover:text-white/50">Add</span>
         </button>
       </div>
 
       {isAdding && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <form onSubmit={add} className="bg-[#1e1e2e] border border-white/10 rounded-2xl shadow-2xl p-6 w-80">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md"
+          onClick={() => setIsAdding(false)}>
+          <form onSubmit={add} onClick={e => e.stopPropagation()}
+            className="w-80 rounded-2xl shadow-2xl p-6"
+            style={{ background: 'rgba(20,20,30,0.95)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <h3 className="text-sm font-bold text-white mb-4">Add Shortcut</h3>
             <input autoFocus type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
               placeholder="Label (e.g. Reddit)" required
-              className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white mb-3 focus:outline-none"
-              style={{ '--tw-ring-color': 'var(--accent-color)', focusRing: '2px solid var(--accent-color)' } as any} />
+              className="w-full px-3 py-2.5 text-sm rounded-xl text-white placeholder-white/30 mb-3 outline-none"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} />
             <input type="text" value={newUrl} onChange={e => setNewUrl(e.target.value)}
               placeholder="URL (e.g. reddit.com)" required
-              className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white mb-5 focus:outline-none"
-              style={{ '--tw-ring-color': 'var(--accent-color)' } as any} />
-            <style>{`
-              form input:focus { border-color: var(--accent-color) !important; box-shadow: 0 0 0 1px var(--accent-color) !important; }
-            `}</style>
+              className="w-full px-3 py-2.5 text-sm rounded-xl text-white placeholder-white/30 mb-5 outline-none"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }} />
             <div className="flex gap-2">
               <button type="button" onClick={() => setIsAdding(false)}
-                className="flex-1 py-2 text-xs rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">Cancel</button>
-              <button type="submit" disabled={!newLabel.trim() || !newUrl.trim()}
-                className="flex-1 py-2 text-xs rounded-lg text-white disabled:opacity-50 transition-colors hover:brightness-110"
-                style={{ backgroundColor: 'var(--accent-color)' }}>Add</button>
+                className="flex-1 py-2 text-xs rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all">Cancel</button>
+              <button type="submit"
+                className="flex-1 py-2 text-xs rounded-xl font-semibold text-white transition-all"
+                style={{ background: 'rgba(139,92,246,0.7)' }}>Add</button>
             </div>
           </form>
         </div>
@@ -268,102 +226,119 @@ function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) 
   );
 }
 
-function NotesWidget() {
-  const [notes, setNotes] = useState(() => localStorage.getItem('Lumo-quick-notes') || '');
-  useEffect(() => { localStorage.setItem('Lumo-quick-notes', notes); }, [notes]);
+// ── AI Tip Banner ─────────────────────────────────────────────────────────────
+function AITipBanner() {
+  const [tip, setTip] = useState(() => AI_TIPS[Math.floor(Math.random() * AI_TIPS.length)]);
+  useEffect(() => {
+    const t = setInterval(() => setTip(AI_TIPS[Math.floor(Math.random() * AI_TIPS.length)]), 8000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="flex items-center gap-2 mb-2">
-        <StickyNote className="w-4 h-4 text-white/60" />
-        <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">Quick Notes</span>
-      </div>
-      <textarea
-        value={notes}
-        onChange={e => setNotes(e.target.value)}
-        placeholder="Jot something down..."
-        className="w-full h-28 px-4 py-3 text-sm text-white/90 placeholder-white/30 rounded-xl
-          bg-white/5 border border-white/10 focus:border-white/30 outline-none resize-none
-          backdrop-blur-xl transition-all"
-      />
+    <div className="flex items-center gap-3 px-5 py-3 rounded-2xl max-w-2xl mx-auto"
+      style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)' }}>
+      <Sparkles className="w-4 h-4 text-violet-400 flex-shrink-0" />
+      <p className="text-xs text-white/60 font-medium">{tip}</p>
     </div>
   );
 }
 
-function TopSitesWidget({ onNavigate }: { onNavigate: (url: string) => void }) {
+// ── Keyboard Shortcuts Strip ──────────────────────────────────────────────────
+function ShortcutStrip() {
+  const items = [
+    { keys: ['Ctrl', 'T'], label: 'New Tab' },
+    { keys: ['Ctrl', 'L'], label: 'Address Bar' },
+    { keys: ['Ctrl', 'Tab'], label: 'Cycle Tabs' },
+    { keys: ['Ctrl', 'Shift', 'G'], label: 'AI Group Tabs' },
+    { keys: ['Ctrl', 'Shift', 'A'], label: 'AI Chat' },
+  ];
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="flex items-center gap-2 mb-3">
-        <Globe className="w-4 h-4 text-white/60" />
-        <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">Top Sites</span>
-      </div>
-      <div className="grid grid-cols-6 gap-3">
-        {TOP_SITES.map(site => (
-          <button key={site.url} onClick={() => onNavigate(site.url)}
-            className="flex flex-col items-center gap-1.5 group">
-            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all">
-              <img src={site.favicon} alt={site.label} className="w-5 h-5 rounded" onError={e => (e.currentTarget.style.display = 'none')} />
-            </div>
-            <span className="text-xs text-white/50 group-hover:text-white/80 transition-colors max-w-[56px] truncate">{site.label}</span>
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
+      {items.map(({ keys, label }) => (
+        <div key={label} className="flex items-center gap-1.5 opacity-40 hover:opacity-70 transition-opacity">
+          {keys.map((k, i) => (
+            <React.Fragment key={i}>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-bold text-white/70 rounded"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>{k}</kbd>
+              {i < keys.length - 1 && <span className="text-white/30 text-[10px]">+</span>}
+            </React.Fragment>
+          ))}
+          <span className="text-[10px] text-white/50 ml-1">{label}</span>
+        </div>
+      ))}
     </div>
   );
 }
 
-
+// ── Ambient Orbs ──────────────────────────────────────────────────────────────
+function AmbientOrbs() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-20"
+        style={{ background: 'radial-gradient(circle, #7c3aed, transparent 70%)', filter: 'blur(80px)', animation: 'drift1 20s ease-in-out infinite' }} />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-15"
+        style={{ background: 'radial-gradient(circle, #2563eb, transparent 70%)', filter: 'blur(80px)', animation: 'drift2 25s ease-in-out infinite' }} />
+      <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full opacity-10"
+        style={{ background: 'radial-gradient(circle, #ec4899, transparent 70%)', filter: 'blur(60px)', animation: 'drift1 18s ease-in-out infinite reverse' }} />
+      <style>{`
+        @keyframes drift1 { 0%,100%{ transform:translate(0,0) } 33%{ transform:translate(30px,-20px) } 66%{ transform:translate(-20px,15px) } }
+        @keyframes drift2 { 0%,100%{ transform:translate(0,0) } 33%{ transform:translate(-25px,20px) } 66%{ transform:translate(15px,-25px) } }
+      `}</style>
+    </div>
+  );
+}
 
 // ── Main Component ────────────────────────────────────────────────────────────
-
 interface NewTabPageProps { onNavigate: (url: string) => void; }
 
 export function NewTabPage({ onNavigate }: NewTabPageProps): React.ReactElement {
-  const { config, updateConfig } = useConfig();
-
-  const bg = BACKGROUNDS.find(b => b.id === config.background) ?? BACKGROUNDS[0];
-  const enabledWidgets = [...config.widgets]
-    .filter(w => w.enabled)
-    .sort((a, b) => a.order - b.order);
+  const [bgIdx] = useState(() => Math.floor(Math.random() * BACKGROUNDS.length));
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto py-12 px-4"
-      style={{
-        background: config.customBgImage ? `url(${config.customBgImage}) center/cover no-repeat` : bg.style,
-        ['--accent-color' as any]: config.accentColor
-      }}>
+    <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto"
+      style={{ background: BACKGROUNDS[bgIdx] }}>
 
-      {/* Noise overlay for depth */}
+      <AmbientOrbs />
+
+      {/* Subtle grid overlay */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
-        style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg viewBox=\"0 0 256 256\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cfilter id=\"noise\"%3E%3CfeTurbulence type=\"fractalNoise\" baseFrequency=\"0.9\" stitchTiles=\"stitch\"/%3E%3C/filter%3E%3Crect width=\"100%25\" height=\"100%25\" filter=\"url(%23noise)\"/%3E%3C/svg%3E')" }} />
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }} />
 
+      {/* Main content */}
+      <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14">
 
-      {/* Widgets */}
-      <div className="flex flex-col items-center gap-10 w-full max-w-2xl">
-        {enabledWidgets.map(w => (
-          <div key={w.id} className="w-full flex justify-center animate-fade-in">
-            {w.type === 'clock'     && <ClockWidget format={config.clockFormat} accent={config.accentColor} showDate={config.showDate} showGreeting={config.showGreeting} />}
-            {w.type === 'search'    && <SearchWidget onNavigate={onNavigate} accent={config.accentColor} />}
-            {w.type === 'shortcuts' && <ShortcutsWidget onNavigate={onNavigate} />}
-            {w.type === 'notes'     && <NotesWidget />}
-            {w.type === 'topSites'  && <TopSitesWidget onNavigate={onNavigate} />}
+        {/* Logo mark */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)' }}>
+            <Layers className="w-4 h-4 text-white" />
           </div>
-        ))}
+          <span className="text-white/30 text-xs font-semibold tracking-[0.3em] uppercase">Lumo Browser</span>
+        </div>
 
-        {enabledWidgets.length === 0 && (
-          <div className="text-center text-white/30 mt-20">
-            <LayoutGrid className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No widgets enabled.</p>
-            <p className="mt-3 text-xs text-white/40">
-              Open Settings (Ctrl+,) to customize your dashboard.
-            </p>
-          </div>
-        )}
+        {/* Clock */}
+        <ClockWidget />
+
+        {/* Search */}
+        <SearchWidget onNavigate={onNavigate} />
+
+        {/* Shortcuts */}
+        <ShortcutsWidget onNavigate={onNavigate} />
+
+        {/* AI Tip */}
+        <AITipBanner />
+
+        {/* Keyboard shortcuts strip */}
+        <ShortcutStrip />
       </div>
 
-      {/* Bottom brand */}
-      <div className="absolute bottom-4 text-xs text-white/20 font-medium tracking-widest uppercase">Lumo</div>
-
-
+      {/* Bottom watermark */}
+      <div className="absolute bottom-4 text-[10px] text-white/15 font-semibold tracking-[0.4em] uppercase select-none">
+        Lumo v0.2.0
+      </div>
     </div>
   );
 }
