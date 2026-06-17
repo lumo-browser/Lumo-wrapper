@@ -14,6 +14,9 @@ export interface BrowserTab {
   isLoading: boolean;
   canGoBack?: boolean;
   canGoForward?: boolean;
+  groupId?: string;
+  groupColor?: string;   // hex color, e.g. '#8b5cf6'
+  groupName?: string;
 }
 
 interface BrowserTabBarProps {
@@ -52,8 +55,17 @@ export function BrowserTabBar({
                 }
               `}
             >
+              {/* Group color indicator */}
+              {tab.groupColor && (
+                <div
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full flex-shrink-0"
+                  style={{ backgroundColor: tab.groupColor }}
+                  title={tab.groupName}
+                />
+              )}
+
               {/* Favicon / Spinner */}
-              <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+              <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center" style={{ marginLeft: tab.groupColor ? '6px' : undefined }}>
                 {tab.isLoading ? (
                   <div className="w-3.5 h-3.5 border-[1.5px] border-current border-t-transparent rounded-full animate-spin opacity-60" />
                 ) : tab.favicon ? (
@@ -129,6 +141,15 @@ export function BrowserTabBar({
                 marginRight: tab.isActive && !isLast ? '-1px' : undefined,
               }}
             >
+              {/* Group color strip — shown at bottom of tab when grouped */}
+              {tab.groupColor && (
+                <div
+                  className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full"
+                  style={{ backgroundColor: tab.groupColor }}
+                  title={tab.groupName}
+                />
+              )}
+
               {/* Favicon / Spinner */}
               <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
                 {tab.isLoading ? (

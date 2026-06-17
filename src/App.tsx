@@ -25,6 +25,7 @@ import { AISidebar } from '@ui/components/AISidebar';
 import { AgentSidebar } from '@ui/components/AgentSidebar';
 import { ComparePage } from '@ui/components/ComparePage';
 import { BrowserMenu } from '@ui/components/BrowserMenu';
+import { TabGroupModal, GROUP_COLOR_PALETTE, type TabGroup } from '@ui/components/TabGroupModal';
 
 import type { HistoryEntry } from './pages/HistoryPage';
 import type { BookmarkEntry } from './pages/BookmarksPage';
@@ -425,6 +426,14 @@ export default function App(): React.ReactElement {
   const [showAI, setShowAI]                 = useState(false);
   const [showAgent, setShowAgent]           = useState(false);
   const [showMenu, setShowMenu]             = useState(false);
+
+  // Tab Grouping state
+  const [tabGrouping, setTabGrouping] = useState<{
+    isOpen: boolean;
+    isLoading: boolean;
+    groups: TabGroup[];
+    error: string | null;
+  }>({ isOpen: false, isLoading: false, groups: [], error: null });
 
   // Tab layout — read from nova-general-settings, update live via custom event
   const [tabLayout, setTabLayout] = useState<'horizontal' | 'vertical'>(() => {
@@ -844,12 +853,15 @@ export default function App(): React.ReactElement {
       } else if (e.ctrlKey && e.key === ',') {
         e.preventDefault();
         navigate('nova://settings');
+      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        groupTabsWithAI();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint]);
+  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint, groupTabsWithAI]);
 
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
@@ -857,6 +869,90 @@ export default function App(): React.ReactElement {
   const canGoForward = activeTab?.canGoForward ?? (currentHistory.cursor < currentHistory.stack.length - 1);
   const isSecure     = currentUrl.startsWith('https://');
   const isNtpPage    = !currentUrl;
+
+  // ── Smart Tab Grouping ────────────────────────────────────────────────────
+  const groupTabsWithAI = useCallback(async () => {
+    const visibleTabs = tabs.filter(t => t.url && !t.url.startsWith('lumo://'));
+    if (visibleTabs.length < 2) {
+      setTabGrouping({ isOpen: true, isLoading: false, groups: [], error: null });
+      return;
+    }
+
+    setTabGrouping({ isOpen: true, isLoading: true, groups: [], error: null });
+
+    const tabList = visibleTabs.map((t, i) => `${i + 1}. "${t.title || t.url}" (${t.url})`).join('\n');
+
+    const prompt = `You are a browser tab organizer. Group the following browser tabs into logical categories.
+
+Tabs:
+${tabList}
+
+Respond with ONLY a valid JSON array. Each object must have:
+- "name": short category label (e.g. "Shopping", "Research", "News", "Social Media", "Work")
+- "tabIndices": array of 1-based tab numbers that belong in this group
+
+Rules:
+- Every tab must appear in exactly one group
+- Maximum 6 groups
+- Minimum 1 tab per group
+- Group names should be short (1-2 words)
+
+Example response format:
+[{"name":"Shopping","tabIndices":[1,3]},{"name":"Research","tabIndices":[2,4,5]}]`;
+
+    try {
+      const apiKey = settings.openRouterApiKey;
+      if (!apiKey) throw new Error('No OpenRouter API key set. Please add your key in Settings.');
+
+      const result = await window.electron?.invoke?.('lumo:openrouter-chat', {
+        apiKey,
+        model: 'openai/gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      if (result?.error) throw new Error(result.error.message);
+
+      const raw = result?.data?.choices?.[0]?.message?.content ?? '';
+      const jsonMatch = raw.match(/\[.*\]/s);
+      if (!jsonMatch) throw new Error('AI returned an unexpected format.');
+
+      const parsed: Array<{ name: string; tabIndices: number[] }> = JSON.parse(jsonMatch[0]);
+
+      const groups: TabGroup[] = parsed.map((g, idx) => {
+        const palette = GROUP_COLOR_PALETTE[idx % GROUP_COLOR_PALETTE.length];
+        return {
+          id: `grp-${idx}`,
+          name: g.name,
+          color: palette.bg,
+          colorHex: palette.hex,
+          tabIds: g.tabIndices
+            .map(i => visibleTabs[i - 1]?.id)
+            .filter(Boolean) as string[],
+        };
+      });
+
+      setTabGrouping({ isOpen: true, isLoading: false, groups, error: null });
+    } catch (err: any) {
+      setTabGrouping({ isOpen: true, isLoading: false, groups: [], error: err.message ?? 'Unknown error' });
+    }
+  }, [tabs, settings.openRouterApiKey]);
+
+  const applyTabGroups = useCallback((groups: TabGroup[]) => {
+    const groupMap: Record<string, { id: string; color: string; name: string }> = {};
+    groups.forEach(g => g.tabIds.forEach(tabId => {
+      groupMap[tabId] = { id: g.id, color: g.colorHex, name: g.name };
+    }));
+
+    setTabs(prev => prev.map(t => ({
+      ...t,
+      groupId:    groupMap[t.id]?.id    ?? undefined,
+      groupColor: groupMap[t.id]?.color ?? undefined,
+      groupName:  groupMap[t.id]?.name  ?? undefined,
+    })));
+
+    setTabGrouping(s => ({ ...s, isOpen: false }));
+  }, []);
+
 
   // Search engine URL from settings
   const searchEngineUrl = SEARCH_ENGINES.find((e) => e.id === settings.searchEngine)?.url
@@ -868,14 +964,35 @@ export default function App(): React.ReactElement {
   return (
     <div className="flex flex-col w-full h-screen overflow-hidden bg-white dark:bg-[#1e1e1e]">
 
-      {/* ── Horizontal tab strip (shown only in horizontal mode) ── */}
+      {/* Horizontal tab strip + Group Tabs button */}
       {!isVertical && (
-        <BrowserTabBar
-          tabs={tabs}
-          onTabSelect={selectTab}
-          onTabClose={closeTab}
-          onTabAdd={addTab}
-        />
+        <div className="flex items-end flex-shrink-0">
+          <BrowserTabBar
+            tabs={tabs}
+            onTabSelect={selectTab}
+            onTabClose={closeTab}
+            onTabAdd={addTab}
+          />
+          {/* AI Group Tabs button */}
+          <button
+            id="group-tabs-btn"
+            onClick={groupTabsWithAI}
+            title="AI Group Tabs (Ctrl+Shift+G)"
+            aria-label="Group tabs with AI"
+            className="flex-shrink-0 mb-1.5 ml-1 flex items-center gap-1.5 px-2.5 h-7 rounded-full text-[11px] font-medium
+              text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-700
+              bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 dark:hover:bg-violet-900/60
+              transition-all duration-150 whitespace-nowrap"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            Group
+          </button>
+        </div>
       )}
 
       {/* ── Toolbar (always visible) ── */}
@@ -1157,6 +1274,17 @@ export default function App(): React.ReactElement {
               onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.inspectElement(contextMenu.params.x, contextMenu.params.y); }
             }
           ]}
+        />
+      )}
+      {/* Tab Group Modal */}
+      {tabGrouping.isOpen && (
+        <TabGroupModal
+          tabs={tabs}
+          groups={tabGrouping.groups}
+          isLoading={tabGrouping.isLoading}
+          error={tabGrouping.error}
+          onApply={applyTabGroups}
+          onClose={() => setTabGrouping(s => ({ ...s, isOpen: false }))}
         />
       )}
 
