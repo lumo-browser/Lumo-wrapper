@@ -11,7 +11,7 @@
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -31,7 +31,7 @@
 
 ---
 
-## 🎯 Overview
+##  Overview
 
 Lumo Browser combines a full-featured Chromium browser with a modular AI autonomous agent and a production-grade privacy engine. Users can browse normally or hand control to the AI agent to automate multi-step tasks across the web.
 
@@ -52,26 +52,26 @@ Lumo Browser combines a full-featured Chromium browser with a modular AI autonom
 
 ---
 
-## ✨ Features
+##  Features
 
 ### Browser Core
-- ✅ **Multi-tab browsing** with Ctrl+T / Ctrl+W / Ctrl+Tab management
-- ✅ **Full Chromium rendering engine** via Electron `<webview>` tags
-- ✅ **Smart address bar** — auto-resolves URLs, searches, and `nova://` internal pages
-- ✅ **Navigation controls** — back, forward, refresh, stop, zoom in/out
-- ✅ **Global keyboard shortcuts** — Ctrl+L, Ctrl+T, Ctrl+W, Ctrl+R, Ctrl+B, Ctrl+H, Ctrl+,, Alt+←/→
-- ✅ **Dark / Light / System theme** with live switching
-- ✅ **Bookmark manager** with persistent storage
-- ✅ **History tracking** with quick access
-- ✅ **Zoom controls** with async Electron 27 API support
+-  **Multi-tab browsing** with Ctrl+T / Ctrl+W / Ctrl+Tab management
+-  **Full Chromium rendering engine** via Electron `<webview>` tags
+-  **Smart address bar** — auto-resolves URLs, searches, and `nova://` internal pages
+-  **Navigation controls** — back, forward, refresh, stop, zoom in/out
+-  **Global keyboard shortcuts** — Ctrl+L, Ctrl+T, Ctrl+W, Ctrl+R, Ctrl+B, Ctrl+H, Ctrl+,, Alt+←/→
+-  **Dark / Light / System theme** with live switching
+-  **Bookmark manager** with persistent storage
+-  **History tracking** with quick access
+-  **Zoom controls** with async Electron 27 API support
 
 ### New Tab Dashboard
-- ✅ **Customizable widgets** — Clock, Search Bar, Shortcuts, Quick Notes, Top Sites
-- ✅ **8 preset gradient backgrounds** + custom image URL support
-- ✅ **Accent color picker** with 8 presets + native color input
-- ✅ **12/24-hour clock** with date and contextual greeting
-- ✅ **Pinned shortcuts** — add, remove, click to navigate
-- ✅ **Quick Notes** — persistent scratchpad stored in localStorage
+-  **Customizable widgets** — Clock, Search Bar, Shortcuts, Quick Notes, Top Sites
+-  **8 preset gradient backgrounds** + custom image URL support
+-  **Accent color picker** with 8 presets + native color input
+-  **12/24-hour clock** with date and contextual greeting
+-  **Pinned shortcuts** — add, remove, click to navigate
+-  **Quick Notes** — persistent scratchpad stored in localStorage
 
 ### Settings System
 Lumo has a fully modular settings architecture organized into a sidebar layout:
@@ -86,28 +86,28 @@ Lumo has a fully modular settings architecture organized into a sidebar layout:
 | **About** | Version, engine, architecture info |
 
 ### Privacy & Ad Blocking
-- ✅ **Zero-dependency ad blocking engine** — 150+ domain rules across 5 categories
-- ✅ **Ad networks** — DoubleClick, Criteo, AppNexus, OpenX, Taboola, Outbrain + 40 more
-- ✅ **Tracker blocking** — Google Analytics, Hotjar, Mixpanel, Segment + 40 more
-- ✅ **Social tracker blocking** — Facebook, Twitter, LinkedIn, Pinterest widgets
-- ✅ **Cryptominer blocking** — CoinHive, CryptoLoot + 10 more
-- ✅ **Fingerprinter blocking** — FingerprintJS, Kount, ThreatMetrix + others
-- ✅ **URL pattern rules** — Regex rules for ad paths, UTM params, tracking pixels
-- ✅ **Whitelist** — Google Fonts, Maps, Auth never blocked
-- ✅ **Live stats** — blocked count, allowed count, block rate %
+-  **Zero-dependency ad blocking engine** — 150+ domain rules across 5 categories
+-  **Ad networks** — DoubleClick, Criteo, AppNexus, OpenX, Taboola, Outbrain + 40 more
+-  **Tracker blocking** — Google Analytics, Hotjar, Mixpanel, Segment + 40 more
+-  **Social tracker blocking** — Facebook, Twitter, LinkedIn, Pinterest widgets
+-  **Cryptominer blocking** — CoinHive, CryptoLoot + 10 more
+-  **Fingerprinter blocking** — FingerprintJS, Kount, ThreatMetrix + others
+-  **URL pattern rules** — Regex rules for ad paths, UTM params, tracking pixels
+-  **Whitelist** — Google Fonts, Maps, Auth never blocked
+-  **Live stats** — blocked count, allowed count, block rate %
 
 ### AI Autonomous Agent
-- ✅ **Modular agent architecture** — `AgentMemory`, `AgentTools`, `AgentExecutor`, `AgentPrompts`
-- ✅ **14 tools** — navigate, click, type_text, scroll, read_page_text, extract_product_data, press_key, wait, go_back, request_user_confirmation, save_product, present_comparison, update_plan, done
-- ✅ **Safety gate** — irreversible actions require explicit user approval
-- ✅ **DOM injection engine** — captures roles, hrefs, types for reliable element targeting
-- ✅ **Product extraction** — Amazon/Flipkart heuristics for price, rating, reviews, delivery
-- ✅ **OpenRouter API** — supports GPT-4o, Claude 3.5, Gemma 2, Llama 3, Mistral
-- ✅ **Agent Sidebar** — tabbed view (Logs / Plan / Compare) with real-time streaming
+-  **Modular agent architecture** — `AgentMemory`, `AgentTools`, `AgentExecutor`, `AgentPrompts`
+-  **14 tools** — navigate, click, type_text, scroll, read_page_text, extract_product_data, press_key, wait, go_back, request_user_confirmation, save_product, present_comparison, update_plan, done
+-  **Safety gate** — irreversible actions require explicit user approval
+-  **DOM injection engine** — captures roles, hrefs, types for reliable element targeting
+-  **Product extraction** — Amazon/Flipkart heuristics for price, rating, reviews, delivery
+-  **OpenRouter API** — supports GPT-4o, Claude 3.5, Gemma 2, Llama 3, Mistral
+-  **Agent Sidebar** — tabbed view (Logs / Plan / Compare) with real-time streaming
 
 ---
 
-## 🛠 Tech Stack
+##  Tech Stack
 
 ### Frontend
 | Technology | Version | Purpose |
@@ -136,7 +136,7 @@ Lumo has a fully modular settings architecture organized into a sidebar layout:
 
 ---
 
-## 📦 Installation
+##  Installation
 
 ### Prerequisites
 
@@ -157,7 +157,7 @@ cd backend && npm install && cd ..
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ```bash
 # Development mode (Vite + Electron with live reload)
@@ -172,7 +172,7 @@ npm run package
 
 ---
 
-## 🏗 Architecture
+##  Architecture
 
 ### Project Structure
 
@@ -181,7 +181,7 @@ nova-browser/
 ├── src/
 │   ├── main/                          # Electron main process
 │   │   ├── main.ts                    # App init, IPC, session management
-│   │   ├── adBlocker.ts               # ✨ Ad blocking engine (zero-dep)
+│   │   ├── adBlocker.ts               #  Ad blocking engine (zero-dep)
 │   │   ├── preload.ts                 # Secure IPC bridge
 │   │   └── renderer.tsx               # React entry point
 │   │
@@ -231,7 +231,7 @@ nova-browser/
 │              Electron Main Process                   │
 │  ┌─────────────────┐   ┌──────────────────────────┐ │
 │  │  adBlocker.ts   │   │  session.webRequest       │ │
-│  │  150+ rules     │──▶│  intercepts all requests  │ │
+│  │  150+ rules     │──│  intercepts all requests  │ │
 │  └─────────────────┘   └──────────────────────────┘ │
 │  ┌─────────────────────────────────────────────────┐ │
 │  │  IPC Channels: lumo:set-ad-blocker-config       │ │
@@ -257,7 +257,7 @@ nova-browser/
 
 ---
 
-## ⚙️ Settings System
+##  Settings System
 
 Settings are organized into a **sidebar navigation layout** with 6 tabs. Each tab is a standalone component for modularity:
 
@@ -274,7 +274,7 @@ Settings are persisted in `localStorage` under the `lumo-settings` key and synce
 
 ---
 
-## 🛡️ Ad Blocking Engine
+##  Ad Blocking Engine
 
 The engine lives in `src/main/adBlocker.ts` and runs entirely in the **Electron main process** — meaning it blocks requests before they ever reach the renderer or any webview.
 
@@ -323,7 +323,7 @@ window.electron.send('lumo:reset-ad-blocker-stats');
 
 ---
 
-## 🤖 AI Autonomous Agent
+##  AI Autonomous Agent
 
 The agent is implemented in `src/agent/` as four modular classes:
 
@@ -359,7 +359,7 @@ When the agent calls `request_user_confirmation`, execution pauses and a warning
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## ⌨ Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
@@ -382,7 +382,7 @@ When the agent calls `request_user_confirmation`, execution pauses and a warning
 
 ---
 
-## 💻 Development
+##  Development
 
 ### Environment Variables
 
@@ -409,7 +409,7 @@ npm run coverage     # Generate coverage report
 
 ---
 
-## 📦 Building & Packaging
+##  Building & Packaging
 
 ```bash
 # Full production build
@@ -424,32 +424,32 @@ npm run package
 
 ---
 
-## 🗺 Roadmap
+##  Roadmap
 
 ### v0.2.0 (Current — June 2026)
-- ✅ Modular Settings System (General, Home, Search, Privacy)
-- ✅ Production-grade ad blocking engine
-- ✅ Comprehensive Privacy & Security settings
-- ✅ AI autonomous agent with safety gate
-- ✅ Global keyboard shortcuts
-- ✅ Customizable New Tab Dashboard
-- ✅ Font-size slider (commit-only updates)
+-  Modular Settings System (General, Home, Search, Privacy)
+-  Production-grade ad blocking engine
+-  Comprehensive Privacy & Security settings
+-  AI autonomous agent with safety gate
+-  Global keyboard shortcuts
+-  Customizable New Tab Dashboard
+-  Font-size slider (commit-only updates)
 
 ### v0.3.0 (Q3 2026)
-- 📋 Ad blocker stats widget in toolbar
-- 📋 Custom filter list import (EasyList format)
-- 📋 Browser extensions support
-- 📋 Cloud sync & backup
-- 📋 Tab groups
+-  Ad blocker stats widget in toolbar
+-  Custom filter list import (EasyList format)
+-  Browser extensions support
+-  Cloud sync & backup
+-  Tab groups
 
 ### v1.0.0 (2027)
-- 🚀 Mobile companion app
-- 🚀 Enterprise deployment
-- 🚀 Production-grade stability
+-  Mobile companion app
+-  Enterprise deployment
+-  Production-grade stability
 
 ---
 
-## 📝 Version History
+##  Version History
 
 ### v0.2.0 — Settings Overhaul + Ad Blocking (June 2026)
 
@@ -473,18 +473,18 @@ npm run package
 
 ---
 
-## 📄 License
+##  License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 👥 Team
+##  Team
 
 - **Lead Developer**: Sai
 
 ---
 
-**Made with 💡 by the Lumo Team**
+**Made with  by the Lumo Team**
 
-[⬆ Back to top](#nova-browser)
+[ Back to top](#nova-browser)

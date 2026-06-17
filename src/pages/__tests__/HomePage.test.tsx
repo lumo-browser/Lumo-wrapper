@@ -39,7 +39,7 @@ describe('HomePage', () => {
         id: 'research-company',
         title: 'Research a Company',
         description: 'Deep dive into company details',
-        icon: '🏢',
+        icon: '',
         category: 'research',
         action: vi.fn(),
         tags: ['business', 'research'],

@@ -170,7 +170,7 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
           <div className="flex flex-wrap gap-2">
             {['Social media trackers','Cross-site cookies','Tracking in Private Windows','Cryptominers','Fingerprinters'].map(item => (
               <span key={item} className="text-[10px] px-2 py-1 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 rounded-full border border-green-100 dark:border-green-900/20">
-                ✓ {item}
+                 {item}
               </span>
             ))}
           </div>

@@ -6,7 +6,7 @@
  *   [Toolbar] — Address bar + nav controls
  *   [Content + optional AI Sidebar] — flex row
  *
- * The AI is a sidebar accessed from the toolbar ✨ button.
+ * The AI is a sidebar accessed from the toolbar  button.
  * There are NO developer panels, no admin dashboards, no "AI Planner" nav tabs.
  * Settings lives in the 3-dot menu.
  */

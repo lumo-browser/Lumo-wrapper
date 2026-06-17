@@ -50,9 +50,9 @@ export function StatusPanel(): React.ReactElement {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return '✓';
+        return '';
       case 'error':
-        return '✗';
+        return '';
       case 'pending':
         return '...';
       default:

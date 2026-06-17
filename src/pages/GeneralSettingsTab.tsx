@@ -198,7 +198,7 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
       const result = await window.electron?.invoke('lumo:pick-download-folder');
       if (result) {
         set('saveLocation', result as string);
-        setDownloadPathMsg(`✓ Saved to ${result}`);
+        setDownloadPathMsg(` Saved to ${result}`);
         setTimeout(() => setDownloadPathMsg(''), 3000);
       }
     } catch {
@@ -214,9 +214,9 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
       await window.electron?.invoke('lumo:test-proxy', {
         type: gen.proxyType, host: gen.proxyHost, port: gen.proxyPort,
       });
-      setProxyTestMsg('✓ Connection successful');
+      setProxyTestMsg(' Connection successful');
     } catch {
-      setProxyTestMsg('✗ Could not connect');
+      setProxyTestMsg(' Could not connect');
     }
     setTimeout(() => setProxyTestMsg(''), 4000);
   };
@@ -420,7 +420,7 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
             </button>
           </div>
           {downloadPathMsg && (
-            <p className={`text-[11px] mt-1.5 ${downloadPathMsg.startsWith('✓') ? 'text-green-500' : 'text-amber-500'}`}>
+            <p className={`text-[11px] mt-1.5 ${downloadPathMsg.startsWith('') ? 'text-green-500' : 'text-amber-500'}`}>
               {downloadPathMsg}
             </p>
           )}
@@ -515,7 +515,7 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
                 Test Connection
               </button>
               {proxyTestMsg && (
-                <span className={`text-[11px] ${proxyTestMsg.startsWith('✓') ? 'text-green-500' : proxyTestMsg === 'Testing…' ? 'text-gray-400' : 'text-red-500'}`}>
+                <span className={`text-[11px] ${proxyTestMsg.startsWith('') ? 'text-green-500' : proxyTestMsg === 'Testing…' ? 'text-gray-400' : 'text-red-500'}`}>
                   {proxyTestMsg}
                 </span>
               )}

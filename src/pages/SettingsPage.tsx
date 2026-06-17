@@ -56,7 +56,7 @@ const SEARCH_ENGINES: { id: SearchEngine; name: string; url: string; icon: strin
   { id: 'google',      name: 'Google',      url: 'https://www.google.com/search?q=',          icon: 'G' },
   { id: 'bing',        name: 'Bing',        url: 'https://www.bing.com/search?q=',            icon: 'B' },
   { id: 'duckduckgo',  name: 'DuckDuckGo',  url: 'https://duckduckgo.com/?q=',                icon: 'D' },
-  { id: 'brave',       name: 'Brave Search', url: 'https://search.brave.com/search?q=',       icon: '🦁' },
+  { id: 'brave',       name: 'Brave Search', url: 'https://search.brave.com/search?q=',       icon: '' },
   { id: 'yahoo',       name: 'Yahoo',       url: 'https://search.yahoo.com/search?p=',        icon: 'Y' },
 ];
 
@@ -218,7 +218,7 @@ export function SettingsPage({
                 <span className="text-xs text-gray-400 dark:text-gray-500">Chromium</span>
               </SettingRow>
               <SettingRow label="Architecture" description="Local-first, privacy-focused, no cloud accounts">
-                <span className="text-xs text-green-500">✓ Local</span>
+                <span className="text-xs text-green-500"> Local</span>
               </SettingRow>
             </SettingSection>
           )}

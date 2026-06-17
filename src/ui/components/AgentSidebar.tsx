@@ -331,7 +331,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
                     <div className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">{p.name}</div>
                     <div className="flex flex-wrap gap-2 mt-1">
                       <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full font-bold">{p.price}</span>
-                      {p.rating !== 'N/A' && <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded-full">★ {p.rating}</span>}
+                      {p.rating !== 'N/A' && <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded-full"> {p.rating}</span>}
                       {p.reviews !== 'N/A' && <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">{p.reviews}</span>}
                     </div>
                     <div className="flex justify-between text-gray-500 dark:text-gray-400">

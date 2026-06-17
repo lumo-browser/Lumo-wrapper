@@ -60,8 +60,8 @@ app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  logger.info(`🚀 Server running on http://localhost:${PORT}`);
-  logger.info(`📝 API docs available at http://localhost:${PORT}/api/docs`);
+  logger.info(` Server running on http://localhost:${PORT}`);
+  logger.info(` API docs available at http://localhost:${PORT}/api/docs`);
 });
 
 export default app;

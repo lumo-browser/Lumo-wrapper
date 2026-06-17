@@ -14,7 +14,7 @@
     "build:backend": "cd backend && npm run build",
     "build:frontend": "npm run build:vite && npm run build:electron",
     "build:vite": "vite build",
-    "build:electron": "npx esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main/main.js --external:electron && npx esbuild src/main/preload.ts --bundle --platform=node --outfile=dist/main/preload.js --external:electron",
+    "build:electron": "npx esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main/main.js --external:electron --external:adblock-rs && npx esbuild src/main/preload.ts --bundle --platform=node --outfile=dist/main/preload.js --external:electron",
     "package": "electron-builder",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -31,7 +31,8 @@
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zustand": "^4.4.1"
+    "zustand": "^4.4.1",
+    "adblock-rs": "git+https://github.com/Rsaimukesh/adblock-rust.git"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.2.10",

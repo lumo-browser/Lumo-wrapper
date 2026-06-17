@@ -72,7 +72,7 @@ describe('useHomeStore', () => {
         id: 'action-1',
         title: 'Action',
         description: 'Description',
-        icon: '🎯',
+        icon: '',
         category: 'research',
         action: () => {},
         tags: ['test'],

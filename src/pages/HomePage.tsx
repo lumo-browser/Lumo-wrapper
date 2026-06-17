@@ -179,7 +179,7 @@ export function HomePage(): React.ReactElement {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Lumo Browser v0.1.0 • Phase 3 Week 1
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">© 2026 Lumo Inc. All rights reserved.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400"> 2026 Lumo Inc. All rights reserved.</p>
           </div>
         </div>
       </div>

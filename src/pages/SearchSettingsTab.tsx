@@ -22,7 +22,7 @@ const DEFAULT_SHORTCUTS: SearchShortcut[] = [
   { id: 'sh1', name: 'Google',     keyword: '@g',  url: 'https://www.google.com/search?q=%s',       icon: 'G' },
   { id: 'sh2', name: 'DuckDuckGo', keyword: '@d',  url: 'https://duckduckgo.com/?q=%s',              icon: 'D' },
   { id: 'sh3', name: 'Wikipedia',  keyword: '@w',  url: 'https://en.wikipedia.org/wiki/Special:Search?search=%s', icon: 'W' },
-  { id: 'sh4', name: 'YouTube',    keyword: '@yt', url: 'https://www.youtube.com/results?search_query=%s', icon: '▶' },
+  { id: 'sh4', name: 'YouTube',    keyword: '@yt', url: 'https://www.youtube.com/results?search_query=%s', icon: '' },
   { id: 'sh5', name: 'GitHub',     keyword: '@gh', url: 'https://github.com/search?q=%s',           icon: '⌥' },
 ];
 

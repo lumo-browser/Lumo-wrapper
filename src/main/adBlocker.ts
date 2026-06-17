@@ -172,12 +172,60 @@ function matchesPattern(url: string, patterns: RegExp[]): boolean {
   return patterns.some(p => p.test(url));
 }
 
+// ── Rust Adblock Engine Integration ─────────────────────────────────────────────
+let adblockEngine: any = null;
+try {
+  // Attempt to load the adblock-rs native bindings (compiled from your adblock-rust repo)
+  const adblockRs = require('adblock-rs');
+  const filterSet = new adblockRs.FilterSet(false);
+  
+  // We add some standard EasyList rules. In a full implementation, you would read 
+  // the entire easylist.txt from disk here.
+  filterSet.addFilters([
+    "||doubleclick.net^",
+    "||googleadservices.com^",
+    "||google-analytics.com^",
+    "||googletagmanager.com^",
+    "||amazon-adsystem.com^",
+    "||criteo.com^",
+    "||taboola.com^",
+    "/ads/banner*",
+    "||connect.facebook.net^",
+    // --- YouTube Ad Blocking Rules ---
+    "||youtube.com/pagead/",
+    "||youtube.com/ptracking",
+    "||youtube.com/api/stats/ads",
+    "||youtube.com/get_midroll_info",
+    "||youtube-nocookie.com/pagead/"
+  ]);
+  
+  adblockEngine = new adblockRs.Engine(filterSet, true);
+  console.log('[Lumo] \x1b[32madblock-rust engine successfully loaded and initialized\x1b[0m');
+} catch (e) {
+  console.log('[Lumo] \x1b[33madblock-rust engine not found or built yet. Falling back to basic regex blocker.\x1b[0m');
+}
+
 /** Core decision function — returns true if the URL should be blocked */
 export function shouldBlock(url: string, config: AdBlockerConfig): boolean {
   if (!config.enabled) return false;
 
+  // 1. Rust Engine (High Performance)
+  if (adblockEngine && config.blockAds) {
+    try {
+      // Check using the rust core (sourceUrl is empty as we intercept globally)
+      const result = adblockEngine.check(url, "https://nova-browser.local", "script");
+      if (result && result.matched) {
+        return true;
+      }
+    } catch (e) {
+      // Ignore rust errors and fallback
+    }
+  }
+
+  // 2. Basic Engine Fallback
   const hostname = getHostname(url);
   if (!hostname) return false;
+
 
   // Never block whitelisted domains
   if (WHITELIST_DOMAINS.some(d => matchesDomain(hostname, d))) return false;
