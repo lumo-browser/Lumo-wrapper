@@ -95,7 +95,7 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
           
           Object.assign(btn.style, {
             position: 'fixed',
-            zIndex: '2147483647', // Max z-index
+            zIndex: '2147483647',
             background: 'rgba(28, 28, 30, 0.75)',
             color: 'white',
             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -139,41 +139,54 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
 
           let hoverTimeout;
           let isHovering = false;
-
-          // Track the largest visible video on the screen
-          setInterval(() => {
+          
+          const updateButtonPosition = () => {
+            if (!currentTargetVideo || document.fullscreenElement) {
+              btn.style.display = 'none';
+              return;
+            }
             ensureButton();
+            btn.style.display = 'flex';
+            const rect = currentTargetVideo.getBoundingClientRect();
+            btn.style.top = (rect.top + 12) + 'px';
+            btn.style.left = (rect.right - 44) + 'px';
+          };
+
+          // Use IntersectionObserver instead of a rapid setInterval
+          const observer = new IntersectionObserver((entries) => {
+            let maxArea = 0;
+            let bestVideo = null;
             
             const videos = Array.from(document.querySelectorAll('video')).filter(v => 
-              v.offsetWidth > 150 && 
-              v.offsetHeight > 100 && 
-              window.getComputedStyle(v).display !== 'none'
+              v.offsetWidth > 150 && v.offsetHeight > 100 && window.getComputedStyle(v).display !== 'none'
             );
             
-            let bestVideo = null;
-            let maxArea = 0;
             videos.forEach(v => {
               const rect = v.getBoundingClientRect();
               const area = rect.width * rect.height;
-              // Check if at least partially in viewport
               if (area > maxArea && rect.top < window.innerHeight && rect.bottom > 0) {
                 maxArea = area;
                 bestVideo = v;
               }
             });
-
             currentTargetVideo = bestVideo;
+            updateButtonPosition();
+          }, { threshold: [0, 0.5, 1] });
 
-            if (!currentTargetVideo || document.fullscreenElement) {
-              btn.style.display = 'none';
-              return;
-            }
+          const observeVideos = () => {
+            document.querySelectorAll('video').forEach(v => {
+              if (!v._lumoObserved) {
+                observer.observe(v);
+                v._lumoObserved = true;
+              }
+            });
+          };
 
-            btn.style.display = 'flex';
-            const rect = currentTargetVideo.getBoundingClientRect();
-            btn.style.top = (rect.top + 12) + 'px';
-            btn.style.left = (rect.right - 44) + 'px';
-          }, 200);
+          // Periodically check for new dynamically added videos (much slower interval)
+          setInterval(observeVideos, 2000);
+          
+          window.addEventListener('scroll', updateButtonPosition, { passive: true });
+          window.addEventListener('resize', updateButtonPosition, { passive: true });
 
           // Global mouse tracker
           document.addEventListener('mousemove', (e) => {
@@ -212,7 +225,7 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
           if (window._lumoYtAdSetup || window.location.hostname.indexOf('youtube.com') === -1) return;
           window._lumoYtAdSetup = true;
 
-          setInterval(() => {
+          const removeAds = () => {
             const skipButton = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-text.ytp-ad-skip-button-text');
             const adContainer = document.querySelector('.ad-showing, .ad-interrupting');
             const video = document.querySelector('video');
@@ -232,7 +245,24 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
                el.style.display = 'none';
                el.remove();
             });
-          }, 300);
+          };
+
+          let adTimeout;
+          const observer = new MutationObserver(() => {
+            clearTimeout(adTimeout);
+            // Debounce the ad remover so it isn't constantly running during DOM mutations
+            adTimeout = setTimeout(removeAds, 250);
+          });
+          
+          const startObserving = () => {
+            const player = document.getElementById('ytd-player') || document.body;
+            if (player) {
+              observer.observe(player, { childList: true, subtree: true });
+            }
+          };
+
+          removeAds();
+          setTimeout(startObserving, 1000);
         })();
       `;
       wv.executeJavaScript(ytAdScript).catch(() => {});
