@@ -23,165 +23,143 @@ interface ContextMenuProps {
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
-  const [activeSubMenu, setActiveSubMenu] = useState<string | null>(null);
+  const [pos, setPos] = useState({ top: y, left: x, opacity: 0, scale: 0.95 });
 
-  // Position state to handle viewport edges
-  const [position, setPosition] = useState({ top: y, left: x, opacity: 0, transform: 'scale(0.95)' });
-
-  // Handle edge detection and entrance animation
+  // Adjust position to keep menu inside the viewport
   useEffect(() => {
-    if (menuRef.current) {
-      const rect = menuRef.current.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
-      let newLeft = x;
-      let newTop = y;
-
-      if (x + rect.width > viewportWidth) {
-        newLeft = x - rect.width;
-      }
-      if (y + rect.height > viewportHeight) {
-        newTop = viewportHeight - rect.height - 8;
-      }
-
-      setPosition({ 
-        top: Math.max(8, newTop), 
-        left: Math.max(8, newLeft), 
-        opacity: 1, 
-        transform: 'scale(1)' 
-      });
-    }
+    if (!menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    setPos({
+      top:     Math.max(8, y + rect.height > vh ? vh - rect.height - 8 : y),
+      left:    Math.max(8, x + rect.width  > vw ? x - rect.width        : x),
+      opacity: 1,
+      scale:   1,
+    });
   }, [x, y]);
 
-  // Click outside / right-click outside to close
+  // Keyboard shortcuts
   useEffect(() => {
-    let mounted = true;
+    const interactive = items.filter(i => !i.isSeparator && !i.disabled);
 
-    const handlePointerDown = (e: MouseEvent) => {
-      if (!mounted) return;
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-
-    // Use capture phase so we catch clicks before anything else swallows them
-    // Small delay still needed to avoid catching the triggering right-click itself
-    const timer = setTimeout(() => {
-      document.addEventListener('mousedown', handlePointerDown, true);
-      document.addEventListener('contextmenu', handlePointerDown, true);
-    }, 50);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-      document.removeEventListener('mousedown', handlePointerDown, true);
-      document.removeEventListener('contextmenu', handlePointerDown, true);
-    };
-  }, [onClose]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const interactiveItems = items.filter(i => !i.isSeparator && !i.disabled);
-      
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.stopPropagation();
         onClose();
       } else if (e.key === 'ArrowDown' || e.key === 'Tab') {
         e.preventDefault();
-        setActiveIndex(prev => (prev + 1) % interactiveItems.length);
+        setActiveIndex(p => (p + 1) % interactive.length);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setActiveIndex(prev => (prev - 1 < 0 ? interactiveItems.length - 1 : prev - 1));
+        setActiveIndex(p => (p - 1 < 0 ? interactive.length - 1 : p - 1));
       } else if (e.key === 'Enter' && activeIndex >= 0) {
         e.preventDefault();
-        const item = interactiveItems[activeIndex];
-        if (item.onClick) {
-          item.onClick();
-          onClose();
-        }
+        const item = interactive[activeIndex];
+        item?.onClick?.();
+        onClose();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [items, activeIndex, onClose]);
 
+  const interactiveItems = items.filter(i => !i.isSeparator && !i.disabled);
+
   return (
-    <div
-      ref={menuRef}
-      onContextMenu={(e) => e.preventDefault()}
-      className={clsx(
-        "fixed z-[999999] w-64 rounded-xl border font-sans select-none pointer-events-auto",
-        "bg-white/80 dark:bg-[#1c1c1e]/85 backdrop-blur-2xl",
-        "border-gray-200 dark:border-white/10",
-        "shadow-[0_10px_30px_rgba(0,0,0,0.15)]",
-        "transition-all duration-150 ease-out origin-top-left"
-      )}
-      style={{
-        top: position.top,
-        left: position.left,
-        opacity: position.opacity,
-        transform: position.transform,
-      }}
-    >
-      <div className="flex flex-col py-1.5 text-[13px] text-gray-800 dark:text-gray-200">
-        {items.map((item, i) => {
-          if (item.isSeparator) {
-            return <div key={`sep-${i}`} className="h-px bg-gray-200 dark:bg-white/10 my-1 mx-2" />;
-          }
+    <>
+      {/*
+        Full-screen invisible backdrop — clicking or right-clicking anywhere
+        outside the menu closes it immediately. No async setTimeout needed.
+      */}
+      <div
+        className="fixed inset-0 z-[999998]"
+        onMouseDown={onClose}
+        onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+        aria-hidden
+      />
 
-          const isInteractiveIndex = items.filter(i => !i.isSeparator && !i.disabled).indexOf(item);
-          const isActive = activeIndex === isInteractiveIndex;
+      {/* The menu itself sits above the backdrop */}
+      <div
+        ref={menuRef}
+        role="menu"
+        aria-label="Context menu"
+        onContextMenu={(e) => e.preventDefault()}
+        className={clsx(
+          'fixed z-[999999] w-60 rounded-xl border font-sans select-none',
+          'bg-white/90 dark:bg-[#1c1c1e]/92 backdrop-blur-2xl',
+          'border-gray-200/80 dark:border-white/10',
+          'shadow-[0_12px_40px_rgba(0,0,0,0.25)]',
+          'transition-[opacity,transform] duration-150 ease-out origin-top-left',
+        )}
+        style={{
+          top: pos.top,
+          left: pos.left,
+          opacity: pos.opacity,
+          transform: `scale(${pos.scale})`,
+        }}
+      >
+        <div className="flex flex-col py-1.5 text-[13px] text-gray-800 dark:text-gray-200">
+          {items.map((item, i) => {
+            if (item.isSeparator) {
+              return <div key={`sep-${i}`} className="h-px bg-gray-200 dark:bg-white/10 my-1 mx-2" />;
+            }
 
-          return (
-            <button
-              key={item.id}
-              disabled={item.disabled}
-              onMouseEnter={() => {
-                if (!item.disabled) setActiveIndex(isInteractiveIndex);
-              }}
-              onClick={() => {
-                if (!item.disabled && item.onClick) {
-                  item.onClick();
-                  onClose();
-                }
-              }}
-              className={clsx(
-                "group flex items-center justify-between px-3 py-1.5 mx-1.5 rounded-lg text-left transition-colors",
-                item.disabled ? "opacity-40 cursor-not-allowed" : "cursor-default",
-                !item.disabled && isActive ? "bg-blue-500/15 dark:bg-blue-500/20 text-blue-700 dark:text-blue-100" : "hover:bg-blue-500/10 dark:hover:bg-blue-500/15"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                {item.icon && (
-                  <span className={clsx(
-                    "flex items-center justify-center w-4 h-4",
-                    isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"
-                  )}>
-                    {item.icon}
-                  </span>
+            const idx = interactiveItems.indexOf(item);
+            const isActive = activeIndex === idx;
+
+            return (
+              <button
+                key={item.id}
+                role="menuitem"
+                disabled={item.disabled}
+                onMouseEnter={() => { if (!item.disabled) setActiveIndex(idx); }}
+                onMouseLeave={() => setActiveIndex(-1)}
+                onClick={() => {
+                  if (!item.disabled && item.onClick) {
+                    item.onClick();
+                    onClose();
+                  }
+                }}
+                className={clsx(
+                  'group flex items-center justify-between w-full px-3 py-1.5 mx-0 rounded-lg text-left transition-colors duration-75',
+                  item.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-default',
+                  !item.disabled && isActive
+                    ? 'bg-violet-500/15 dark:bg-violet-500/20 text-violet-700 dark:text-violet-200'
+                    : 'hover:bg-gray-100 dark:hover:bg-white/8',
                 )}
-                <span className="font-medium">{item.label}</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {item.shortcut && (
-                  <span className={clsx(
-                    "text-[11px] tracking-wide",
-                    isActive ? "text-blue-500/80 dark:text-blue-300/80" : "text-gray-400 dark:text-gray-500"
-                  )}>
-                    {item.shortcut}
-                  </span>
-                )}
-                {item.subItems && (
-                  <ChevronRight size={14} className={isActive ? "text-blue-500" : "text-gray-400"} />
-                )}
-              </div>
-            </button>
-          );
-        })}
+              >
+                <div className="flex items-center gap-2.5">
+                  {item.icon && (
+                    <span className={clsx(
+                      'flex items-center justify-center w-4 h-4 flex-shrink-0',
+                      isActive ? 'text-violet-500 dark:text-violet-400' : 'text-gray-500 dark:text-gray-400',
+                    )}>
+                      {item.icon}
+                    </span>
+                  )}
+                  <span className="font-medium leading-tight">{item.label}</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 ml-4">
+                  {item.shortcut && (
+                    <span className={clsx(
+                      'text-[10px] font-mono tracking-wide whitespace-nowrap',
+                      isActive ? 'text-violet-400/80' : 'text-gray-400 dark:text-gray-500',
+                    )}>
+                      {item.shortcut}
+                    </span>
+                  )}
+                  {item.subItems && (
+                    <ChevronRight size={13} className={isActive ? 'text-violet-400' : 'text-gray-400'} />
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
