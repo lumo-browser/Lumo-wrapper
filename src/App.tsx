@@ -380,12 +380,10 @@ export default function App(): React.ReactElement {
         tabId: e.detail.tabId
       });
     };
-    const clickHandler = () => setContextMenu(prev => ({ ...prev, show: false }));
+    // ContextMenu handles its own outside-click via capture-phase mousedown
     window.addEventListener('lumo:show-context-menu', handler);
-    window.addEventListener('click', clickHandler);
     return () => {
       window.removeEventListener('lumo:show-context-menu', handler);
-      window.removeEventListener('click', clickHandler);
     };
   }, []);
   // Tabs

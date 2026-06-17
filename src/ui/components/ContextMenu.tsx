@@ -54,16 +54,30 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     }
   }, [x, y]);
 
-  // Click outside to close
+  // Click outside / right-click outside to close
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    let mounted = true;
+
+    const handlePointerDown = (e: MouseEvent) => {
+      if (!mounted) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
-    // Use setTimeout to avoid immediate closing from the initial click
-    setTimeout(() => document.addEventListener('mousedown', handleClickOutside), 0);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    // Use capture phase so we catch clicks before anything else swallows them
+    // Small delay still needed to avoid catching the triggering right-click itself
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handlePointerDown, true);
+      document.addEventListener('contextmenu', handlePointerDown, true);
+    }, 50);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handlePointerDown, true);
+      document.removeEventListener('contextmenu', handlePointerDown, true);
+    };
   }, [onClose]);
 
   // Keyboard navigation
