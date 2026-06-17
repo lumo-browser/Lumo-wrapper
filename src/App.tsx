@@ -13,7 +13,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '@utils/logger';
-import { ArrowLeft, ArrowRight, RotateCw, Sparkles, Download, CheckSquare, Copy, Code } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, Sparkles, Copy, Code } from 'lucide-react';
 
 import { BrowserTabBar, type BrowserTab } from '@ui/components/BrowserTabBar';
 import { BrowserToolbar } from '@ui/components/BrowserToolbar';
@@ -1289,71 +1289,59 @@ Example response format:
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={() => setContextMenu(prev => ({ ...prev, show: false }))}
-          items={[
-            // Navigation
-            { 
-              id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left',
-              disabled: !contextMenu.params.editFlags?.canGoBack,
-              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.goBack(); }
-            },
-            { 
-              id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right',
-              disabled: !contextMenu.params.editFlags?.canGoForward,
-              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.goForward(); }
-            },
-            { 
-              id: 'reload', label: 'Reload', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R',
-              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.reload(); }
-            },
-            { id: 's1', label: '', isSeparator: true },
-            
-            // AI Space
-            {
-              id: 'ai-space', label: 'Send to AI Space', icon: <Sparkles size={15} />,
-              onClick: () => setShowAgent(true)
-            },
-            { id: 's2', label: '', isSeparator: true },
+          items={(() => {
+            const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any;
+            const isWebviewTab = !!(wv && typeof wv.inspectElement === 'function');
+            const isDevToolsOpen = isWebviewTab ? !!(wv.isDevToolsOpened?.()) : false;
+            const hasSelection = (contextMenu.params?.selectionText?.trim()?.length ?? 0) > 0;
+            const hasLink = !!contextMenu.params?.linkURL;
 
-            // Page Actions
-            {
-              id: 'save', label: 'Save Page As...', icon: <Download size={15} />, shortcut: 'Ctrl+S',
-              onClick: () => {}
-            },
-            {
-              id: 'select-all', label: 'Select All', icon: <CheckSquare size={15} />, shortcut: 'Ctrl+A',
-              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.selectAll(); }
-            },
+            const items: any[] = [];
 
-            // Clipboard (conditional)
-            ...(contextMenu.params.selectionText?.trim()?.length > 0 ? [
-              { id: 's3', label: '', isSeparator: true },
-              {
-                id: 'copy', label: 'Copy', icon: <Copy size={15} />, shortcut: 'Ctrl+C',
-                onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.copy(); }
-              }
-            ] : []),
+            // Navigation — only on real webview tabs
+            if (isWebviewTab) {
+              items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', onClick: () => wv?.goBack() });
+              items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', onClick: () => wv?.goForward() });
+              items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => wv?.reload() });
+              items.push({ id: 's1', label: '', isSeparator: true });
+            }
 
-            { id: 's4', label: '', isSeparator: true },
+            // Open link in new tab
+            if (hasLink) {
+              items.push({ id: 'open-link', label: 'Open Link in New Tab', icon: <ArrowRight size={15} />, onClick: () => { addTab(); navigate(contextMenu.params.linkURL); } });
+              items.push({ id: 'copy-link', label: 'Copy Link Address', icon: <Copy size={15} />, onClick: () => navigator.clipboard.writeText(contextMenu.params.linkURL) });
+              items.push({ id: 's-link', label: '', isSeparator: true });
+            }
 
-            // Developer
-            {
-              id: 'inspect', label: 'Inspect', icon: <Code size={15} />, shortcut: 'Ctrl+Shift+I',
+            // Text selection actions
+            if (hasSelection) {
+              items.push({ id: 'copy', label: 'Copy', icon: <Copy size={15} />, shortcut: 'Ctrl+C', onClick: () => isWebviewTab ? wv?.copy() : document.execCommand('copy') });
+              items.push({ id: 'ai-sel', label: 'Ask AI About Selection', icon: <Sparkles size={15} />, onClick: () => setShowAgent(true) });
+              items.push({ id: 's2', label: '', isSeparator: true });
+            }
+
+            // AI Agent
+            items.push({ id: 'ai-agent', label: 'Open AI Agent', icon: <Sparkles size={15} />, onClick: () => setShowAgent(true) });
+
+            items.push({ id: 's3', label: '', isSeparator: true });
+
+            // Inspect — label reflects current state
+            items.push({
+              id: 'inspect',
+              label: isDevToolsOpen ? 'Close DevTools' : 'Inspect Element',
+              icon: <Code size={15} />,
+              shortcut: 'Ctrl+Shift+I',
               onClick: () => {
-                const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any;
-                if (wv && typeof wv.inspectElement === 'function') {
-                  // Webview tab: use webview's own devtools with toggle support
-                  if (wv.isDevToolsOpened()) {
-                    wv.closeDevTools();
-                  } else {
-                    wv.inspectElement(contextMenu.params?.x ?? 0, contextMenu.params?.y ?? 0);
-                  }
+                if (isWebviewTab) {
+                  isDevToolsOpen ? wv.closeDevTools() : wv.inspectElement(contextMenu.params?.x ?? 0, contextMenu.params?.y ?? 0);
                 } else {
-                  // Internal page (home, settings, etc.): use main window devtools via IPC
                   window.electron?.send?.('lumo:toggle-devtools');
                 }
               }
-            }
-          ]}
+            });
+
+            return items;
+          })()}
         />
       )}
       {/* Tab Group Modal */}
