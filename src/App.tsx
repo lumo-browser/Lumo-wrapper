@@ -1340,7 +1340,20 @@ Example response format:
             // Developer
             {
               id: 'inspect', label: 'Inspect', icon: <Code size={15} />, shortcut: 'Ctrl+Shift+I',
-              onClick: () => { const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any; wv?.inspectElement(contextMenu.params.x, contextMenu.params.y); }
+              onClick: () => {
+                const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any;
+                if (wv && typeof wv.inspectElement === 'function') {
+                  // Webview tab: use webview's own devtools with toggle support
+                  if (wv.isDevToolsOpened()) {
+                    wv.closeDevTools();
+                  } else {
+                    wv.inspectElement(contextMenu.params?.x ?? 0, contextMenu.params?.y ?? 0);
+                  }
+                } else {
+                  // Internal page (home, settings, etc.): use main window devtools via IPC
+                  window.electron?.send?.('lumo:toggle-devtools');
+                }
+              }
             }
           ]}
         />

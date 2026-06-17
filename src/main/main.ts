@@ -186,6 +186,24 @@ app.on('ready', () => {
       console.log(`[Lumo] Spell check ${enabled ? 'enabled' : 'disabled'}`);
     });
 
+    // Toggle main window DevTools (used by home/internal pages)
+    ipcMain.on('lumo:toggle-devtools', () => {
+      if (!mainWindow) return;
+      const wc = mainWindow.webContents;
+      if (wc.isDevToolsOpened()) {
+        wc.closeDevTools();
+      } else {
+        wc.openDevTools({ mode: 'detach' });
+      }
+    });
+
+    // Inspect element at coordinates in the main renderer (internal pages)
+    ipcMain.on('lumo:inspect-element', (_event, x: number, y: number) => {
+      if (!mainWindow) return;
+      const wc = mainWindow.webContents;
+      wc.inspectElement(x, y);
+    });
+
     // Download path + alwaysAsk
     ipcMain.on('lumo:set-download-path', (event, { path: dlPath, alwaysAsk }: { path: string; alwaysAsk: boolean }) => {
       const handleDownload = (_event: Electron.Event, item: Electron.DownloadItem) => {
