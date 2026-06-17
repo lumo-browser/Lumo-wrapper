@@ -18,6 +18,16 @@ let mainWindow: BrowserWindow | null = null;
 // Bypass Google's "unsupported browser" by globally spoofing a modern Chrome user agent
 app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
 
+// ── Aggressive Memory & Performance Optimizations ──
+// Reduce V8 engine memory limit for the main process and renderers
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512');
+// Disable heavy background Chromium features that aren't strictly necessary for a lightweight browser
+app.commandLine.appendSwitch('disable-features', 'Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider,CalculateNativeWinOcclusion,InterestFeedContentSuggestions,ChromeWhatsNewUI');
+// Enable Chrome's native Memory Saver mode to proactively discard unused tabs and free RAM
+app.commandLine.appendSwitch('enable-features', 'MemorySaverMode');
+// Disable IPC flood in background tabs
+app.commandLine.appendSwitch('disable-background-timer-throttling', 'false');
+
 function createWindow(): void {
   console.log('[Lumo] Creating main window');
 

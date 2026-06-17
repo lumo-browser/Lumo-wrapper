@@ -25,11 +25,17 @@ import { AISidebar } from '@ui/components/AISidebar';
 import { AgentSidebar } from '@ui/components/AgentSidebar';
 import { ComparePage } from '@ui/components/ComparePage';
 import { BrowserMenu } from '@ui/components/BrowserMenu';
-import { NewTabPage } from './pages/NewTabPage';
-import { HistoryPage, type HistoryEntry } from './pages/HistoryPage';
-import { BookmarksPage, type BookmarkEntry } from './pages/BookmarksPage';
-import { SettingsPage, type BrowserSettings, SEARCH_ENGINES } from './pages/SettingsPage';
-import { ExtensionsPage } from './pages/ExtensionsPage';
+
+import type { HistoryEntry } from './pages/HistoryPage';
+import type { BookmarkEntry } from './pages/BookmarksPage';
+import { SEARCH_ENGINES, type BrowserSettings } from './pages/SettingsPage';
+
+// Lazy load heavy internal pages
+const NewTabPage = React.lazy(() => import('./pages/NewTabPage').then(m => ({ default: m.NewTabPage })));
+const HistoryPage = React.lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const BookmarksPage = React.lazy(() => import('./pages/BookmarksPage').then(m => ({ default: m.BookmarksPage })));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const ExtensionsPage = React.lazy(() => import('./pages/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
 
 // ── Internal Pages ─────────────────────────────────────────────────────────
 function InternalPage({ title, children }: { title: string; children: React.ReactNode }) {
@@ -965,42 +971,44 @@ export default function App(): React.ReactElement {
                 key={tab.id}
                 className={`absolute inset-0 flex flex-col ${tab.isActive ? 'z-10 visible' : 'z-0 hidden'}`}
               >
-                {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
-                {isNtp && !isWelcome && <NewTabPage onNavigate={navigate} />}
-                {isSettings && (
-                  <SettingsPage
-                    settings={settings}
-                    onUpdateSettings={handleUpdateSettings}
-                    onClearBrowsingData={() => {
-                      setHistoryEntries([]);
-                      setBookmarkEntries([]);
-                    }}
-                    historyCount={historyEntries.length}
-                    bookmarkCount={bookmarkEntries.length}
-                  />
-                )}
-                {isHistory && (
-                  <HistoryPage
-                    entries={historyEntries}
-                    onNavigate={navigate}
-                    onDeleteEntry={(id) => setHistoryEntries((prev) => prev.filter((e) => e.id !== id))}
-                    onClearAll={() => setHistoryEntries([])}
-                  />
-                )}
-                {isBookmarks && (
-                  <BookmarksPage
-                    bookmarks={bookmarkEntries}
-                    onNavigate={navigate}
-                    onDeleteBookmark={(id) => setBookmarkEntries((prev) => prev.filter((b) => b.id !== id))}
-                    onClearAll={() => setBookmarkEntries([])}
-                  />
-                )}
-                {isExtensions && (
-                  <ExtensionsPage onNavigate={navigate} />
-                )}
-                {isCompare && (
-                  <ComparePage query={new URL(tab.url).searchParams.get('q') || ''} />
-                )}
+                <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
+                  {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
+                  {isNtp && !isWelcome && <NewTabPage onNavigate={navigate} />}
+                  {isSettings && (
+                    <SettingsPage
+                      settings={settings}
+                      onUpdateSettings={handleUpdateSettings}
+                      onClearBrowsingData={() => {
+                        setHistoryEntries([]);
+                        setBookmarkEntries([]);
+                      }}
+                      historyCount={historyEntries.length}
+                      bookmarkCount={bookmarkEntries.length}
+                    />
+                  )}
+                  {isHistory && (
+                    <HistoryPage
+                      entries={historyEntries}
+                      onNavigate={navigate}
+                      onDeleteEntry={(id) => setHistoryEntries((prev) => prev.filter((e) => e.id !== id))}
+                      onClearAll={() => setHistoryEntries([])}
+                    />
+                  )}
+                  {isBookmarks && (
+                    <BookmarksPage
+                      bookmarks={bookmarkEntries}
+                      onNavigate={navigate}
+                      onDeleteBookmark={(id) => setBookmarkEntries((prev) => prev.filter((b) => b.id !== id))}
+                      onClearAll={() => setBookmarkEntries([])}
+                    />
+                  )}
+                  {isExtensions && (
+                    <ExtensionsPage onNavigate={navigate} />
+                  )}
+                  {isCompare && (
+                    <ComparePage query={new URL(tab.url).searchParams.get('q') || ''} />
+                  )}
+                </React.Suspense>
                 {isAbout && (
                   <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg">
