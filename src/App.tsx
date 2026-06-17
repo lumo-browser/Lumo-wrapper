@@ -370,6 +370,7 @@ export default function App(): React.ReactElement {
   }, []);
   // Tabs
   const [tabs, setTabs] = useState<BrowserTab[]>(INITIAL_TABS);
+  const [recentlyClosedTabs, setRecentlyClosedTabs] = useState<BrowserTab[]>([]);
   const activeTab = tabs.find((t) => t.isActive) ?? tabs[0];
 
   // Per-tab nav history
@@ -605,6 +606,10 @@ export default function App(): React.ReactElement {
     setTabs((prev) => {
       if (prev.length === 1) return prev; // never close last tab
       const idx = prev.findIndex((t) => t.id === id);
+      const tabToClose = prev[idx];
+      if (tabToClose) {
+        setRecentlyClosedTabs(r => [...r, tabToClose].slice(-10)); // keep last 10
+      }
       const next = prev.filter((t) => t.id !== id);
       if (prev[idx]?.isActive && next.length > 0) {
         const ni = Math.max(0, idx - 1);
@@ -808,11 +813,55 @@ export default function App(): React.ReactElement {
       const target = e.target as HTMLElement;
 
       if (e.ctrlKey && e.key.toLowerCase() === 't') {
-        e.preventDefault();
-        addTab();
+        if (e.shiftKey) {
+          // Reopen closed tab (Ctrl+Shift+T)
+          e.preventDefault();
+          setRecentlyClosedTabs(prev => {
+            if (prev.length === 0) return prev;
+            const toRestore = prev[prev.length - 1];
+            const remaining = prev.slice(0, -1);
+            setTabs(ts => [...ts.map(t => ({ ...t, isActive: false })), { ...toRestore, isActive: true, id: `tab-${Date.now()}` }]);
+            return remaining;
+          });
+        } else {
+          e.preventDefault();
+          addTab();
+        }
       } else if (e.ctrlKey && e.key.toLowerCase() === 'w') {
         e.preventDefault();
         if (activeTab) closeTab(activeTab.id);
+      } else if (e.ctrlKey && e.key === 'Tab') {
+        // Cycle tabs (Ctrl+Tab / Ctrl+Shift+Tab)
+        e.preventDefault();
+        setTabs(prev => {
+          const idx = prev.findIndex(t => t.isActive);
+          const nextIdx = e.shiftKey ? (idx - 1 + prev.length) % prev.length : (idx + 1) % prev.length;
+          return prev.map((t, i) => ({ ...t, isActive: i === nextIdx }));
+        });
+      } else if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+        // Jump to tab (Ctrl+1...9)
+        e.preventDefault();
+        const idx = parseInt(e.key) - 1;
+        setTabs(prev => {
+          if (!prev[idx]) return prev;
+          return prev.map((t, i) => ({ ...t, isActive: i === idx }));
+        });
+      } else if ((e.ctrlKey && e.key.toLowerCase() === 'l') || (e.altKey && e.key.toLowerCase() === 'd')) {
+        // Focus address bar
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('lumo:focus-address-bar'));
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+        // Find in page
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('lumo:find-in-page'));
+      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n') {
+        // Incognito (Coming soon alert)
+        e.preventDefault();
+        alert('Incognito mode is coming in the next Nova update!');
+      } else if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
+        // Clear browsing data
+        e.preventDefault();
+        navigate('nova://settings');
       } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
         setShowAI((v) => !v);
