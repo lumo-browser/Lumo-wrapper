@@ -827,6 +827,89 @@ export default function App(): React.ReactElement {
     }
   }, [activeTab]);
 
+  // ── Smart Tab Grouping ────────────────────────────────────────────────────
+  const groupTabsWithAI = useCallback(async () => {
+    const visibleTabs = tabs.filter(t => t.url && !t.url.startsWith('lumo://'));
+    if (visibleTabs.length < 2) {
+      setTabGrouping({ isOpen: true, isLoading: false, groups: [], error: null });
+      return;
+    }
+
+    setTabGrouping({ isOpen: true, isLoading: true, groups: [], error: null });
+
+    const tabList = visibleTabs.map((t, i) => `${i + 1}. "${t.title || t.url}" (${t.url})`).join('\n');
+
+    const prompt = `You are a browser tab organizer. Group the following browser tabs into logical categories.
+
+Tabs:
+${tabList}
+
+Respond with ONLY a valid JSON array. Each object must have:
+- "name": short category label (e.g. "Shopping", "Research", "News", "Social Media", "Work")
+- "tabIndices": array of 1-based tab numbers that belong in this group
+
+Rules:
+- Every tab must appear in exactly one group
+- Maximum 6 groups
+- Minimum 1 tab per group
+- Group names should be short (1-2 words)
+
+Example response format:
+[{"name":"Shopping","tabIndices":[1,3]},{"name":"Research","tabIndices":[2,4,5]}]`;
+
+    try {
+      const apiKey = settings.openRouterApiKey;
+      if (!apiKey) throw new Error('No OpenRouter API key set. Please add your key in Settings.');
+
+      const result = await window.electron?.invoke?.('lumo:openrouter-chat', {
+        apiKey,
+        model: 'openai/gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      if (result?.error) throw new Error(result.error.message);
+
+      const raw = result?.data?.choices?.[0]?.message?.content ?? '';
+      const jsonMatch = raw.match(/\[.*\]/s);
+      if (!jsonMatch) throw new Error('AI returned an unexpected format.');
+
+      const parsed: Array<{ name: string; tabIndices: number[] }> = JSON.parse(jsonMatch[0]);
+
+      const groups: TabGroup[] = parsed.map((g, idx) => {
+        const palette = GROUP_COLOR_PALETTE[idx % GROUP_COLOR_PALETTE.length];
+        return {
+          id: `grp-${idx}`,
+          name: g.name,
+          color: palette.bg,
+          colorHex: palette.hex,
+          tabIds: g.tabIndices
+            .map(i => visibleTabs[i - 1]?.id)
+            .filter(Boolean) as string[],
+        };
+      });
+
+      setTabGrouping({ isOpen: true, isLoading: false, groups, error: null });
+    } catch (err: any) {
+      setTabGrouping({ isOpen: true, isLoading: false, groups: [], error: err.message ?? 'Unknown error' });
+    }
+  }, [tabs, settings.openRouterApiKey]);
+
+  const applyTabGroups = useCallback((groups: TabGroup[]) => {
+    const groupMap: Record<string, { id: string; color: string; name: string }> = {};
+    groups.forEach(g => g.tabIds.forEach(tabId => {
+      groupMap[tabId] = { id: g.id, color: g.colorHex, name: g.name };
+    }));
+
+    setTabs(prev => prev.map(t => ({
+      ...t,
+      groupId:    groupMap[t.id]?.id    ?? undefined,
+      groupColor: groupMap[t.id]?.color ?? undefined,
+      groupName:  groupMap[t.id]?.name  ?? undefined,
+    })));
+
+    setTabGrouping(s => ({ ...s, isOpen: false }));
+  }, []);
+
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -938,89 +1021,6 @@ export default function App(): React.ReactElement {
   const canGoForward = activeTab?.canGoForward ?? (currentHistory.cursor < currentHistory.stack.length - 1);
   const isSecure     = currentUrl.startsWith('https://');
   const isNtpPage    = !currentUrl;
-
-  // ── Smart Tab Grouping ────────────────────────────────────────────────────
-  const groupTabsWithAI = useCallback(async () => {
-    const visibleTabs = tabs.filter(t => t.url && !t.url.startsWith('lumo://'));
-    if (visibleTabs.length < 2) {
-      setTabGrouping({ isOpen: true, isLoading: false, groups: [], error: null });
-      return;
-    }
-
-    setTabGrouping({ isOpen: true, isLoading: true, groups: [], error: null });
-
-    const tabList = visibleTabs.map((t, i) => `${i + 1}. "${t.title || t.url}" (${t.url})`).join('\n');
-
-    const prompt = `You are a browser tab organizer. Group the following browser tabs into logical categories.
-
-Tabs:
-${tabList}
-
-Respond with ONLY a valid JSON array. Each object must have:
-- "name": short category label (e.g. "Shopping", "Research", "News", "Social Media", "Work")
-- "tabIndices": array of 1-based tab numbers that belong in this group
-
-Rules:
-- Every tab must appear in exactly one group
-- Maximum 6 groups
-- Minimum 1 tab per group
-- Group names should be short (1-2 words)
-
-Example response format:
-[{"name":"Shopping","tabIndices":[1,3]},{"name":"Research","tabIndices":[2,4,5]}]`;
-
-    try {
-      const apiKey = settings.openRouterApiKey;
-      if (!apiKey) throw new Error('No OpenRouter API key set. Please add your key in Settings.');
-
-      const result = await window.electron?.invoke?.('lumo:openrouter-chat', {
-        apiKey,
-        model: 'openai/gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      if (result?.error) throw new Error(result.error.message);
-
-      const raw = result?.data?.choices?.[0]?.message?.content ?? '';
-      const jsonMatch = raw.match(/\[.*\]/s);
-      if (!jsonMatch) throw new Error('AI returned an unexpected format.');
-
-      const parsed: Array<{ name: string; tabIndices: number[] }> = JSON.parse(jsonMatch[0]);
-
-      const groups: TabGroup[] = parsed.map((g, idx) => {
-        const palette = GROUP_COLOR_PALETTE[idx % GROUP_COLOR_PALETTE.length];
-        return {
-          id: `grp-${idx}`,
-          name: g.name,
-          color: palette.bg,
-          colorHex: palette.hex,
-          tabIds: g.tabIndices
-            .map(i => visibleTabs[i - 1]?.id)
-            .filter(Boolean) as string[],
-        };
-      });
-
-      setTabGrouping({ isOpen: true, isLoading: false, groups, error: null });
-    } catch (err: any) {
-      setTabGrouping({ isOpen: true, isLoading: false, groups: [], error: err.message ?? 'Unknown error' });
-    }
-  }, [tabs, settings.openRouterApiKey]);
-
-  const applyTabGroups = useCallback((groups: TabGroup[]) => {
-    const groupMap: Record<string, { id: string; color: string; name: string }> = {};
-    groups.forEach(g => g.tabIds.forEach(tabId => {
-      groupMap[tabId] = { id: g.id, color: g.colorHex, name: g.name };
-    }));
-
-    setTabs(prev => prev.map(t => ({
-      ...t,
-      groupId:    groupMap[t.id]?.id    ?? undefined,
-      groupColor: groupMap[t.id]?.color ?? undefined,
-      groupName:  groupMap[t.id]?.name  ?? undefined,
-    })));
-
-    setTabGrouping(s => ({ ...s, isOpen: false }));
-  }, []);
 
 
   // Search engine URL from settings
