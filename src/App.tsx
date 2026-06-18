@@ -351,24 +351,9 @@ export default function App(): React.ReactElement {
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number; params: any; tabId: string | null }>({ show: false, x: 0, y: 0, params: null, tabId: null });
 
   // ── Auto UI Scaling ────────────────────────────────────────────────────────
-  useEffect(() => {
-    const handleResize = () => {
-      const baseWidth = 1280; // Standard reference width
-      const currentWidth = window.innerWidth;
-      
-      // Calculate responsive scale factor
-      let scale = currentWidth / baseWidth;
-      // Clamp between 85% for tiny screens and 135% for massive screens
-      scale = Math.max(0.85, Math.min(scale, 1.35));
-      
-      // Since Tailwind uses 'rem' units, modifying the root font size scales ALL browser UI elements proportionally!
-      document.documentElement.style.fontSize = `${16 * scale}px`;
-    };
+  // Removed auto-scaling because it caused the browser UI to be too large on bigger screens and conflicted with custom font size settings.
 
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Trigger immediately
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+
 
   useEffect(() => {
     const handler = (e: any) => {
