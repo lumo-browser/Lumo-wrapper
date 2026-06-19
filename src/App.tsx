@@ -91,7 +91,12 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
           }
         })();
       `;
-      if (wv.executeJavaScript) wv.executeJavaScript(code).catch(() => {});
+      try {
+        if (wv.executeJavaScript) wv.executeJavaScript(code).catch(() => {});
+      } catch (e) {
+        // Ignore: The webview isn't fully ready yet.
+        // It will automatically apply when the 'dom-ready' event fires.
+      }
     };
 
     applyTheme();
