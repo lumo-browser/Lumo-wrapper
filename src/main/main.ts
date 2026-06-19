@@ -171,6 +171,7 @@ app.on('ready', () => {
     // Handle global theme changes from the renderer
     ipcMain.on('lumo:set-theme', (event, theme: 'dark' | 'light' | 'system') => {
       console.log(`[Lumo] Global theme set to ${theme}`);
+      nativeTheme.themeSource = theme;
     });
 
     // Default zoom — apply to the persist:nova-main session
@@ -315,17 +316,29 @@ app.on('ready', () => {
     tool_choice?: string;
   }) => {
     try {
-      const apiKey = (payload.apiKey || '').trim().replace(/^Bearer\s+/i, '');
+      // Keep ONLY printable ASCII (0x20-0x7E). Node's http module rejects
+      // any character outside this range in header values — including unicode
+      // spaces, newlines, null bytes, and chars above 0x7F.
+      const rawKey = (payload.apiKey || '').replace(/^Bearer\s+/i, '').trim();
+      const apiKey = rawKey.replace(/[^\x20-\x7E]/g, '');
+
+      // Debug: log any stripped chars so we can identify the source
+      if (apiKey.length !== rawKey.length) {
+        const badChars = [...rawKey]
+          .filter(c => c.charCodeAt(0) < 0x20 || c.charCodeAt(0) > 0x7E)
+          .map(c => 'U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0'))
+          .join(', ');
+        console.warn('[Lumo] API key had invalid header chars stripped: ' + badChars);
+      }
+
+      console.log('[Lumo] OpenRouter: model=' + payload.model + ' keyLen=' + apiKey.length + ' keyStart=' + apiKey.substring(0, 8) + '...');
+
       if (!apiKey) {
-        return { error: { message: 'Missing OpenRouter API key. Please go to Settings and enter your OpenRouter API key.' } };
+        return { error: { message: 'Missing or invalid OpenRouter API key. Go to Settings and re-enter your key.' } };
       }
-
-      // Validate key looks like a real OpenRouter key (starts with sk-)
       if (!apiKey.startsWith('sk-')) {
-        console.warn('[Lumo] OpenRouter API key does not start with sk-, sending anyway...');
+        console.warn('[Lumo] API key does not start with sk- — sending anyway');
       }
-
-      console.log(`[Lumo] OpenRouter request: model=${payload.model}, apiKey=${apiKey.substring(0, 8)}...`);
 
       const body = JSON.stringify({
         model: payload.model,
@@ -383,6 +396,62 @@ app.on('ready', () => {
     } catch (err: any) {
       console.error('[Lumo] OpenRouter request failed', err);
       return { error: { message: err?.message || 'OpenRouter request failed' } };
+    }
+  });
+
+
+  // ── Vision Agent IPC Handlers ────────────────────────────────────────────
+
+  /**
+   * lumo:capture-webview
+   * Captures a JPEG screenshot of the focused webview's webContents.
+   * Returns { base64: string } with the image data for the VLM.
+   */
+  ipcMain.handle('lumo:capture-webview', async () => {
+    if (!mainWindow) return { base64: '' };
+    try {
+      // capturePage captures the entire renderer, including the webview
+      const image = await mainWindow.webContents.capturePage();
+      const jpeg = image.toJPEG(85); // 85% quality — good balance for VLMs
+      return { base64: jpeg.toString('base64') };
+    } catch (err: any) {
+      console.error('[Lumo] capturePage failed:', err?.message);
+      return { base64: '' };
+    }
+  });
+
+  /**
+   * lumo:native-click
+   * Sends real mouse down/up events at pixel (x, y) to the focused webview.
+   * These are native OS-level events that bypass JS .click() detection.
+   */
+  ipcMain.handle('lumo:native-click', async (_event, { x, y }: { x: number; y: number }) => {
+    if (!mainWindow) return;
+    try {
+      const wc = mainWindow.webContents;
+      wc.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
+      await new Promise(r => setTimeout(r, 50));
+      wc.sendInputEvent({ type: 'mouseUp',   x, y, button: 'left', clickCount: 1 });
+      console.log(`[Lumo] Native click at (${x}, ${y})`);
+    } catch (err: any) {
+      console.error('[Lumo] Native click failed:', err?.message);
+    }
+  });
+
+  /**
+   * lumo:native-key
+   * Sends a native keyboard keyDown/keyUp event to the focused webview.
+   */
+  ipcMain.handle('lumo:native-key', async (_event, { key }: { key: string }) => {
+    if (!mainWindow) return;
+    try {
+      const wc = mainWindow.webContents;
+      wc.sendInputEvent({ type: 'keyDown', keyCode: key } as any);
+      await new Promise(r => setTimeout(r, 30));
+      wc.sendInputEvent({ type: 'keyUp',   keyCode: key } as any);
+      console.log(`[Lumo] Native key: ${key}`);
+    } catch (err: any) {
+      console.error('[Lumo] Native key failed:', err?.message);
     }
   });
 
