@@ -56,13 +56,14 @@ const SCOPE = 'App';
 interface WebviewTabProps {
   tabId: string;
   url: string;
+  isDark: boolean;
   onTitleChange: (title: string) => void;
   onLoadingChange: (loading: boolean) => void;
   onUrlChange: (url: string) => void;
   onNavStateChange: (canGoBack: boolean, canGoForward: boolean) => void;
 }
 
-function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
+function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
 
@@ -70,6 +71,33 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
   useEffect(() => {
     const wv = ref.current;
     if (!wv) return;
+
+    // Apply universal dark mode filter
+    const applyTheme = () => {
+      const code = `
+        (function() {
+          let style = document.getElementById('lumo-universal-theme');
+          if (${isDark}) {
+            if (!style) {
+              style = document.createElement('style');
+              style.id = 'lumo-universal-theme';
+              style.textContent = 'html { filter: invert(1) hue-rotate(180deg) !important; background: white !important; } img, video, iframe, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }';
+              // Check if body is ready, if not, wait for it
+              if (document.head) document.head.appendChild(style);
+              else document.addEventListener('DOMContentLoaded', () => document.head.appendChild(style));
+            }
+          } else {
+            if (style) style.remove();
+          }
+        })();
+      `;
+      if (wv.executeJavaScript) wv.executeJavaScript(code).catch(() => {});
+    };
+
+    applyTheme();
+    wv.addEventListener('dom-ready', applyTheme);
+    wv.addEventListener('did-navigate', applyTheme);
+    wv.addEventListener('did-navigate-in-page', applyTheme);
 
     const onStartLoad = () => onLoadingChange(true);
     const onStopLoad  = () => onLoadingChange(false);
@@ -293,8 +321,11 @@ function WebviewTab({ tabId, url, onTitleChange, onLoadingChange, onUrlChange, o
       wv.removeEventListener('did-navigate-in-page', onNavigated);
       wv.removeEventListener('dom-ready',         onDomReady);
       wv.removeEventListener('context-menu',      onContextMenu);
+      wv.removeEventListener('dom-ready', applyTheme);
+      wv.removeEventListener('did-navigate', applyTheme);
+      wv.removeEventListener('did-navigate-in-page', applyTheme);
     };
-  }, []);
+  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange]);
 
   return (
     <webview
@@ -1221,6 +1252,7 @@ Example response format:
                     key={tab.id}
                     tabId={tab.id}
                     url={tab.url}
+                    isDark={isDark}
                     onTitleChange={(title) =>
                       setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, title } : t))
                     }
