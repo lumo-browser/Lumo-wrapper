@@ -1167,7 +1167,7 @@ Example response format:
               >
                 <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
                   {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
-                  {isNtp && !isWelcome && <NewTabPage onNavigate={navigate} />}
+                  {isNtp && !isWelcome && <NewTabPage onNavigate={navigate} isDark={isDark} />}
                   {isSettings && (
                     <SettingsPage
                       settings={settings}
