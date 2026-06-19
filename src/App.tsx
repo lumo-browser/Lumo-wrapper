@@ -72,38 +72,6 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
     const wv = ref.current;
     if (!wv) return;
 
-    // Apply universal dark mode filter
-    const applyTheme = () => {
-      const code = `
-        (function() {
-          let style = document.getElementById('lumo-universal-theme');
-          if (${isDark}) {
-            if (!style) {
-              style = document.createElement('style');
-              style.id = 'lumo-universal-theme';
-              style.textContent = 'html { filter: invert(1) hue-rotate(180deg) !important; background: white !important; } img, video, iframe, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }';
-              // Check if body is ready, if not, wait for it
-              if (document.head) document.head.appendChild(style);
-              else document.addEventListener('DOMContentLoaded', () => document.head.appendChild(style));
-            }
-          } else {
-            if (style) style.remove();
-          }
-        })();
-      `;
-      try {
-        if (wv.executeJavaScript) wv.executeJavaScript(code).catch(() => {});
-      } catch (e) {
-        // Ignore: The webview isn't fully ready yet.
-        // It will automatically apply when the 'dom-ready' event fires.
-      }
-    };
-
-    applyTheme();
-    wv.addEventListener('dom-ready', applyTheme);
-    wv.addEventListener('did-navigate', applyTheme);
-    wv.addEventListener('did-navigate-in-page', applyTheme);
-
     const onStartLoad = () => onLoadingChange(true);
     const onStopLoad  = () => onLoadingChange(false);
     const onTitleUpd  = (e: any) => onTitleChange(e.title || '');
@@ -326,9 +294,6 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
       wv.removeEventListener('did-navigate-in-page', onNavigated);
       wv.removeEventListener('dom-ready',         onDomReady);
       wv.removeEventListener('context-menu',      onContextMenu);
-      wv.removeEventListener('dom-ready', applyTheme);
-      wv.removeEventListener('did-navigate', applyTheme);
-      wv.removeEventListener('did-navigate-in-page', applyTheme);
     };
   }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange]);
 
