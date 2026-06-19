@@ -406,23 +406,48 @@ export default function App(): React.ReactElement {
 
   // Securely load API Key on boot — try encrypted first, fall back to plain
   useEffect(() => {
+    // Strip to printable ASCII only — safeStorage on Linux can return binary garbage
+    const sanitizeKey = (k: string) =>
+      (k || '').replace(/[^\x20-\x7E]/g, '').replace(/^Bearer\s+/i, '').trim();
+
+    // A valid OpenRouter key always starts with "sk-"
+    const isValidKey = (k: string) => k.startsWith('sk-') && k.length > 20;
+
     const encryptedKey = localStorage.getItem('lumo-api-key-secure');
-    const plainKey = localStorage.getItem('lumo-api-key-plain');
+    const plainKey     = localStorage.getItem('lumo-api-key-plain');
+
+    const applyKey = (raw: string | null) => {
+      const key = sanitizeKey(raw || '');
+      if (isValidKey(key)) {
+        setSettings(s => ({ ...s, openRouterApiKey: key }));
+        return true;
+      }
+      return false;
+    };
+
     if (encryptedKey && window.electron?.invoke) {
-      window.electron.invoke('lumo:load-key', encryptedKey).then((decrypted: string) => {
-        const key = (decrypted || plainKey || '').trim().replace(/^Bearer\s+/i, '');
-        if (key) setSettings(s => ({ ...s, openRouterApiKey: key }));
-      }).catch(() => {
-        // Decryption failed — use plain fallback
-        const key = (plainKey || '').trim().replace(/^Bearer\s+/i, '');
-        if (key) setSettings(s => ({ ...s, openRouterApiKey: key }));
-      });
-    } else if (plainKey) {
-      // No electron IPC available — just use plain key
-      const key = plainKey.trim().replace(/^Bearer\s+/i, '');
-      if (key) setSettings(s => ({ ...s, openRouterApiKey: key }));
+      window.electron.invoke('lumo:load-key', encryptedKey)
+        .then((decrypted: string) => {
+          const key = sanitizeKey(decrypted || '');
+          if (isValidKey(key)) {
+            setSettings(s => ({ ...s, openRouterApiKey: key }));
+          } else {
+            // Encrypted key decrypted to garbage — purge it and use plain fallback
+            console.warn('[Lumo] Encrypted key is corrupted, clearing it');
+            localStorage.removeItem('lumo-api-key-secure');
+            applyKey(plainKey);
+          }
+        })
+        .catch(() => {
+          // Decryption failed — clear corrupted key and use plain
+          localStorage.removeItem('lumo-api-key-secure');
+          applyKey(plainKey);
+        });
+    } else {
+      applyKey(plainKey);
     }
   }, []);
+
 
 
   const [showExtensions, setShowExtensions] = useState(false);
@@ -575,7 +600,7 @@ export default function App(): React.ReactElement {
         ...prev,
         ...updates,
         openRouterApiKey: updates.openRouterApiKey !== undefined
-          ? updates.openRouterApiKey.trim().replace(/^Bearer\s+/i, '')
+          ? updates.openRouterApiKey.replace(/[^\x20-\x7E]/g, '').replace(/^Bearer\s+/i, '').trim()
           : prev.openRouterApiKey,
       };
       // Apply theme change immediately
@@ -1109,7 +1134,7 @@ Example response format:
 
       {/* ── Content area: always flex-row ── */}
       {/*   [vertical-tabs?] | [page content] | [AI/Agent sidebar on RIGHT] */}
-      <div className="flex flex-row flex-1 overflow-hidden">
+      <div className="flex flex-row flex-1 overflow-hidden relative">
 
         {/* Vertical tab sidebar (left, only in vertical layout mode) */}
         {isVertical && (
@@ -1219,7 +1244,7 @@ Example response format:
         {showAI && (
           <div
             style={{ width: sidebarWidth, minWidth: 280, maxWidth: 640 }}
-            className="flex flex-shrink-0 h-full border-l border-gray-200 dark:border-[#333] bg-white dark:bg-[#1e1e1e]"
+            className="absolute right-0 top-0 bottom-0 z-20 flex flex-shrink-0 h-full border-l border-gray-200 dark:border-[#333] bg-white shadow-2xl dark:bg-[#1e1e1e]"
           >
             {/* Drag handle on the LEFT edge of the sidebar */}
             <div
@@ -1241,7 +1266,7 @@ Example response format:
         {showAgent && (
           <div
             style={{ width: sidebarWidth, minWidth: 280, maxWidth: 640 }}
-            className="flex flex-shrink-0 h-full border-l border-gray-200 dark:border-[#333] bg-white dark:bg-[#1e1e1e]"
+            className="absolute right-0 top-0 bottom-0 z-20 flex flex-shrink-0 h-full border-l border-gray-200 dark:border-[#333] bg-white shadow-2xl dark:bg-[#1e1e1e]"
           >
             {/* Drag handle on the LEFT edge of the sidebar */}
             <div
