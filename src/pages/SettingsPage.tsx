@@ -8,6 +8,10 @@ import { GeneralSettingsTab } from './GeneralSettingsTab';
 import { HomeSettingsTab } from './HomeSettingsTab';
 import { SearchSettingsTab } from './SearchSettingsTab';
 import { PrivacySettingsTab } from './PrivacySettingsTab';
+import { DownloadSettingsTab } from './DownloadSettingsTab';
+import { SystemSettingsTab } from './SystemSettingsTab';
+import { ProfileSettingsTab } from './ProfileSettingsTab';
+import { LanguageSettingsTab } from './LanguageSettingsTab';
 import {
   Sun,
   Moon,
@@ -28,10 +32,20 @@ import {
   Home,
   RefreshCw,
   Settings,
+  User,
+  Download as DownloadIcon,
+  Cpu as CpuIcon,
+  Languages,
 } from 'lucide-react';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type SearchEngine = 'google' | 'bing' | 'duckduckgo' | 'brave' | 'yahoo';
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  avatarUrl: string;
+}
 
 export interface BrowserSettings {
   theme: ThemeMode;
@@ -42,6 +56,33 @@ export interface BrowserSettings {
   blockPopups: boolean;
   doNotTrack: boolean;
   clearOnExit: boolean;
+  // Profiles
+  profiles: UserProfile[];
+  currentProfileId: string;
+  // Downloads
+  downloadLocation: string;
+  askBeforeDownloading: boolean;
+  // System
+  hardwareAcceleration: boolean;
+  memorySaver: boolean;
+  // Appearance
+  showBookmarksBar: boolean;
+  showHomeButton: boolean;
+  defaultZoom: number;
+  // Startup
+  startupBehavior: 'new-tab' | 'continue' | 'specific-pages';
+  startupPages: string[];
+  // Languages
+  spellCheck: boolean;
+  uiLanguage: string;
+  offerTranslate: boolean;
+  // Permissions
+  permissions: {
+    camera: boolean;
+    microphone: boolean;
+    location: boolean;
+    notifications: boolean;
+  };
 }
 
 interface SettingsPageProps {
@@ -66,7 +107,7 @@ const THEME_OPTIONS: { id: ThemeMode; name: string; icon: React.ReactNode }[] = 
   { id: 'system', name: 'System', icon: <Monitor className="w-4 h-4" /> },
 ];
 
-function SettingSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+export function SettingSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="mb-8">
       <div className="flex items-center gap-2 mb-3">
@@ -80,7 +121,7 @@ function SettingSection({ title, icon, children }: { title: string; icon: React.
   );
 }
 
-function SettingRow({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
+export function SettingRow({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between px-4 py-3.5">
       <div className="flex-1 mr-4">
@@ -92,7 +133,7 @@ function SettingRow({ label, description, children }: { label: string; descripti
   );
 }
 
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
+export function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       onClick={() => onChange(!enabled)}
@@ -111,7 +152,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
 }
 
 
-function SidebarButton({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+export function SidebarButton({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -136,7 +177,7 @@ export function SettingsPage({
 }: SettingsPageProps): React.ReactElement {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [localFontSize, setLocalFontSize] = useState(settings.fontSize);
-  const [activeTab, setActiveTab] = useState<'general' | 'home' | 'search' | 'privacy' | 'sync' | 'about'>('general');
+  const [activeTab, setActiveTab] = useState<'profiles' | 'general' | 'home' | 'search' | 'privacy' | 'downloads' | 'system' | 'languages' | 'sync' | 'about'>('general');
 
   useEffect(() => {
     setLocalFontSize(settings.fontSize);
@@ -157,10 +198,14 @@ export function SettingsPage({
         </div>
         <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
           <nav className="flex flex-col gap-1">
+            <SidebarButton icon={<User />} label="Profiles & Users" active={activeTab === 'profiles'} onClick={() => setActiveTab('profiles')} />
             <SidebarButton icon={<Settings />} label="General" active={activeTab === 'general'} onClick={() => setActiveTab('general')} />
             <SidebarButton icon={<Home />} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
             <SidebarButton icon={<Search />} label="Search Engine" active={activeTab === 'search'} onClick={() => setActiveTab('search')} />
             <SidebarButton icon={<Shield />} label="Privacy & Security" active={activeTab === 'privacy'} onClick={() => setActiveTab('privacy')} />
+            <SidebarButton icon={<DownloadIcon />} label="Downloads" active={activeTab === 'downloads'} onClick={() => setActiveTab('downloads')} />
+            <SidebarButton icon={<CpuIcon />} label="System & Performance" active={activeTab === 'system'} onClick={() => setActiveTab('system')} />
+            <SidebarButton icon={<Languages />} label="Languages" active={activeTab === 'languages'} onClick={() => setActiveTab('languages')} />
             <SidebarButton icon={<RefreshCw />} label="Sync" active={activeTab === 'sync'} onClick={() => setActiveTab('sync')} />
             <SidebarButton icon={<Info />} label="About Lumo" active={activeTab === 'about'} onClick={() => setActiveTab('about')} />
           </nav>
@@ -170,6 +215,10 @@ export function SettingsPage({
       {/* Settings content */}
       <div className="flex-1 overflow-y-auto px-10 py-8 scrollbar-thin">
         <div className="max-w-2xl">
+
+          {activeTab === 'profiles' && (
+            <ProfileSettingsTab settings={settings} onUpdateSettings={onUpdateSettings} />
+          )}
 
           {activeTab === 'home' && (
             <HomeSettingsTab />
@@ -191,6 +240,18 @@ export function SettingsPage({
               bookmarkCount={bookmarkCount}
               onClearBrowsingData={onClearBrowsingData}
             />
+          )}
+
+          {activeTab === 'downloads' && (
+            <DownloadSettingsTab settings={settings} onUpdateSettings={onUpdateSettings} />
+          )}
+
+          {activeTab === 'system' && (
+            <SystemSettingsTab settings={settings} onUpdateSettings={onUpdateSettings} />
+          )}
+
+          {activeTab === 'languages' && (
+            <LanguageSettingsTab settings={settings} onUpdateSettings={onUpdateSettings} />
           )}
 
           {activeTab === 'sync' && (

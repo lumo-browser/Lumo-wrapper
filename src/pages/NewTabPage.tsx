@@ -62,9 +62,34 @@ function useTime() {
 
 // ── Clock Widget ──────────────────────────────────────────────────────────────
 function ClockWidget({ isDark }: { isDark: boolean }) {
+  const [format, setFormat] = useState<'12' | '24'>('24');
+  
+  useEffect(() => {
+    const updateFormat = () => {
+      try {
+        const saved = localStorage.getItem('Lumo-dashboard-config');
+        if (saved) {
+          const config = JSON.parse(saved);
+          if (config.clockFormat) setFormat(config.clockFormat);
+        }
+      } catch { /* ignore */ }
+    };
+    updateFormat();
+    window.addEventListener('storage', updateFormat);
+    // Add custom event listener for immediate updates
+    window.addEventListener('lumo:dashboard-config-updated', updateFormat);
+    return () => {
+      window.removeEventListener('storage', updateFormat);
+      window.removeEventListener('lumo:dashboard-config-updated', updateFormat);
+    };
+  }, []);
+
   const time = useTime();
-  const hh = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-  const [hr, min] = hh.split(':');
+  const hh = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: format === '12' });
+  const [hr, minPart] = hh.split(':');
+  const min = minPart ? minPart.split(' ')[0] : '00';
+  const ampm = minPart && minPart.includes(' ') ? minPart.split(' ')[1] : '';
+
   const date = time.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const h = time.getHours();
   const greeting =
@@ -76,12 +101,17 @@ function ClockWidget({ isDark }: { isDark: boolean }) {
   return (
     <div className="text-center select-none">
       <p className={`text-sm font-medium tracking-widest uppercase mb-3 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>{greeting}</p>
-      <div className="flex items-center justify-center gap-3 tabular-nums">
+      <div className="flex items-end justify-center gap-3 tabular-nums">
         <span className={`text-[7rem] md:text-[9rem] font-thin ${textColor} leading-none`}
           style={{ textShadow: `0 0 60px ${shadowColor}` }}>{hr}</span>
-        <span className="text-[5rem] md:text-[7rem] font-thin text-violet-500/70 leading-none animate-pulse">:</span>
+        <span className="text-[5rem] md:text-[7rem] font-thin text-violet-500/70 leading-none animate-pulse pb-4">:</span>
         <span className={`text-[7rem] md:text-[9rem] font-thin ${textColor} leading-none`}
           style={{ textShadow: `0 0 60px ${shadowColor}` }}>{min}</span>
+        {ampm && (
+          <span className={`text-2xl font-light ${textColor} pb-6 ml-1`} style={{ textShadow: `0 0 20px ${shadowColor}` }}>
+            {ampm}
+          </span>
+        )}
       </div>
       <p className={`text-base mt-3 font-light tracking-wide ${isDark ? 'text-white/40' : 'text-gray-400'}`}>{date}</p>
     </div>

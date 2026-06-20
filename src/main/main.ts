@@ -182,9 +182,23 @@ app.on('ready', () => {
 
     // Spell check
     ipcMain.on('lumo:set-spell-check', (event, enabled: boolean) => {
-      session.defaultSession.setSpellCheckerEnabled(enabled);
+      if (session.defaultSession) {
+        session.defaultSession.setSpellCheckerEnabled(enabled);
+      }
       session.fromPartition('persist:nova-main').setSpellCheckerEnabled(enabled);
       console.log(`[Lumo] Spell check ${enabled ? 'enabled' : 'disabled'}`);
+    });
+
+    ipcMain.on('lumo:set-hardware-acceleration', (event, enabled: boolean) => {
+      // Note: Hardware acceleration can typically only be disabled before app is ready.
+      // A full implementation would persist this preference and read it on next boot.
+      console.log('Hardware acceleration set to', enabled, '(requires restart)');
+    });
+
+    ipcMain.on('lumo:set-memory-saver', (event, enabled: boolean) => {
+      // Memory saver implementation placeholder. A full implementation would
+      // suspend background WebContents using webContents.backgroundThrottling
+      console.log('Memory saver set to', enabled);
     });
 
     // Toggle main window DevTools (used by home/internal pages)

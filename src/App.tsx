@@ -445,6 +445,26 @@ export default function App(): React.ReactElement {
       theme: 'dark', searchEngine: 'google', fontSize: 14,
       openRouterApiKey: '',
       blockAds: true, blockPopups: true, doNotTrack: true, clearOnExit: false,
+      profiles: [],
+      currentProfileId: '',
+      downloadLocation: '~/Downloads',
+      askBeforeDownloading: false,
+      hardwareAcceleration: true,
+      memorySaver: false,
+      showBookmarksBar: false,
+      showHomeButton: true,
+      defaultZoom: 100,
+      startupBehavior: 'new-tab',
+      startupPages: [],
+      spellCheck: true,
+      uiLanguage: 'en-US',
+      offerTranslate: true,
+      permissions: {
+        camera: false,
+        microphone: false,
+        location: false,
+        notifications: false,
+      },
     };
     try { 
       const parsed = JSON.parse(localStorage.getItem('lumo-settings') || '{}');
@@ -625,6 +645,56 @@ export default function App(): React.ReactElement {
       localStorage.removeItem('lumo-api-key-plain');
     }
   }, [settings]);
+
+  // Translate page handler
+  useEffect(() => {
+    const handleTranslate = () => {
+      const tabId = activeTab?.id;
+      const wv = document.getElementById(`webview-${tabId}`) as any;
+      if (!wv) return;
+      const lang = settings.uiLanguage.split('-')[0]; // e.g., 'en'
+      const script = `
+        (function() {
+          if (window._lumoTranslated) return;
+          window._lumoTranslated = true;
+          
+          const script = document.createElement('script');
+          script.src = "https://translate.google.com/translate_a/element.js?cb=lumoTranslateInit";
+          document.head.appendChild(script);
+
+          window.lumoTranslateInit = function() {
+            new google.translate.TranslateElement({
+              pageLanguage: 'auto',
+              includedLanguages: '${lang}',
+              layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+              autoDisplay: false
+            }, 'lumo-translate-widget');
+            
+            // Wait for widget to load and trigger it
+            setTimeout(() => {
+              const select = document.querySelector('.goog-te-combo');
+              if (select) {
+                select.value = '${lang}';
+                select.dispatchEvent(new Event('change'));
+              }
+              // Hide the google translate banner that appears at the top
+              const banner = document.querySelector('.goog-te-banner-frame');
+              if (banner) banner.style.display = 'none';
+              document.body.style.top = '0px';
+            }, 1000);
+          };
+
+          const widgetDiv = document.createElement('div');
+          widgetDiv.id = 'lumo-translate-widget';
+          widgetDiv.style.display = 'none';
+          document.body.appendChild(widgetDiv);
+        })();
+      `;
+      wv.executeJavaScript(script).catch(() => {});
+    };
+    window.addEventListener('lumo:translate-page', handleTranslate);
+    return () => window.removeEventListener('lumo:translate-page', handleTranslate);
+  }, [settings.uiLanguage, activeTab?.id]);
 
 
   // ── Theme ────────────────────────────────────────────────────────────────
@@ -1185,6 +1255,7 @@ Example response format:
           onToggleAgent={() => { setShowAgent((v) => !v); setShowAI(false); }}
           onToggleBookmark={toggleBookmark}
           onOpenMenu={() => setShowMenu((v) => !v)}
+          offerTranslate={settings.offerTranslate}
           onDownload={() => {
             if (currentUrl === 'lumo://downloads') {
               // Toggle off — go back to previous page (or new tab)

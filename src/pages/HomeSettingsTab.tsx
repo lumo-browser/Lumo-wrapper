@@ -128,6 +128,7 @@ function useDashboardConfig() {
     setConfig(prev => {
       const next = { ...prev, ...updates };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
       return next;
     });
   }, []);
@@ -139,6 +140,7 @@ function useDashboardConfig() {
         widgets: prev.widgets.map(w => w.type === type ? { ...w, enabled: !w.enabled } : w),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
       return next;
     });
   }, []);

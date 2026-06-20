@@ -234,20 +234,20 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
         <div className="px-4 py-3">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">When Lumo starts, open:</p>
           {([
-            ['newtab',   'The New Tab page'],
-            ['previous', 'Previous windows and tabs'],
-            ['home',     'My homepage'],
+            ['new-tab',        'The New Tab page'],
+            ['continue',       'Continue where you left off'],
+            ['specific-pages', 'Open a specific page or set of pages'],
           ] as const).map(([val, lbl]) => (
             <label key={val} className="flex items-center gap-2.5 py-1.5 cursor-pointer">
               <span
-                onClick={() => set('startup', val)}
+                onClick={() => onUpdateSettings({ startupBehavior: val })}
                 className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer ${
-                  gen.startup === val ? 'border-blue-600' : 'border-gray-300 dark:border-gray-600'
+                  settings.startupBehavior === val ? 'border-blue-600' : 'border-gray-300 dark:border-gray-600'
                 }`}
               >
-                {gen.startup === val && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                {settings.startupBehavior === val && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
               </span>
-              <span className="text-sm text-gray-800 dark:text-gray-200" onClick={() => set('startup', val)}>{lbl}</span>
+              <span className="text-sm text-gray-800 dark:text-gray-200" onClick={() => onUpdateSettings({ startupBehavior: val })}>{lbl}</span>
             </label>
           ))}
         </div>
@@ -375,14 +375,21 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
         {/* Default zoom */}
         <Row label="Default Zoom" description="Default zoom level applied to all new pages">
           <select
-            value={gen.defaultZoom}
-            onChange={e => set('defaultZoom', e.target.value)}
+            value={settings.defaultZoom}
+            onChange={e => onUpdateSettings({ defaultZoom: parseInt(e.target.value) })}
             className="text-xs rounded-md px-2 py-1.5 bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-500"
           >
-            {['67','75','80','90','100','110','125','133','150','175','200','250','300'].map(v => (
+            {[67,75,80,90,100,110,125,133,150,175,200,250,300].map(v => (
               <option key={v} value={v}>{v}%</option>
             ))}
           </select>
+        </Row>
+
+        <Row label="Show Bookmarks Bar" description="Display the bookmarks bar under the address bar">
+          <Toggle enabled={settings.showBookmarksBar} onChange={v => onUpdateSettings({ showBookmarksBar: v })} />
+        </Row>
+        <Row label="Show Home Button" description="Display the home button next to the address bar">
+          <Toggle enabled={settings.showHomeButton} onChange={v => onUpdateSettings({ showHomeButton: v })} />
         </Row>
 
         {/* Zoom text only */}

@@ -102,11 +102,6 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
   // History
   const [historyMode, setHistoryMode] = useState<'remember' | 'never' | 'custom'>('remember');
 
-  // Permissions
-  const [locationPerm, setLocationPerm] = useState<PermissionState>('ask');
-  const [cameraPerm, setCameraPerm] = useState<PermissionState>('ask');
-  const [micPerm, setMicPerm] = useState<PermissionState>('ask');
-  const [notifPerm, setNotifPerm] = useState<PermissionState>('ask');
   const [autoplayPerm, setAutoplayPerm] = useState<PermissionState>('ask');
   const [blockPopupsGlobal, setBlockPopupsGlobal] = useState(settings.blockPopups);
 
@@ -262,10 +257,18 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
 
       {/* ── Permissions ── */}
       <Section title="Permissions" icon={<Bell className="w-4 h-4" />}>
-        <Row label="Location" description="Access to your physical location"><PermissionSelect value={locationPerm} onChange={setLocationPerm} /></Row>
-        <Row label="Camera" description="Access to your camera"><PermissionSelect value={cameraPerm} onChange={setCameraPerm} /></Row>
-        <Row label="Microphone" description="Access to your microphone"><PermissionSelect value={micPerm} onChange={setMicPerm} /></Row>
-        <Row label="Notifications" description="Permission to send desktop notifications"><PermissionSelect value={notifPerm} onChange={setNotifPerm} /></Row>
+        <Row label="Location" description="Access to your physical location">
+          <Toggle enabled={settings.permissions.location} onChange={v => onUpdateSettings({ permissions: { ...settings.permissions, location: v } })} />
+        </Row>
+        <Row label="Camera" description="Access to your camera">
+          <Toggle enabled={settings.permissions.camera} onChange={v => onUpdateSettings({ permissions: { ...settings.permissions, camera: v } })} />
+        </Row>
+        <Row label="Microphone" description="Access to your microphone">
+          <Toggle enabled={settings.permissions.microphone} onChange={v => onUpdateSettings({ permissions: { ...settings.permissions, microphone: v } })} />
+        </Row>
+        <Row label="Notifications" description="Permission to send desktop notifications">
+          <Toggle enabled={settings.permissions.notifications} onChange={v => onUpdateSettings({ permissions: { ...settings.permissions, notifications: v } })} />
+        </Row>
         <Row label="Autoplay" description="Automatically play video and audio"><PermissionSelect value={autoplayPerm} onChange={setAutoplayPerm} /></Row>
       </Section>
 

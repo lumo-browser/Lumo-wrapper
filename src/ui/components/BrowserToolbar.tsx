@@ -25,6 +25,7 @@ import {
   Home,
   Download,
   Globe,
+  Languages,
 } from 'lucide-react';
 
 interface BrowserToolbarProps {
@@ -54,6 +55,7 @@ interface BrowserToolbarProps {
   onDownload?: () => void;
   isDownloadsOpen?: boolean;
   searchEngineUrl?: string;
+  offerTranslate?: boolean;
 }
 
 export function BrowserToolbar({
@@ -83,6 +85,7 @@ export function BrowserToolbar({
   onDownload,
   isDownloadsOpen = false,
   searchEngineUrl = 'https://www.google.com/search?q=',
+  offerTranslate = true,
 }: BrowserToolbarProps): React.ReactElement {
   const [draftUrl, setDraftUrl] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -386,6 +389,21 @@ export function BrowserToolbar({
             id="address-bar"
           />
 
+
+          {/* Translate page — only when not focused and not NTP and allowed */}
+          {!isFocused && !isNtpPage && offerTranslate && (
+            <button
+              type="button"
+              onClick={(e) => { 
+                e.preventDefault(); 
+                window.dispatchEvent(new CustomEvent('lumo:translate-page')); 
+              }}
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors mr-1"
+              title="Translate this page"
+            >
+              <Languages className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Bookmark star — only when not focused and not NTP */}
           {!isFocused && !isNtpPage && (

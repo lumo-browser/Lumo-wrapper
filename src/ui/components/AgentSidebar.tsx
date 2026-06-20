@@ -1,7 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Cpu, X, Play, Square, Loader2, Target, CheckCircle2, AlertCircle, Pause, ShieldCheck, ShieldAlert, ListChecks, BarChart3 } from 'lucide-react';
+import { Cpu, X, Play, Square, Loader2, Target, CheckCircle2, AlertCircle, Pause, ShieldCheck, ShieldAlert, ListChecks, BarChart3, Camera } from 'lucide-react';
 import { BrowserTab } from './BrowserTabBar';
-import { AGENT_TOOLS, createTaskMemory, executeToolCall, DOM_EXTRACTOR_SCRIPT, buildSystemPrompt, buildContextPrompt } from '../../agent';
+import {
+  AGENT_TOOLS,
+  createTaskMemory,
+  executeToolCall,
+  captureTaggedScreenshot,
+  buildElementText,
+  buildSystemPrompt,
+  buildVisionContextMessages,
+} from '../../agent';
 import type { TaskMemory } from '../../agent';
 
 interface AgentSidebarProps { onClose: () => void; activeTab: BrowserTab | null; openRouterApiKey: string; }
@@ -25,7 +33,10 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
   const confirmResolveRef = useRef<((v: boolean) => void) | null>(null);
 
   const normalizeApiKey = useCallback((key: string): string => {
-    return key.trim().replace(/^Bearer\s+/i, '');
+    return (key || '')
+      .replace(/[\x00-\x1F\x7F]/g, '') // strip newlines, null bytes, control chars
+      .replace(/^Bearer\s+/i, '')       // strip accidental "Bearer " prefix
+      .trim();
   }, []);
 
   useEffect(() => { logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
@@ -89,7 +100,8 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
     runningRef.current = true;
 
     const systemPrompt = buildSystemPrompt();
-    let conversationHistory: any[] = currentMemory.conversationContext.length > 0 ? [...currentMemory.conversationContext] : [];
+    let conversationHistory: any[] = currentMemory.conversationContext.length > 0
+      ? [...currentMemory.conversationContext] : [];
     let iteration = currentMemory.actionHistory.length;
     const MAX_ITERATIONS = 40;
 
@@ -100,19 +112,31 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
       }
       try {
         iteration++;
-        addLog('system', 'Step ' + iteration + ': Analyzing page...');
+        addLog('system', '👁 Step ' + iteration + ': Capturing visual state...');
 
-        const domContent = await wv.executeJavaScript(DOM_EXTRACTOR_SCRIPT);
+        // ── VISION STEP 1: Capture tagged screenshot ────────────────
+        const { elementList, screenshotBase64 } = await captureTaggedScreenshot(wv);
+        const elementText = buildElementText(elementList);
         const currentUrl = (wv.getURL && wv.getURL()) || activeTab.url || '';
-        const contextPrompt = buildContextPrompt(currentUrl, domContent, currentMemory, iteration);
 
-        conversationHistory.push({ role: 'user', content: contextPrompt });
+        if (screenshotBase64) {
+          addLog('system', '📸 Screenshot captured (' + elementList.length + ' elements tagged)');
+        } else {
+          addLog('system', '⚠ Screenshot unavailable — text-only mode (' + elementList.length + ' elements)');
+        }
 
-        // Keep conversation history manageable
+        // ── VISION STEP 2: Build multimodal turn message ─────────────
+        const turnMessages = buildVisionContextMessages(
+          currentUrl, elementText, screenshotBase64, currentMemory, iteration
+        );
+        conversationHistory.push(...turnMessages);
+
+        // Trim history to avoid token overflow
         if (conversationHistory.length > 30) {
           conversationHistory = conversationHistory.slice(-20);
         }
 
+        // ── VISION STEP 3: Send to VLM ───────────────────────────────
         const apiResponse = await window.electron?.invoke?.('lumo:openrouter-chat', {
           apiKey,
           model: selectedModel,
@@ -122,9 +146,13 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
         });
 
         const data = apiResponse?.data;
-        if (apiResponse?.error) { addLog('error', 'API Error: ' + apiResponse.error.message); currentMemory.errorCount++; if (currentMemory.errorCount >= currentMemory.maxErrors) break; continue; }
+        if (apiResponse?.error) {
+          addLog('error', 'API Error: ' + apiResponse.error.message);
+          currentMemory.errorCount++;
+          if (currentMemory.errorCount >= currentMemory.maxErrors) break;
+          continue;
+        }
 
-        // Retry up to 2 times on empty response (free models occasionally drop responses)
         if (!data || !data.choices?.[0]?.message) {
           addLog('system', 'Empty response, retrying...');
           await new Promise(r => setTimeout(r, 2000));
@@ -132,12 +160,11 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
         }
 
         const msg = data.choices[0].message;
-
         conversationHistory.push(msg);
 
-        // If model returned text content, show it
         if (msg.content) addLog('system', 'Agent: ' + msg.content.substring(0, 300));
 
+        // ── VISION STEP 4: Execute tool calls ────────────────────────
         if (msg.tool_calls && msg.tool_calls.length > 0) {
           for (const toolCall of msg.tool_calls) {
             if (!runningRef.current) break;
@@ -145,61 +172,59 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
             try { args = JSON.parse(toolCall.function.arguments || '{}'); } catch { args = {}; }
             const toolName = toolCall.function.name;
 
-            // Guard: reject click calls with no valid id
+            // Guard: reject click with no valid id
             if (toolName === 'click' && (args.id === undefined || args.id === null || isNaN(Number(args.id)))) {
-              addLog('error', 'Agent tried to click with no element ID. Skipping and retrying.');
-              conversationHistory.push({ role: 'tool', tool_call_id: toolCall.id, content: 'ERROR: click() called with no id. You MUST read the DOM first and use a valid numeric [ID] from the element list. Use click_by_text instead if you know the answer text.' });
+              addLog('error', 'Agent tried to click with no element ID — skipping.');
+              conversationHistory.push({
+                role: 'tool', tool_call_id: toolCall.id,
+                content: 'ERROR: click() requires a valid numeric id from the screenshot tags. Use click_at(x,y) if no tag is visible.',
+              });
               continue;
             }
 
-            addLog('action', toolName + '(' + JSON.stringify(args).substring(0, 120) + ')');
+            addLog('action', '⚡ ' + toolName + '(' + JSON.stringify(args).substring(0, 120) + ')');
 
             const result = await executeToolCall(wv, toolName, args, currentMemory);
             currentMemory = result.updatedMemory;
             setMemory({ ...currentMemory });
 
-            // Handle confirmation gate
             if (result.requiresConfirmation) {
               const approved = await waitForConfirmation(result.confirmationMessage || result.output);
-              conversationHistory.push({ role: 'tool', tool_call_id: toolCall.id, content: approved ? 'User APPROVED. Proceed.' : 'User REJECTED. Do NOT proceed with this action. Find alternative or call done.' });
-              if (!approved) { addLog('system', 'Action blocked. Agent will find alternative.'); }
+              conversationHistory.push({
+                role: 'tool', tool_call_id: toolCall.id,
+                content: approved ? 'User APPROVED. Proceed.' : 'User REJECTED. Do NOT proceed. Find alternative or call done.',
+              });
+              if (!approved) addLog('system', 'Action blocked. Agent will find alternative.');
               continue;
             }
 
-            // Handle comparison presentation
             if (result.comparisonData && result.comparisonData.length > 0) {
               setComparisonRec(result.comparisonRecommendation || '');
               setActiveView('compare');
-              addLog('compare', 'Product comparison ready (' + result.comparisonData.length + ' products). Check the Compare tab.');
+              addLog('compare', 'Product comparison ready (' + result.comparisonData.length + ' products).');
             }
 
-            // Handle plan updates
             if (result.planSteps) {
               setActiveView('plan');
-              addLog('plan', 'Plan created with ' + result.planSteps.length + ' steps.');
+              addLog('plan', 'Plan updated with ' + result.planSteps.length + ' steps.');
             }
 
-            // Handle done
             if (result.isDone) {
               addLog(result.doneSuccess ? 'success' : 'error', result.output);
               runningRef.current = false;
               break;
             }
 
-            // Log result
-            if (result.success) {
-              addLog('system', result.output.substring(0, 200));
-            } else {
-              addLog('error', result.output.substring(0, 200));
-            }
-
-            conversationHistory.push({ role: 'tool', tool_call_id: toolCall.id, content: result.output.substring(0, 500) });
+            addLog(result.success ? 'system' : 'error', result.output.substring(0, 200));
+            conversationHistory.push({
+              role: 'tool', tool_call_id: toolCall.id,
+              content: result.output.substring(0, 500),
+            });
           }
         } else if (!msg.content) {
           addLog('system', 'Agent did not act. Retrying...');
         }
 
-        // Save conversation context in memory for resume
         currentMemory = { ...currentMemory, conversationContext: conversationHistory };
         setMemory({ ...currentMemory });
 
@@ -227,7 +252,10 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
       <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200 dark:border-[#333] shrink-0">
         <div className="flex items-center gap-2">
           <Cpu className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">Lumo Auto-Agent</span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">Lumo Vision Agent</span>
+          <span className="flex items-center gap-1 text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-full px-2 py-0.5 font-medium">
+            <Camera className="w-2.5 h-2.5" /> Vision
+          </span>
           {isRunning && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
           {isPaused && <span className="w-2 h-2 rounded-full bg-yellow-500" />}
         </div>
@@ -375,16 +403,12 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
       <div className="p-3 border-t border-gray-200 dark:border-[#333] shrink-0 bg-white dark:bg-[#1e1e1e] flex flex-col gap-2">
         <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} disabled={isRunning}
           className="w-full text-xs p-1.5 rounded-lg bg-gray-100 dark:bg-[#2a2a2a] text-gray-900 dark:text-gray-100 border-none outline-none focus:ring-2 focus:ring-blue-500/50">
-          <optgroup label="Premium">
-            <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
-            <option value="openai/gpt-4o">GPT-4o</option>
-            <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
-          </optgroup>
-          <optgroup label="Free Models">
-            <option value="openrouter/free">Auto-Select Free Model (Best)</option>
-            <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
-            <option value="google/gemini-2.0-pro-exp-02-05:free">Gemini 2.0 Pro Exp (Free)</option>
-            <option value="deepseek/deepseek-chat:free">DeepSeek V3 (Free)</option>
+          <optgroup label="Vision Models (Required)">
+            <option value="anthropic/claude-sonnet-4">Claude Sonnet 4 ✦ Vision</option>
+            <option value="anthropic/claude-3-5-sonnet">Claude 3.5 Sonnet ✦ Vision</option>
+            <option value="openai/gpt-4o">GPT-4o ✦ Vision</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini ✦ Vision</option>
+            <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Free) ✦ Vision</option>
           </optgroup>
         </select>
 

@@ -40,6 +40,22 @@ export const AGENT_TOOLS = [
   {
     type: 'function' as const,
     function: {
+      name: 'click_at',
+      description: 'Click at exact pixel coordinates (x, y) on the page. Use when the target element is visible in the screenshot but NOT listed in the tagged element list, or when you want to use the visual coordinates directly.',
+      parameters: {
+        type: 'object',
+        properties: {
+          x: { type: 'integer', description: 'Horizontal pixel coordinate to click' },
+          y: { type: 'integer', description: 'Vertical pixel coordinate to click' },
+          description: { type: 'string', description: 'What you are clicking and why' },
+        },
+        required: ['x', 'y'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'type_text',
       description: 'Type or replace text in an input field, textarea, or search box by its numerical [ID]. Also fires input/change events to trigger frontend updates.',
       parameters: {
