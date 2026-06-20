@@ -24,6 +24,7 @@ import {
   Cpu,
   Home,
   Download,
+  Globe,
 } from 'lucide-react';
 
 interface BrowserToolbarProps {
@@ -85,7 +86,113 @@ export function BrowserToolbar({
 }: BrowserToolbarProps): React.ReactElement {
   const [draftUrl, setDraftUrl] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchCache = useRef(new Map<string, string[]>());
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Fetch suggestions with debounce
+  useEffect(() => {
+    if (!isFocused || !draftUrl.trim() || draftUrl === url) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    // Cancel any previous requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const query = draftUrl.trim();
+        // Skip URL-like queries
+        if (/^https?:\/\//i.test(query) || /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(query) || /^lumo:\/\//i.test(query)) {
+          setSuggestions([]);
+          setShowSuggestions(false);
+          return;
+        }
+
+        // Check cache
+        if (searchCache.current.has(query)) {
+          setSuggestions(searchCache.current.get(query)!);
+          setShowSuggestions(true);
+          setSelectedIndex(-1);
+          return;
+        }
+
+        setIsSuggestionsLoading(true);
+        setShowSuggestions(true);
+
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        // Google Autocomplete using JSONP to bypass CORS
+        const data = await new Promise<any[]>((resolve, reject) => {
+          const callbackName = 'jsonp_ac_' + Math.round(1000000 * Math.random());
+          const script = document.createElement('script');
+          
+          let timeoutId: any;
+
+          const cleanup = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (script.parentNode) script.parentNode.removeChild(script);
+            delete (window as any)[callbackName];
+          };
+
+          if (controller.signal) {
+            controller.signal.addEventListener('abort', () => {
+              cleanup();
+              reject(new DOMException('Aborted', 'AbortError'));
+            });
+          }
+
+          (window as any)[callbackName] = (resData: any) => {
+            cleanup();
+            resolve(resData);
+          };
+
+          // Google supports JSONP with client=youtube and jsonp= query parameters
+          script.src = `https://suggestqueries.google.com/complete/search?client=youtube&q=${encodeURIComponent(query)}&jsonp=${callbackName}`;
+          script.onerror = () => {
+            cleanup();
+            reject(new Error('JSONP failed'));
+          };
+
+          document.head.appendChild(script);
+
+          // Fallback timeout so it doesn't hang forever
+          timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error('JSONP timeout'));
+          }, 3000);
+        });
+
+        if (Array.isArray(data) && Array.isArray(data[1])) {
+          const results = data[1].slice(0, 8).map((item: any) => item[0]);
+          searchCache.current.set(query, results);
+          setSuggestions(results);
+        } else {
+          searchCache.current.set(query, []);
+          setSuggestions([]);
+        }
+        setSelectedIndex(-1);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error('Failed to fetch suggestions:', err);
+          setSuggestions([]);
+        }
+      } finally {
+        setIsSuggestionsLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [draftUrl, isFocused, url]);
 
   // Keep draft in sync when not focused
   useEffect(() => {
@@ -101,6 +208,7 @@ export function BrowserToolbar({
   const handleBlur = useCallback(() => {
     setIsFocused(false);
     setDraftUrl(url);
+    setShowSuggestions(false);
   }, [url]);
 
   useEffect(() => {
@@ -115,8 +223,29 @@ export function BrowserToolbar({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+      const raw = suggestions[selectedIndex];
+      onNavigate(raw.startsWith('lumo://') ? raw : `${searchEngineUrl}${encodeURIComponent(raw)}`);
+      inputRef.current?.blur();
+      setShowSuggestions(false);
+      return;
+    }
     const raw = draftUrl.trim();
     if (!raw) return;
 
@@ -217,7 +346,7 @@ export function BrowserToolbar({
       </div>
 
       {/* ── Address Bar ── */}
-      <form onSubmit={handleSubmit} className="flex-1 min-w-0 mx-1">
+      <form onSubmit={handleSubmit} className="relative flex-1 min-w-0 mx-1">
         <div
           className={`
             flex items-center gap-2 h-8 px-3 rounded-full transition-all duration-150
@@ -248,6 +377,7 @@ export function BrowserToolbar({
             onChange={(e) => setDraftUrl(e.target.value)}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
             placeholder="Search Google or enter address"
             className="flex-1 min-w-0 bg-transparent text-[13px] text-gray-900 dark:text-gray-100
               placeholder-gray-400 dark:placeholder-gray-500 outline-none"
@@ -272,6 +402,54 @@ export function BrowserToolbar({
             </button>
           )}
         </div>
+
+        {/* Suggestions Dropdown */}
+        {showSuggestions && (suggestions.length > 0 || isSuggestionsLoading || (draftUrl.trim() !== '' && draftUrl !== url && !/^https?:\/\//i.test(draftUrl))) && (
+          <div className="absolute top-full left-0 w-full mt-1.5 bg-white dark:bg-[#2d2d2d] border border-gray-200 dark:border-[#3a3a3a] rounded-xl shadow-lg overflow-hidden z-[100]">
+            <ul className="py-1.5">
+              {isSuggestionsLoading ? (
+                <li className="px-3 py-2 text-[13px] text-gray-500 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-blue-500 mr-2"></div>
+                  Loading...
+                </li>
+              ) : suggestions.length === 0 && draftUrl.trim() && draftUrl !== url && !/^lumo:\/\//i.test(draftUrl) ? (
+                <li className="px-3 py-2 text-[13px] text-gray-500 italic text-center">
+                  No suggestions found
+                </li>
+              ) : (
+                suggestions.map((suggestion, index) => {
+                  const isInternal = suggestion.startsWith('lumo://');
+                  const queryToHighlight = isInternal ? '' : draftUrl.trim();
+                  return (
+                    <li 
+                      key={index}
+                      className={`px-3 py-1.5 text-[13px] cursor-default flex items-center gap-3 transition-colors ${
+                        selectedIndex === index 
+                          ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' 
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3a3a3a]'
+                      }`}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setDraftUrl(suggestion);
+                        onNavigate(isInternal ? suggestion : `${searchEngineUrl}${encodeURIComponent(suggestion)}`);
+                        setShowSuggestions(false);
+                        inputRef.current?.blur();
+                      }}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                    >
+                      {isInternal ? (
+                        <Globe className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                      ) : (
+                        <Search className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                      )}
+                      <HighlightMatch text={suggestion} query={queryToHighlight} />
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>
+        )}
       </form>
 
       {/* ── Right Controls ── */}
@@ -392,3 +570,23 @@ function NavBtn({
     </button>
   );
 }
+
+// Subcomponent to highlight matching text in suggestions
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  if (!query) return <span className="truncate">{text}</span>;
+  
+  // Escape query for regex
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
+  
+  return (
+    <span className="truncate">
+      {parts.map((part, i) => 
+        part.toLowerCase() === query.toLowerCase() 
+          ? <span key={i} className="font-bold text-gray-900 dark:text-white">{part}</span> 
+          : <span key={i}>{part}</span>
+      )}
+    </span>
+  );
+}
+
