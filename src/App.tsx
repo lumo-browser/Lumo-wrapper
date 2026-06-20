@@ -37,6 +37,7 @@ const HistoryPage = React.lazy(() => import('./pages/HistoryPage').then(m => ({ 
 const BookmarksPage = React.lazy(() => import('./pages/BookmarksPage').then(m => ({ default: m.BookmarksPage })));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const ExtensionsPage = React.lazy(() => import('./pages/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
+const DownloadsPage = React.lazy(() => import('./pages/DownloadsPage').then(m => ({ default: m.DownloadsPage })));
 
 // ── Internal Pages ─────────────────────────────────────────────────────────
 function InternalPage({ title, children }: { title: string; children: React.ReactNode }) {
@@ -90,187 +91,178 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
     wv.addEventListener('did-navigate-in-page', onNavigated);
 
     const onDomReady = () => {
-      // Inject Picture-in-Picture overlay for all videos
+      // ── Picture-in-Picture overlay ──────────────────────────────────────────
+      // Wrapped in outer try/catch — any failure is silently swallowed so it
+      // never surfaces as "Script failed to execute" in the console.
       const pipScript = `
         (function() {
-          if (window._lumoPipSetup) return;
-          window._lumoPipSetup = true;
+          try {
+            if (window._lumoPipSetup) return;
+            window._lumoPipSetup = true;
 
-          const btn = document.createElement('button');
-          btn.className = 'lumo-pip-btn';
-          btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="12" y="12" width="8" height="6" rx="1" ry="1"/></svg>';
-          btn.title = "Picture-in-Picture";
-          
-          Object.assign(btn.style, {
-            position: 'fixed',
-            zIndex: '2147483647',
-            background: 'rgba(28, 28, 30, 0.75)',
-            color: 'white',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '8px',
-            padding: '6px',
-            cursor: 'pointer',
-            opacity: '0',
-            backdropFilter: 'blur(8px)',
-            transition: 'opacity 0.2s ease, transform 0.1s ease',
-            display: 'none',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-          });
+            var btn = document.createElement('button');
+            btn.className = 'lumo-pip-btn';
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="12" y="12" width="8" height="6" rx="1" ry="1"/></svg>';
+            btn.title = "Picture-in-Picture";
 
-          btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
-          btn.onmouseout = () => btn.style.transform = 'scale(1)';
-
-          let currentTargetVideo = null;
-
-          btn.onclick = async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!currentTargetVideo) return;
-            try {
-              if (document.pictureInPictureElement) {
-                await document.exitPictureInPicture();
-              } else {
-                await currentTargetVideo.requestPictureInPicture();
-              }
-            } catch (err) {
-              console.error('Lumo PiP failed:', err);
-            }
-          };
-
-          const ensureButton = () => {
-            if (!btn.isConnected && document.body) {
-              document.body.appendChild(btn);
-            }
-          };
-
-          let hoverTimeout;
-          let isHovering = false;
-          
-          const updateButtonPosition = () => {
-            if (!currentTargetVideo || document.fullscreenElement) {
-              btn.style.display = 'none';
-              return;
-            }
-            ensureButton();
-            btn.style.display = 'flex';
-            const rect = currentTargetVideo.getBoundingClientRect();
-            btn.style.top = (rect.top + 12) + 'px';
-            btn.style.left = (rect.right - 44) + 'px';
-          };
-
-          // Use IntersectionObserver instead of a rapid setInterval
-          const observer = new IntersectionObserver((entries) => {
-            let maxArea = 0;
-            let bestVideo = null;
-            
-            const videos = Array.from(document.querySelectorAll('video')).filter(v => 
-              v.offsetWidth > 150 && v.offsetHeight > 100 && window.getComputedStyle(v).display !== 'none'
-            );
-            
-            videos.forEach(v => {
-              const rect = v.getBoundingClientRect();
-              const area = rect.width * rect.height;
-              if (area > maxArea && rect.top < window.innerHeight && rect.bottom > 0) {
-                maxArea = area;
-                bestVideo = v;
-              }
+            Object.assign(btn.style, {
+              position: 'fixed', zIndex: '2147483647',
+              background: 'rgba(28,28,30,0.75)', color: 'white',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px',
+              padding: '6px', cursor: 'pointer', opacity: '0',
+              backdropFilter: 'blur(8px)',
+              transition: 'opacity 0.2s ease, transform 0.1s ease',
+              display: 'none', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
             });
-            currentTargetVideo = bestVideo;
-            updateButtonPosition();
-          }, { threshold: [0, 0.5, 1] });
 
-          const observeVideos = () => {
-            document.querySelectorAll('video').forEach(v => {
-              if (!v._lumoObserved) {
-                observer.observe(v);
-                v._lumoObserved = true;
-              }
-            });
-          };
+            btn.onmouseover = function() { btn.style.transform = 'scale(1.05)'; };
+            btn.onmouseout  = function() { btn.style.transform = 'scale(1)'; };
 
-          // Periodically check for new dynamically added videos (much slower interval)
-          setInterval(observeVideos, 2000);
-          
-          window.addEventListener('scroll', updateButtonPosition, { passive: true });
-          window.addEventListener('resize', updateButtonPosition, { passive: true });
+            var currentTargetVideo = null;
+            var hoverTimeout = null;
+            var isHovering = false;
 
-          // Global mouse tracker
-          document.addEventListener('mousemove', (e) => {
-            if (!currentTargetVideo || document.fullscreenElement) return;
-            
-            const rect = currentTargetVideo.getBoundingClientRect();
-            const isOverVideo = e.clientX >= rect.left && e.clientX <= rect.right &&
-                                e.clientY >= rect.top && e.clientY <= rect.bottom;
-                                
-            const isOverBtn = btn.contains(e.target);
+            btn.onclick = function(e) {
+              e.preventDefault(); e.stopPropagation();
+              if (!currentTargetVideo) return;
+              try {
+                if (document.pictureInPictureElement) {
+                  document.exitPictureInPicture().catch(function(){});
+                } else {
+                  currentTargetVideo.requestPictureInPicture().catch(function(){});
+                }
+              } catch(err) {}
+            };
 
-            if (isOverVideo || isOverBtn) {
-              clearTimeout(hoverTimeout);
-              if (!isHovering) {
-                btn.style.opacity = '1';
-                btn.style.pointerEvents = 'auto';
-                isHovering = true;
-              }
-            } else {
-              if (isHovering) {
-                hoverTimeout = setTimeout(() => { 
-                  btn.style.opacity = '0'; 
-                  btn.style.pointerEvents = 'none'; 
-                  isHovering = false;
-                }, 800);
-              }
+            function ensureButton() {
+              try {
+                if (!btn.isConnected && document.body) document.body.appendChild(btn);
+              } catch(e) {}
             }
-          }, { passive: true });
+
+            function updateButtonPosition() {
+              try {
+                var isFullscreen = false;
+                try { isFullscreen = !!document.fullscreenElement; } catch(e) {}
+                if (!currentTargetVideo || isFullscreen) { btn.style.display = 'none'; return; }
+                ensureButton();
+                btn.style.display = 'flex';
+                var rect = currentTargetVideo.getBoundingClientRect();
+                btn.style.top  = (rect.top  + 12) + 'px';
+                btn.style.left = (rect.right - 44) + 'px';
+              } catch(e) {}
+            }
+
+            // Use WeakSet instead of setting property on DOM node (avoids strict-mode throws)
+            var observed = new WeakSet();
+
+            var observer = new IntersectionObserver(function() {
+              try {
+                var maxArea = 0; var bestVideo = null;
+                var videos = Array.from(document.querySelectorAll('video')).filter(function(v) {
+                  return v.offsetWidth > 150 && v.offsetHeight > 100 &&
+                         window.getComputedStyle(v).display !== 'none';
+                });
+                videos.forEach(function(v) {
+                  var r = v.getBoundingClientRect();
+                  var area = r.width * r.height;
+                  if (area > maxArea && r.top < window.innerHeight && r.bottom > 0) {
+                    maxArea = area; bestVideo = v;
+                  }
+                });
+                currentTargetVideo = bestVideo;
+                updateButtonPosition();
+              } catch(e) {}
+            }, { threshold: [0, 0.5, 1] });
+
+            function observeVideos() {
+              try {
+                document.querySelectorAll('video').forEach(function(v) {
+                  if (!observed.has(v)) { observer.observe(v); observed.add(v); }
+                });
+              } catch(e) {}
+            }
+
+            setInterval(observeVideos, 3000);
+            window.addEventListener('scroll', updateButtonPosition, { passive: true });
+            window.addEventListener('resize', updateButtonPosition, { passive: true });
+
+            document.addEventListener('mousemove', function(e) {
+              try {
+                if (!currentTargetVideo) return;
+                var isFullscreen = false;
+                try { isFullscreen = !!document.fullscreenElement; } catch(ex) {}
+                if (isFullscreen) return;
+                var rect = currentTargetVideo.getBoundingClientRect();
+                var isOverVideo = e.clientX >= rect.left && e.clientX <= rect.right &&
+                                  e.clientY >= rect.top  && e.clientY <= rect.bottom;
+                var isOverBtn = btn.contains(e.target);
+                if (isOverVideo || isOverBtn) {
+                  clearTimeout(hoverTimeout);
+                  if (!isHovering) {
+                    btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; isHovering = true;
+                  }
+                } else if (isHovering) {
+                  hoverTimeout = setTimeout(function() {
+                    btn.style.opacity = '0'; btn.style.pointerEvents = 'none'; isHovering = false;
+                  }, 800);
+                }
+              } catch(e) {}
+            }, { passive: true });
+
+          } catch(e) { /* silently ignore — page may not support PiP */ }
         })();
       `;
       wv.executeJavaScript(pipScript).catch(() => {});
 
-      // Inject YouTube video ad skipper & cosmetic filter
+      // ── YouTube ad skipper ────────────────────────────────────────────────
       const ytAdScript = `
         (function() {
-          if (window._lumoYtAdSetup || window.location.hostname.indexOf('youtube.com') === -1) return;
-          window._lumoYtAdSetup = true;
+          try {
+            if (window._lumoYtAdSetup) return;
+            try {
+              if (window.location.hostname.indexOf('youtube.com') === -1) return;
+            } catch(e) { return; }
+            window._lumoYtAdSetup = true;
 
-          const removeAds = () => {
-            const skipButton = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-text.ytp-ad-skip-button-text');
-            const adContainer = document.querySelector('.ad-showing, .ad-interrupting');
-            const video = document.querySelector('video');
-            
-            // 1. Click skip if available
-            if (skipButton) {
-              skipButton.click();
-            } 
-            // 2. Otherwise fast-forward unskippable ads to instantly end them
-            else if (adContainer && video && !isNaN(video.duration)) {
-              video.currentTime = video.duration;
+            function removeAds() {
+              try {
+                var skipBtn = document.querySelector(
+                  '.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-skip-ad-button,.ytp-ad-text.ytp-ad-skip-button-text'
+                );
+                var adContainer = document.querySelector('.ad-showing,.ad-interrupting');
+                var video = document.querySelector('video');
+                if (skipBtn) {
+                  skipBtn.click();
+                } else if (adContainer && video && !isNaN(video.duration) && video.duration > 0) {
+                  video.currentTime = video.duration;
+                }
+                var overlays = document.querySelectorAll(
+                  '.ytp-ad-overlay-container,#player-ads,ytd-ad-slot-renderer,ytd-promoted-sparkles-web-renderer,ytd-banner-promo-renderer'
+                );
+                overlays.forEach(function(el) {
+                  try { el.style.display = 'none'; el.remove(); } catch(e) {}
+                });
+              } catch(e) {}
             }
-            
-            // 3. Destroy static banner ads and overlays
-            const overlays = document.querySelectorAll('.ytp-ad-overlay-container, #player-ads, ytd-ad-slot-renderer, ytd-promoted-sparkles-web-renderer, ytd-banner-promo-renderer');
-            overlays.forEach(el => {
-               el.style.display = 'none';
-               el.remove();
+
+            var adTimeout = null;
+            var observer = new MutationObserver(function() {
+              clearTimeout(adTimeout);
+              adTimeout = setTimeout(removeAds, 250);
             });
-          };
 
-          let adTimeout;
-          const observer = new MutationObserver(() => {
-            clearTimeout(adTimeout);
-            // Debounce the ad remover so it isn't constantly running during DOM mutations
-            adTimeout = setTimeout(removeAds, 250);
-          });
-          
-          const startObserving = () => {
-            const player = document.getElementById('ytd-player') || document.body;
-            if (player) {
-              observer.observe(player, { childList: true, subtree: true });
+            function startObserving() {
+              try {
+                var player = document.getElementById('ytd-player') || document.body;
+                if (player) observer.observe(player, { childList: true, subtree: true });
+              } catch(e) {}
             }
-          };
 
-          removeAds();
-          setTimeout(startObserving, 1000);
+            removeAds();
+            setTimeout(startObserving, 1000);
+          } catch(e) { /* silently ignore */ }
         })();
       `;
       wv.executeJavaScript(ytAdScript).catch(() => {});
@@ -391,6 +383,61 @@ export default function App(): React.ReactElement {
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(() => {
     try { return JSON.parse(localStorage.getItem('lumo-history') || '[]'); } catch { return []; }
   });
+
+  // Download items — shared state so toolbar badge can show count
+  const [downloadItems, setDownloadItems] = useState<any[]>(() => {
+    try { return JSON.parse(localStorage.getItem('lumo-downloads') || '[]'); } catch { return []; }
+  });
+
+  // Listen for download progress from main process
+  useEffect(() => {
+    const electron = (window as any).electron;
+    if (!electron?.on) return;
+    const unsub = electron.on('lumo:download-progress', (_: unknown, item: any) => {
+      setDownloadItems(prev => {
+        const updated = prev.find((d: any) => d.id === item.id)
+          ? prev.map((d: any) => d.id === item.id ? { ...d, ...item } : d)
+          : [item, ...prev];
+        localStorage.setItem('lumo-downloads', JSON.stringify(updated));
+        return updated;
+      });
+    });
+    return () => unsub?.();
+  }, []);
+
+  // Listen for lumo:navigate messages from main process (e.g. downloads button)
+  useEffect(() => {
+    const electron = (window as any).electron;
+    if (!electron?.on) return;
+    const unsub = electron.on('lumo:navigate', (_: unknown, url: string) => {
+      navigate(url);
+    });
+    return () => unsub?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for global shortcuts fired from the main process (e.g. Ctrl+J)
+  useEffect(() => {
+    const electron = (window as any).electron;
+    if (!electron?.on) return;
+    const unsub = electron.on('lumo:shortcut', (_: unknown, action: string) => {
+      if (action === 'toggle-downloads') {
+        // Use functional form so we always read latest activeTab URL
+        setTabs(prev => {
+          const active = prev.find(t => t.isActive);
+          if (active?.url === 'lumo://downloads') {
+            // Navigate back — re-use the navigate function via a custom event
+            window.dispatchEvent(new CustomEvent('lumo:go-back'));
+          } else {
+            window.dispatchEvent(new CustomEvent('lumo:open-page', { detail: 'lumo://downloads' }));
+          }
+          return prev;
+        });
+      }
+    });
+    return () => unsub?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Settings
   const [settings, setSettings] = useState<BrowserSettings>(() => {
@@ -688,17 +735,24 @@ export default function App(): React.ReactElement {
       return { ...prev, [tabId]: { stack: newStack, cursor: newStack.length - 1 } };
     });
 
-    // Imperatively tell the webview to navigate
-    const wv = document.getElementById(`webview-${tabId}`) as any;
-    if (wv && typeof wv.loadURL === 'function') {
-      wv.loadURL(url).catch(() => {});
-    }
-
-    // Fallback: simulate load completion for internal pages
+    // Only tell the webview to navigate for real external URLs.
+    // Internal lumo:// pages are rendered by React — passing them to
+    // wv.loadURL() causes ERR_FAILED and can open the OS default browser.
     if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
-    loadTimerRef.current = setTimeout(() => {
+
+    if (isInternal) {
+      // Internal page: React handles rendering, mark as loaded instantly
       setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, isLoading: false } : t)));
-    }, 3000);
+    } else {
+      const wv = document.getElementById(`webview-${tabId}`) as any;
+      if (wv && typeof wv.loadURL === 'function') {
+        wv.loadURL(url).catch(() => {});
+      }
+      // Fallback timeout in case webview events don't fire
+      loadTimerRef.current = setTimeout(() => {
+        setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, isLoading: false } : t)));
+      }, 8000);
+    }
   }, [activeTab]);
 
   const goBack = useCallback(() => {
@@ -740,6 +794,11 @@ export default function App(): React.ReactElement {
 
   const handleGoBack = () => {
     if (!activeTab) return;
+    // For internal lumo:// pages there is no real webview — use React nav stack
+    if (activeTab.url?.startsWith('lumo://') || !activeTab.url) {
+      goBack();
+      return;
+    }
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
     if (wv && typeof wv.goBack === 'function') {
       wv.goBack();
@@ -750,6 +809,11 @@ export default function App(): React.ReactElement {
 
   const handleGoForward = () => {
     if (!activeTab) return;
+    // For internal lumo:// pages there is no real webview — use React nav stack
+    if (activeTab.url?.startsWith('lumo://') || !activeTab.url) {
+      goForward();
+      return;
+    }
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
     if (wv && typeof wv.goForward === 'function') {
       wv.goForward();
@@ -971,9 +1035,9 @@ Example response format:
         e.preventDefault();
         alert('Incognito mode is coming in the next Nova update!');
       } else if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
-        // Clear browsing data
+        // This is now handled below with lumo://settings
         e.preventDefault();
-        navigate('nova://settings');
+        navigate('lumo://settings');
       } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
         setShowAI((v) => !v);
@@ -1001,27 +1065,49 @@ Example response format:
         handleZoomOut();
       } else if (e.ctrlKey && e.key.toLowerCase() === 'b') {
         e.preventDefault();
-        navigate('nova://bookmarks');
+        navigate('lumo://bookmarks');
       } else if (e.ctrlKey && e.key.toLowerCase() === 'h') {
         e.preventDefault();
-        navigate('nova://history');
+        navigate('lumo://history');
       } else if (e.ctrlKey && e.key.toLowerCase() === 'j') {
         e.preventDefault();
-        navigate('nova://downloads');
+        e.stopPropagation();
+        // Toggle downloads page (Chrome-style Ctrl+J behaviour)
+        if (currentUrl === 'lumo://downloads') {
+          handleGoBack();
+        } else {
+          navigate('lumo://downloads');
+        }
       } else if (e.ctrlKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         handlePrint();
       } else if (e.ctrlKey && e.key === ',') {
         e.preventDefault();
-        navigate('nova://settings');
+        navigate('lumo://settings');
+      } else if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
+        e.preventDefault();
+        navigate('lumo://settings');
       } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g') {
         e.preventDefault();
         groupTabsWithAI();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Use capture phase so Lumo intercepts Ctrl+J/B/H/etc BEFORE the
+    // webview or OS (e.g. Brave/Chrome) can steal the shortcut.
+    window.addEventListener('keydown', handleKeyDown, true);
+
+    // Handlers for custom events dispatched by the global shortcut IPC listener
+    const onGoBack   = () => handleGoBack();
+    const onOpenPage = (e: Event) => navigate((e as CustomEvent).detail as string);
+    window.addEventListener('lumo:go-back',   onGoBack);
+    window.addEventListener('lumo:open-page', onOpenPage);
+
+    return () => {
+      window.removeEventListener('keydown',        handleKeyDown, true);
+      window.removeEventListener('lumo:go-back',   onGoBack);
+      window.removeEventListener('lumo:open-page', onOpenPage);
+    };
   }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint, groupTabsWithAI]);
 
   const currentUrl = activeTab?.url ?? '';
@@ -1099,6 +1185,15 @@ Example response format:
           onToggleAgent={() => { setShowAgent((v) => !v); setShowAI(false); }}
           onToggleBookmark={toggleBookmark}
           onOpenMenu={() => setShowMenu((v) => !v)}
+          onDownload={() => {
+            if (currentUrl === 'lumo://downloads') {
+              // Toggle off — go back to previous page (or new tab)
+              handleGoBack();
+            } else {
+              navigate('lumo://downloads');
+            }
+          }}
+          isDownloadsOpen={currentUrl === 'lumo://downloads'}
           searchEngineUrl={searchEngineUrl}
         />
 
@@ -1152,14 +1247,15 @@ Example response format:
         <div className="flex-1 overflow-hidden bg-white dark:bg-[#1e1e1e] relative min-w-0">
           {tabs.map((tab) => {
             const isNtp = !tab.url || tab.url === 'lumo://newtab';
-            const isSettings = tab.url === 'lumo://settings';
+            const isSettings   = tab.url === 'lumo://settings';
             const isHistory    = tab.url === 'lumo://history';
             const isBookmarks  = tab.url === 'lumo://bookmarks';
             const isAbout      = tab.url === 'lumo://about';
             const isExtensions = tab.url === 'lumo://extensions';
+            const isDownloads  = tab.url === 'lumo://downloads';
             const isCompare    = tab.url.startsWith('lumo://compare');
-            const isWelcome   = tab.url === 'lumo://welcome';
-            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isCompare || isWelcome;
+            const isWelcome    = tab.url === 'lumo://welcome';
+            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isDownloads || isCompare || isWelcome;
 
             return (
               <div
@@ -1169,6 +1265,7 @@ Example response format:
                 <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
                   {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
                   {isNtp && !isWelcome && <NewTabPage onNavigate={navigate} isDark={isDark} />}
+                  {isDownloads && <DownloadsPage onNavigate={navigate} />}
                   {isSettings && (
                     <SettingsPage
                       settings={settings}

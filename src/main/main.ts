@@ -3,7 +3,7 @@
  * Self-contained — no shared imports from renderer code
  */
 
-import { app, BrowserWindow, Menu, MenuItem, session, ipcMain, nativeTheme, safeStorage } from 'electron';
+import { app, BrowserWindow, Menu, MenuItem, session, ipcMain, nativeTheme, safeStorage, shell, globalShortcut } from 'electron';
 import https from 'https';
 import path from 'path';
 import { shouldBlock, AdBlockerStats, AdBlockerConfig, DEFAULT_CONFIG } from './adBlocker';
@@ -235,6 +235,76 @@ app.on('ready', () => {
       return result.canceled ? null : result.filePaths[0];
     });
 
+    // ── Download tracking — push progress events to renderer ──────────────────
+    const os = require('os');
+    const pathMod = require('path');
+    let downloadCounter = 0;
+
+    const handleDownloadItem = (_event: Electron.Event, item: Electron.DownloadItem) => {
+      const id = `dl-${Date.now()}-${++downloadCounter}`;
+      const filename = item.getFilename();
+
+      // Auto-save to Downloads folder unless user configured a custom path
+      const savePath = pathMod.join(os.homedir(), 'Downloads', filename.replace(/[\/\\?%*:|"<>]/g, '-'));
+      item.setSavePath(savePath);
+
+      const baseItem = {
+        id,
+        filename,
+        url: item.getURL(),
+        savePath,
+        state: 'progressing' as const,
+        receivedBytes: 0,
+        totalBytes: item.getTotalBytes(),
+        startedAt: Date.now(),
+        mimeType: item.getMimeType(),
+      };
+
+      // Send initial event
+      mainWindow?.webContents.send('lumo:download-progress', { ...baseItem });
+
+      item.on('updated', (_e, state) => {
+        mainWindow?.webContents.send('lumo:download-progress', {
+          ...baseItem,
+          state,
+          receivedBytes: item.getReceivedBytes(),
+          totalBytes: item.getTotalBytes(),
+          savePath: item.getSavePath(),
+        });
+      });
+
+      item.once('done', (_e, state) => {
+        mainWindow?.webContents.send('lumo:download-progress', {
+          ...baseItem,
+          state,
+          receivedBytes: item.getReceivedBytes(),
+          totalBytes: item.getTotalBytes(),
+          savePath: item.getSavePath(),
+          endedAt: Date.now(),
+        });
+        console.log(`[Lumo] Download ${state}: ${filename} → ${item.getSavePath()}`);
+      });
+    };
+
+    // Attach download listener to both sessions
+    session.defaultSession.on('will-download', handleDownloadItem);
+    session.fromPartition('persist:nova-main').on('will-download', handleDownloadItem);
+
+    // Open file with default OS app
+    ipcMain.on('lumo:open-file', (_event, filePath: string) => {
+      shell.openPath(filePath).catch(err => console.error('[Lumo] open-file failed:', err));
+    });
+
+    // Reveal file in OS file manager
+    ipcMain.on('lumo:show-item-in-folder', (_event, filePath: string) => {
+      shell.showItemInFolder(filePath);
+    });
+
+    // Navigate to downloads page (triggered by toolbar download button)
+    ipcMain.on('lumo:open-downloads', () => {
+      mainWindow?.webContents.send('lumo:navigate', 'lumo://downloads');
+    });
+
     // Proxy settings
     ipcMain.on('lumo:set-proxy', (event, { type, host, port }: { type: string; host: string; port: string }) => {
       let proxyRules = '';
@@ -458,6 +528,19 @@ app.on('ready', () => {
   createWindow();
   // Disable native menu bar — Lumo uses custom menu in UI
   // createMenu();
+
+  // ── Global keyboard shortcuts ─────────────────────────────────────────────
+  // Register AFTER window creation. These fire at OS level, preventing
+  // other apps (e.g. Brave) from intercepting them while Lumo is focused.
+  app.whenReady().then(() => {
+    // Ctrl+J — toggle Downloads page (Chrome-compatible shortcut)
+    globalShortcut.register('CommandOrControl+J', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('lumo:shortcut', 'toggle-downloads');
+      }
+    });
+    console.log('[Lumo] Global shortcuts registered');
+  });
 });
 
 app.on('window-all-closed', () => {
@@ -476,4 +559,5 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   console.log('[Lumo] App quitting');
+  globalShortcut.unregisterAll();
 });

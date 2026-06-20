@@ -22,6 +22,8 @@ import {
   Moon,
   RefreshCcw,
   Cpu,
+  Home,
+  Download,
 } from 'lucide-react';
 
 interface BrowserToolbarProps {
@@ -48,6 +50,8 @@ interface BrowserToolbarProps {
   onToggleAgent: () => void;
   onToggleBookmark: () => void;
   onOpenMenu: () => void;
+  onDownload?: () => void;
+  isDownloadsOpen?: boolean;
   searchEngineUrl?: string;
 }
 
@@ -75,6 +79,8 @@ export function BrowserToolbar({
   onToggleAgent,
   onToggleBookmark,
   onOpenMenu,
+  onDownload,
+  isDownloadsOpen = false,
   searchEngineUrl = 'https://www.google.com/search?q=',
 }: BrowserToolbarProps): React.ReactElement {
   const [draftUrl, setDraftUrl] = useState('');
@@ -117,9 +123,9 @@ export function BrowserToolbar({
     let resolved: string;
     if (raw.toLowerCase().startsWith('compare ')) {
       const query = raw.slice(8).trim();
-      resolved = `Lumo://compare?q=${encodeURIComponent(query)}`;
-    } else if (raw.startsWith('Lumo://')) {
-      resolved = raw;
+      resolved = `lumo://compare?q=${encodeURIComponent(query)}`;
+    } else if (/^lumo:\/\//i.test(raw)) {
+      resolved = raw.toLowerCase().startsWith('lumo://') ? raw : raw.replace(/^lumo:\/\//i, 'lumo://');
     } else if (/^https?:\/\//i.test(raw)) {
       resolved = raw;
     } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(raw) && !raw.includes(' ')) {
@@ -135,7 +141,7 @@ export function BrowserToolbar({
   // Format URL for clean display when not focused (Safari-style)
   const getDisplayValue = () => {
     if (isFocused) return draftUrl;
-    if (!url || url === 'Lumo://newtab') return '';
+    if (!url || url === 'lumo://newtab') return '';
     
     try {
       const u = new URL(url);
@@ -160,7 +166,7 @@ export function BrowserToolbar({
 
   const displayValue = getDisplayValue();
 
-  const isNtpPage = !url || url === 'Lumo://newtab';
+  const isNtpPage = !url || url === 'lumo://newtab';
 
   return (
     <div className="flex items-center gap-1.5 px-3 py-1.5 h-11
@@ -197,6 +203,16 @@ export function BrowserToolbar({
             ? <XIcon className="w-4 h-4" strokeWidth={2.5} />
             : <RotateCcw className="w-[15px] h-[15px]" strokeWidth={2.5} />
           }
+        </NavBtn>
+
+        {/* Lumo Home — navigate to new tab / home page */}
+        <NavBtn
+          onClick={() => onNavigate('lumo://newtab')}
+          title="Lumo Home (Alt+Home)"
+          id="nav-home"
+          active={isNtpPage}
+        >
+          <Home className="w-[16px] h-[16px]" strokeWidth={2} />
         </NavBtn>
       </div>
 
@@ -239,6 +255,7 @@ export function BrowserToolbar({
             autoComplete="off"
             id="address-bar"
           />
+
 
           {/* Bookmark star — only when not focused and not NTP */}
           {!isFocused && !isNtpPage && (
@@ -287,6 +304,18 @@ export function BrowserToolbar({
             id="btn-extensions"
           >
             <Puzzle className="w-4 h-4" />
+          </NavBtn>
+        </div>
+
+        {/* Download */}
+        <div className="hidden sm:block">
+          <NavBtn
+            onClick={onDownload}
+            title="Downloads (Ctrl+J)"
+            id="btn-download"
+            active={isDownloadsOpen}
+          >
+            <Download className="w-4 h-4" />
           </NavBtn>
         </div>
 
