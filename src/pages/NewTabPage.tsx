@@ -96,7 +96,7 @@ function ClockWidget({ isDark }: { isDark: boolean }) {
     h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night';
 
   const textColor = isDark ? 'text-white' : 'text-gray-800';
-  const shadowColor = isDark ? 'rgba(139,92,246,0.4)' : 'rgba(139,92,246,0.2)';
+  const shadowColor = isDark ? 'rgba(var(--lumo-accent-rgb),0.4)' : 'rgba(var(--lumo-accent-rgb),0.2)';
 
   return (
     <div className="text-center select-none">
@@ -104,7 +104,7 @@ function ClockWidget({ isDark }: { isDark: boolean }) {
       <div className="flex items-end justify-center gap-3 tabular-nums">
         <span className={`text-[7rem] md:text-[9rem] font-thin ${textColor} leading-none`}
           style={{ textShadow: `0 0 60px ${shadowColor}` }}>{hr}</span>
-        <span className="text-[5rem] md:text-[7rem] font-thin text-violet-500/70 leading-none animate-pulse pb-4">:</span>
+        <span className="text-[5rem] md:text-[7rem] font-thin leading-none animate-pulse pb-4" style={{ color: "rgba(var(--lumo-accent-rgb), 0.7)" }}>:</span>
         <span className={`text-[7rem] md:text-[9rem] font-thin ${textColor} leading-none`}
           style={{ textShadow: `0 0 60px ${shadowColor}` }}>{min}</span>
         {ampm && (
@@ -143,9 +143,9 @@ function SearchWidget({ onNavigate, isDark }: { onNavigate: (url: string) => voi
 
   const bg = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.5)';
   const borderNormal = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
-  const borderFocus = isDark ? 'rgba(139,92,246,0.7)' : 'rgba(139,92,246,0.5)';
+  const borderFocus = isDark ? 'rgba(var(--lumo-accent-rgb),0.7)' : 'rgba(var(--lumo-accent-rgb),0.5)';
   const shadowNormal = isDark ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(0,0,0,0.05)';
-  const shadowFocus = isDark ? '0 0 0 3px rgba(139,92,246,0.15), 0 20px 60px rgba(0,0,0,0.4)' : '0 0 0 3px rgba(139,92,246,0.15), 0 20px 60px rgba(0,0,0,0.1)';
+  const shadowFocus = isDark ? '0 0 0 3px rgba(var(--lumo-accent-rgb),0.15), 0 20px 60px rgba(0,0,0,0.4)' : '0 0 0 3px rgba(var(--lumo-accent-rgb),0.15), 0 20px 60px rgba(0,0,0,0.1)';
 
   return (
     <form onSubmit={handleSearch} className="w-full max-w-2xl mx-auto">
@@ -178,7 +178,7 @@ function SearchWidget({ onNavigate, isDark }: { onNavigate: (url: string) => voi
         )}
         <button type="submit"
           className="absolute right-3 px-3 py-2 rounded-xl text-white text-xs font-semibold transition-all"
-          style={{ background: 'rgba(139,92,246,0.7)', backdropFilter: 'blur(8px)' }}>
+          style={{ background: 'rgba(var(--lumo-accent-rgb),0.7)', backdropFilter: 'blur(8px)' }}>
           Go
         </button>
       </div>
@@ -268,7 +268,7 @@ function ShortcutsWidget({ onNavigate, isDark }: { onNavigate: (url: string) => 
               <button type="button" onClick={() => setIsAdding(false)}
                 className={`flex-1 py-2 text-xs rounded-xl transition-all ${isDark ? 'text-white/60 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`}>Cancel</button>
               <button type="submit"
-                className="flex-1 py-2 text-xs rounded-xl font-semibold text-white transition-all bg-violet-500 hover:bg-violet-600">Add</button>
+                className="flex-1 py-2 text-xs rounded-xl font-semibold text-white transition-all hover:opacity-90" style={{ backgroundColor: "var(--lumo-accent)" }}>Add</button>
             </div>
           </form>
         </div>
@@ -285,13 +285,13 @@ function AITipBanner({ isDark }: { isDark: boolean }) {
     return () => clearInterval(t);
   }, []);
 
-  const bg = isDark ? 'rgba(139,92,246,0.1)' : 'rgba(139,92,246,0.05)';
-  const border = isDark ? 'rgba(139,92,246,0.25)' : 'rgba(139,92,246,0.2)';
+  const bg = isDark ? 'rgba(var(--lumo-accent-rgb),0.1)' : 'rgba(var(--lumo-accent-rgb),0.05)';
+  const border = isDark ? 'rgba(var(--lumo-accent-rgb),0.25)' : 'rgba(var(--lumo-accent-rgb),0.2)';
 
   return (
     <div className="flex items-center gap-3 px-5 py-3 rounded-2xl max-w-2xl mx-auto"
       style={{ background: bg, border: `1px solid ${border}` }}>
-      <Sparkles className="w-4 h-4 text-violet-500 flex-shrink-0" />
+      <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: "var(--lumo-accent)" }} />
       <p className={`text-xs font-medium ${isDark ? 'text-white/60' : 'text-gray-600'}`}>{tip}</p>
     </div>
   );
@@ -336,7 +336,7 @@ function AmbientOrbs({ isDark }: { isDark: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full"
-        style={{ opacity: opacity1, background: 'radial-gradient(circle, #7c3aed, transparent 70%)', filter: 'blur(80px)', animation: 'drift1 20s ease-in-out infinite' }} />
+        style={{ opacity: opacity1, background: 'radial-gradient(circle, var(--lumo-accent), transparent 70%)', filter: 'blur(80px)', animation: 'drift1 20s ease-in-out infinite' }} />
       <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full"
         style={{ opacity: opacity2, background: 'radial-gradient(circle, #2563eb, transparent 70%)', filter: 'blur(80px)', animation: 'drift2 25s ease-in-out infinite' }} />
       <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full"
@@ -352,14 +352,53 @@ function AmbientOrbs({ isDark }: { isDark: boolean }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 interface NewTabPageProps { onNavigate: (url: string) => void; isDark?: boolean; }
 
+
+function hexToRgb(hex) {
+  const c = (hex || '').replace('#', '');
+  if (c.length !== 6) return '139,92,246';
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  return `${r},${g},${b}`;
+}
+
+function useDashboardConfig() {
+  const [config, setConfig] = useState({ accentColor: '#8b5cf6' });
+  useEffect(() => {
+    const update = () => {
+      try {
+        const saved = localStorage.getItem('Lumo-dashboard-config');
+        if (saved) {
+          setConfig(JSON.parse(saved));
+        }
+      } catch {}
+    };
+    update();
+    window.addEventListener('storage', update);
+    window.addEventListener('lumo:dashboard-config-updated', update);
+    return () => {
+      window.removeEventListener('storage', update);
+      window.removeEventListener('lumo:dashboard-config-updated', update);
+    };
+  }, []);
+  return config;
+}
+
 export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): React.ReactElement {
   const [bgIdx] = useState(() => Math.floor(Math.random() * BACKGROUNDS_DARK.length));
 
   const bgGradient = isDark ? BACKGROUNDS_DARK[bgIdx] : BACKGROUNDS_LIGHT[bgIdx];
+  const config = useDashboardConfig();
+  const accentHex = config.accentColor || '#8b5cf6';
+  const accentRgb = hexToRgb(accentHex);
+  const cssVars = {
+    '--lumo-accent': accentHex,
+    '--lumo-accent-rgb': accentRgb,
+  } as React.CSSProperties;
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto transition-colors duration-500"
-      style={{ background: bgGradient }}>
+      style={{ background: bgGradient, ...cssVars }}>
 
       <AmbientOrbs isDark={isDark} />
 
@@ -376,7 +415,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
         {/* Logo mark */}
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow-md"
-            style={{ background: 'linear-gradient(135deg, #7c3aed, #2563eb)' }}>
+            style={{ background: 'linear-gradient(135deg, var(--lumo-accent), #2563eb)' }}>
             <Layers className="w-4 h-4 text-white" />
           </div>
           <span className={`text-xs font-semibold tracking-[0.3em] uppercase ${isDark ? 'text-white/30' : 'text-gray-400'}`}>Lumo Browser</span>
