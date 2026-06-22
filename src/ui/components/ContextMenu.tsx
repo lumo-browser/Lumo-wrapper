@@ -87,11 +87,11 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
         aria-label="Context menu"
         onContextMenu={(e) => e.preventDefault()}
         className={clsx(
-          'fixed z-[999999] w-60 rounded-xl border font-sans select-none',
-          'bg-white/90 dark:bg-[#1c1c1e]/92 backdrop-blur-2xl',
-          'border-gray-200/80 dark:border-white/10',
-          'shadow-[0_12px_40px_rgba(0,0,0,0.25)]',
-          'transition-[opacity,transform] duration-150 ease-out origin-top-left',
+          'fixed z-[999999] w-64 rounded-2xl border font-sans select-none',
+          'bg-white/40 dark:bg-[#1c1c1e]/40 backdrop-blur-3xl saturate-[1.2]',
+          'border-white/50 dark:border-white/10',
+          'shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3),inset_0_1px_0_0_rgba(255,255,255,0.4)]',
+          'transition-[opacity,transform] duration-200 ease-out origin-top-left',
         )}
         style={{
           top: pos.top,
@@ -100,7 +100,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           transform: `scale(${pos.scale})`,
         }}
       >
-        <div className="flex flex-col py-1.5 text-[13px] text-gray-800 dark:text-gray-200">
+        <div className="flex flex-col py-2 px-1 text-[13px] text-gray-800 dark:text-gray-200">
           {items.map((item, i) => {
             if (item.isSeparator) {
               return <div key={`sep-${i}`} className="h-px bg-gray-200 dark:bg-white/10 my-1 mx-2" />;

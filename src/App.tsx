@@ -13,7 +13,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '@utils/logger';
-import { ArrowLeft, ArrowRight, RotateCw, Sparkles, Copy, Code } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, Sparkles, Copy, Code, Printer, Camera, Download, FileText } from 'lucide-react';
 
 import { BrowserTabBar, type BrowserTab } from '@ui/components/BrowserTabBar';
 import { BrowserToolbar } from '@ui/components/BrowserToolbar';
@@ -1498,6 +1498,25 @@ Example response format:
               items.push({ id: 'copy', label: 'Copy', icon: <Copy size={15} />, shortcut: 'Ctrl+C', onClick: () => isWebviewTab ? wv?.copy() : document.execCommand('copy') });
               items.push({ id: 'ai-sel', label: 'Ask AI About Selection', icon: <Sparkles size={15} />, onClick: () => setShowAgent(true) });
               items.push({ id: 's2', label: '', isSeparator: true });
+            }
+
+            // Page Actions (Save, Source, Screenshot, Print)
+            if (isWebviewTab && !hasLink && !hasSelection) {
+              items.push({ id: 'save-page', label: 'Save Page As...', icon: <Download size={15} />, shortcut: 'Ctrl+S', onClick: () => wv?.downloadURL(wv.getURL()) });
+              items.push({ id: 'print-page', label: 'Print...', icon: <Printer size={15} />, shortcut: 'Ctrl+P', onClick: () => wv?.print() });
+              items.push({ id: 'screenshot', label: 'Take Screenshot', icon: <Camera size={15} />, onClick: async () => {
+                if (window.electron?.invoke) {
+                  const { base64 } = await window.electron.invoke('lumo:capture-webview');
+                  if (base64) {
+                    const link = document.createElement('a');
+                    link.download = `Screenshot-${Date.now()}.jpg`;
+                    link.href = `data:image/jpeg;base64,${base64}`;
+                    link.click();
+                  }
+                }
+              } });
+              items.push({ id: 'view-source', label: 'View Page Source', icon: <FileText size={15} />, shortcut: 'Ctrl+U', onClick: () => { addTab(); navigate(`view-source:${wv.getURL()}`); } });
+              items.push({ id: 's-page', label: '', isSeparator: true });
             }
 
             // AI Agent
