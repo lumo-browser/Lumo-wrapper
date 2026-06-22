@@ -219,6 +219,31 @@ app.on('ready', () => {
       wc.inspectElement(x, y);
     });
 
+    ipcMain.on('lumo:save-screenshot', async (_event, webContentsId: number) => {
+      try {
+        const wc = require('electron').webContents.fromId(webContentsId);
+        if (!wc) return;
+        const image = await wc.capturePage();
+        const os = require('os');
+        const fs = require('fs');
+        const pathMod = require('path');
+        const savePath = pathMod.join(os.homedir(), 'Downloads', `Screenshot-${Date.now()}.png`);
+        fs.writeFileSync(savePath, image.toPNG());
+        console.log('[Lumo] Screenshot saved to', savePath);
+      } catch (err) {
+        console.error('[Lumo] Screenshot failed:', err);
+      }
+    });
+
+    ipcMain.on('lumo:print-page', (_event, webContentsId: number) => {
+      try {
+        const wc = require('electron').webContents.fromId(webContentsId);
+        if (wc) wc.print();
+      } catch (err) {
+        console.error('[Lumo] Print failed:', err);
+      }
+    });
+
     // Download path + alwaysAsk
     ipcMain.on('lumo:set-download-path', (event, { path: dlPath, alwaysAsk }: { path: string; alwaysAsk: boolean }) => {
       const handleDownload = (_event: Electron.Event, item: Electron.DownloadItem) => {

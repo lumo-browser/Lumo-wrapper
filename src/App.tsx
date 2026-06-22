@@ -764,8 +764,8 @@ export default function App(): React.ReactElement {
       return next;
     }), []);
 
-  const addTab = useCallback((overrideUrl?: string) => {
-    const startUrl = overrideUrl || '';
+  const addTab = useCallback((overrideUrl?: string | any) => {
+    const startUrl = typeof overrideUrl === 'string' ? overrideUrl : '';
     const t = mkTab({ isActive: true, url: startUrl, title: startUrl ? startUrl.replace(/^https?:\/\//, '').split('/')[0] : 'New Tab' });
     setTabs((prev) => [...prev.map((x) => ({ ...x, isActive: false })), t]);
     setNavHistories((prev) => {
@@ -1339,7 +1339,7 @@ Example response format:
             return (
               <div
                 key={tab.id}
-                className={`absolute inset-0 flex flex-col ${tab.isActive ? 'z-10 visible' : 'z-0 hidden'}`}
+                className={`absolute inset-0 flex flex-col transition-opacity duration-0 ${tab.isActive ? 'z-10 opacity-100 visible' : 'z-[-1] opacity-0 invisible pointer-events-none'}`}
               >
                 <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
                   {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
@@ -1511,16 +1511,16 @@ Example response format:
             // Page Actions (Save, Source, Screenshot, Print)
             if (isWebviewTab && !hasLink && !hasSelection) {
               items.push({ id: 'save-page', label: 'Save Page As...', icon: <Download size={15} />, shortcut: 'Ctrl+S', onClick: () => wv?.downloadURL(wv.getURL()) });
-              items.push({ id: 'print-page', label: 'Print...', icon: <Printer size={15} />, shortcut: 'Ctrl+P', onClick: () => wv?.print() });
-              items.push({ id: 'screenshot', label: 'Take Screenshot', icon: <Camera size={15} />, onClick: async () => {
-                if (window.electron?.invoke) {
-                  const { base64 } = await window.electron.invoke('lumo:capture-webview');
-                  if (base64) {
-                    const link = document.createElement('a');
-                    link.download = `Screenshot-${Date.now()}.jpg`;
-                    link.href = `data:image/jpeg;base64,${base64}`;
-                    link.click();
-                  }
+              items.push({ id: 'print-page', label: 'Print...', icon: <Printer size={15} />, shortcut: 'Ctrl+P', onClick: () => {
+                if (wv && typeof wv.getWebContentsId === 'function') {
+                  window.electron?.send?.('lumo:print-page', wv.getWebContentsId());
+                } else {
+                  wv?.print();
+                }
+              } });
+              items.push({ id: 'screenshot', label: 'Take Screenshot', icon: <Camera size={15} />, onClick: () => {
+                if (wv && typeof wv.getWebContentsId === 'function') {
+                  window.electron?.send?.('lumo:save-screenshot', wv.getWebContentsId());
                 }
               } });
               items.push({ id: 'view-source', label: 'View Page Source', icon: <FileText size={15} />, shortcut: 'Ctrl+U', onClick: () => { addTab(`view-source:${wv.getURL()}`); } });
