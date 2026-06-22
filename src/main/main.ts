@@ -101,6 +101,44 @@ function createWindow(): void {
   });
 }
 
+function createDisposableWindow(): void {
+  console.log('[Lumo] Creating Disposable Workspace window');
+
+  const disposableWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: false,
+      webviewTag: true,
+    },
+  });
+
+  const isDev = !app.isPackaged;
+  const url = isDev ? 'http://127.0.0.1:5173?disposable=true' : `file://${path.join(__dirname, '../index.html')}?disposable=true`;
+
+  const attachAdBlocker = (sess: Electron.Session) => {
+    sess.webRequest.onBeforeRequest(
+      { urls: ['<all_urls>'] },
+      (details, callback) => {
+        const blocked = shouldBlock(details.url, adBlockerConfig);
+        adBlockerStats.record(blocked);
+        callback({ cancel: blocked });
+      }
+    );
+  };
+
+  attachAdBlocker(disposableWindow.webContents.session);
+  // Using a random partition to ensure it's completely ephemeral per window
+  const partitionId = `disposable-session-${Date.now()}`;
+  attachAdBlocker(session.fromPartition(partitionId)); 
+
+  disposableWindow.loadURL(url);
+}
+
 function createMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
@@ -178,6 +216,10 @@ app.on('ready', () => {
     ipcMain.on('lumo:set-default-zoom', (event, factor: number) => {
       console.log(`[Lumo] Default zoom set to ${factor}`);
       // Zoom is applied per-webContents by the renderer; stored for new tabs
+    });
+
+    ipcMain.on('lumo:new-disposable-window', () => {
+      createDisposableWindow();
     });
 
     // Spell check
@@ -329,9 +371,16 @@ app.on('ready', () => {
     session.defaultSession.on('will-download', handleDownloadItem);
     session.fromPartition('persist:nova-main').on('will-download', handleDownloadItem);
 
-    // Open file with default OS app
+    // Open file with default OS app or locally in Nova Browser if it is a web-renderable format
     ipcMain.on('lumo:open-file', (_event, filePath: string) => {
-      shell.openPath(filePath).catch(err => console.error('[Lumo] open-file failed:', err));
+      const ext = path.extname(filePath).toLowerCase();
+      const webExtensions = ['.html', '.htm', '.txt', '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.mp3', '.mp4', '.webm', '.ogg', '.wav'];
+      
+      if (webExtensions.includes(ext)) {
+        mainWindow?.webContents.send('lumo:navigate', `file://${filePath}`);
+      } else {
+        shell.openPath(filePath).catch(err => console.error('[Lumo] open-file failed:', err));
+      }
     });
 
     // Reveal file in OS file manager

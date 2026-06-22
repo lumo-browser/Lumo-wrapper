@@ -18,7 +18,9 @@ import {
   Moon,
   Sun,
   LogIn,
-  User,
+  EyeOff,
+  Plus,
+  Ghost,
 } from 'lucide-react';
 
 interface BrowserMenuProps {
@@ -30,6 +32,8 @@ interface BrowserMenuProps {
   onOpenAccount: () => void;
   onOpenSettings: () => void;
   onNavigate: (url: string) => void;
+  onNewTab: () => void;
+  onNewDisposableWindow: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onPrint: () => void;
@@ -53,16 +57,20 @@ export function BrowserMenu({
   onOpenAccount,
   onOpenSettings,
   onNavigate,
+  onNewTab,
+  onNewDisposableWindow,
   onZoomIn,
   onZoomOut,
   onPrint,
 }: BrowserMenuProps): React.ReactElement {
   const items: MenuItem[] = [
-    { id: 'zoom-in',    icon: ZoomIn,    label: 'Zoom in',      shortcut: 'Ctrl++', onClick: () => { onZoomIn(); onClose(); } },
+    { id: 'new-tab',       icon: Plus,      label: 'New Tab',             shortcut: 'Ctrl+T', onClick: () => { onNewTab(); onClose(); } },
+    { id: 'new-disposable',icon: Ghost,     label: 'New Disposable Workspace', shortcut: 'Ctrl+Shift+N', onClick: () => { onNewDisposableWindow(); onClose(); }, separator: true },
+    { id: 'zoom-in',       icon: ZoomIn,    label: 'Zoom in',             shortcut: 'Ctrl++', onClick: () => { onZoomIn(); onClose(); } },
     { id: 'zoom-out',   icon: ZoomOut,   label: 'Zoom out',     shortcut: 'Ctrl+-', onClick: () => { onZoomOut(); onClose(); } },
-    { id: 'bookmarks',  icon: BookOpen,  label: 'Bookmarks',    shortcut: 'Ctrl+B', onClick: () => { onNavigate('Lumo://bookmarks'); onClose(); }, separator: true },
-    { id: 'history',    icon: Clock,     label: 'History',      shortcut: 'Ctrl+H', onClick: () => { onNavigate('Lumo://history'); onClose(); } },
-    { id: 'downloads',  icon: Download,  label: 'Downloads',    shortcut: 'Ctrl+J', onClick: () => { onNavigate('Lumo://downloads'); onClose(); }, separator: true },
+    { id: 'bookmarks',  icon: BookOpen,  label: 'Bookmarks',    shortcut: 'Ctrl+B', onClick: () => { onNavigate('lumo://bookmarks'); onClose(); }, separator: true },
+    { id: 'history',    icon: Clock,     label: 'History',      shortcut: 'Ctrl+H', onClick: () => { onNavigate('lumo://history'); onClose(); } },
+    { id: 'downloads',  icon: Download,  label: 'Downloads',    shortcut: 'Ctrl+J', onClick: () => { onNavigate('lumo://downloads'); onClose(); }, separator: true },
     { id: 'print',      icon: Printer,   label: 'Print',        shortcut: 'Ctrl+P', onClick: () => { onPrint(); onClose(); } },
     {
       id: 'theme',
@@ -72,7 +80,7 @@ export function BrowserMenu({
       separator: true,
     },
     { id: 'settings',   icon: Settings,  label: 'Settings',     shortcut: 'Ctrl+,', onClick: () => { onOpenSettings(); onClose(); } },
-    { id: 'about',      icon: Info,      label: 'About Lumo',                        onClick: () => { onNavigate('Lumo://about'); onClose(); } },
+    { id: 'about',      icon: Info,      label: 'About Lumo',                        onClick: () => { onNavigate('lumo://about'); onClose(); } },
   ];
 
   return (

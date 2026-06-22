@@ -29,24 +29,36 @@ interface HistoryPageProps {
 }
 
 function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (!ts) return 'Unknown Time';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return 'Unknown Time';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDate(ts: number): string {
+  if (!ts) return 'Unknown Date';
   const d = new Date(ts);
+  if (isNaN(d.getTime())) return 'Unknown Date';
+  
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
 
   if (d.toDateString() === today.toDateString()) return 'Today';
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  try {
+    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  } catch {
+    return d.toDateString();
+  }
 }
 
 function groupByDate(entries: HistoryEntry[]): Record<string, HistoryEntry[]> {
   const groups: Record<string, HistoryEntry[]> = {};
+  if (!entries || !Array.isArray(entries)) return groups;
   for (const entry of entries) {
-    const key = new Date(entry.timestamp).toDateString();
+    if (!entry) continue;
+    const key = entry.timestamp ? new Date(entry.timestamp).toDateString() : 'Unknown Date';
     if (!groups[key]) groups[key] = [];
     groups[key].push(entry);
   }
@@ -55,6 +67,7 @@ function groupByDate(entries: HistoryEntry[]): Record<string, HistoryEntry[]> {
 
 function faviconUrl(url: string): string {
   try {
+    if (!url) return '';
     const u = new URL(url);
     return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=32`;
   } catch {
@@ -67,17 +80,23 @@ export function HistoryPage({ entries, onNavigate, onDeleteEntry, onClearAll }: 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const filtered = useMemo(() => {
+    if (!entries || !Array.isArray(entries)) return [];
     if (!search.trim()) return entries;
     const q = search.toLowerCase();
     return entries.filter(
-      (e) => e.title.toLowerCase().includes(q) || e.url.toLowerCase().includes(q)
+      (e) => (e?.title || '').toLowerCase().includes(q) || (e?.url || '').toLowerCase().includes(q)
     );
   }, [entries, search]);
 
   const grouped = useMemo(() => groupByDate(filtered), [filtered]);
-  const dateKeys = Object.keys(grouped).sort(
-    (a, b) => new Date(b).getTime() - new Date(a).getTime()
-  );
+  const dateKeys = Object.keys(grouped).sort((a, b) => {
+    const timeA = new Date(a).getTime();
+    const timeB = new Date(b).getTime();
+    if (isNaN(timeA) && isNaN(timeB)) return 0;
+    if (isNaN(timeA)) return 1;
+    if (isNaN(timeB)) return -1;
+    return timeB - timeA;
+  });
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#f8f9fa] dark:bg-[#1a1a1a] overflow-hidden">
@@ -92,7 +111,7 @@ export function HistoryPage({ entries, onNavigate, onDeleteEntry, onClearAll }: 
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">History</h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {entries.length} {entries.length === 1 ? 'page' : 'pages'} visited
+                  {entries?.length || 0} {(entries?.length || 0) === 1 ? 'page' : 'pages'} visited
                 </p>
               </div>
             </div>
@@ -168,11 +187,11 @@ export function HistoryPage({ entries, onNavigate, onDeleteEntry, onClearAll }: 
 
                 {/* Entries */}
                 <div className="bg-white dark:bg-[#242424] rounded-xl border border-gray-100 dark:border-[#333] overflow-hidden divide-y divide-gray-50 dark:divide-[#333]">
-                  {grouped[dateKey].map((entry) => (
+                  {grouped[dateKey].map((entry, idx) => (
                     <div
-                      key={entry.id}
+                      key={entry?.id || `fallback-key-${idx}`}
                       className="group flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors cursor-pointer"
-                      onClick={() => onNavigate(entry.url)}
+                      onClick={() => entry?.url && onNavigate(entry.url)}
                     >
                       {/* Favicon */}
                       <img
@@ -200,7 +219,7 @@ export function HistoryPage({ entries, onNavigate, onDeleteEntry, onClearAll }: 
                       {/* Actions */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <button
-                          onClick={(e) => { e.stopPropagation(); onNavigate(entry.url); }}
+                          onClick={(e) => { e.stopPropagation(); entry?.url && onNavigate(entry.url); }}
                           className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                           title="Open"
                         >

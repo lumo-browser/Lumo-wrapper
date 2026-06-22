@@ -50,6 +50,9 @@ function domainFrom(url: string): string {
 }
 
 function timeAgo(ts: number): string {
+  if (!ts) return 'Unknown';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return 'Unknown';
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
@@ -58,7 +61,11 @@ function timeAgo(ts: number): string {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  try {
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch {
+    return d.toDateString();
+  }
 }
 
 export function BookmarksPage({ bookmarks, onNavigate, onDeleteBookmark, onClearAll }: BookmarksPageProps): React.ReactElement {

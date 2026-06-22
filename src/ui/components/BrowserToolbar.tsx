@@ -26,6 +26,7 @@ import {
   Download,
   Globe,
   Languages,
+  EyeOff,
 } from 'lucide-react';
 
 interface BrowserToolbarProps {
@@ -56,6 +57,7 @@ interface BrowserToolbarProps {
   isDownloadsOpen?: boolean;
   searchEngineUrl?: string;
   offerTranslate?: boolean;
+  isIncognito?: boolean;
 }
 
 export function BrowserToolbar({
@@ -86,6 +88,7 @@ export function BrowserToolbar({
   isDownloadsOpen = false,
   searchEngineUrl = 'https://www.google.com/search?q=',
   offerTranslate = true,
+  isIncognito = false,
 }: BrowserToolbarProps): React.ReactElement {
   const [draftUrl, setDraftUrl] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -244,7 +247,7 @@ export function BrowserToolbar({
     e.preventDefault();
     if (selectedIndex >= 0 && suggestions[selectedIndex]) {
       const raw = suggestions[selectedIndex];
-      onNavigate(raw.startsWith('lumo://') ? raw : `${searchEngineUrl}${encodeURIComponent(raw)}`);
+      onNavigate(raw.toLowerCase().startsWith('lumo://') ? raw : `${searchEngineUrl}${encodeURIComponent(raw)}`);
       inputRef.current?.blur();
       setShowSuggestions(false);
       return;
@@ -359,9 +362,10 @@ export function BrowserToolbar({
             }
           `}
         >
-          {/* Security / Search icon */}
           <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
-            {isFocused ? (
+            {isIncognito && !isFocused ? (
+              <EyeOff className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+            ) : isFocused ? (
               <Search className="w-3.5 h-3.5 text-gray-400" />
             ) : isNtpPage ? (
               <Search className="w-3.5 h-3.5 text-gray-400" />
@@ -436,7 +440,7 @@ export function BrowserToolbar({
                 </li>
               ) : (
                 suggestions.map((suggestion, index) => {
-                  const isInternal = suggestion.startsWith('lumo://');
+                  const isInternal = suggestion.toLowerCase().startsWith('lumo://');
                   const queryToHighlight = isInternal ? '' : draftUrl.trim();
                   return (
                     <li 

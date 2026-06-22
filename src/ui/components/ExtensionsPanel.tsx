@@ -114,7 +114,7 @@ export function ExtensionsPanel({ onClose, onNavigate }: ExtensionsPanelProps): 
 
       {/* Footer */}
       <button 
-        onClick={() => onNavigate('Lumo://extensions')}
+        onClick={() => onNavigate('lumo://extensions')}
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors"
       >
         <Settings className="w-5 h-5 text-gray-500 dark:text-[#9aa0a6]" />

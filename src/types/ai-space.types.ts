@@ -8,7 +8,7 @@ export interface AIProviderDef {
 }
 
 export const AI_PROVIDERS: AIProviderDef[] = [
-  { id: 'Lumo',       name: 'Lumo Assistant', url: 'Lumo://assistant', color: 'bg-blue-500' },
+  { id: 'Lumo',       name: 'Lumo Assistant', url: 'lumo://assistant', color: 'bg-blue-500' },
   { id: 'chatgpt',    name: 'ChatGPT',        url: 'https://chatgpt.com', color: 'bg-emerald-600' },
   { id: 'claude',     name: 'Claude',         url: 'https://claude.ai', color: 'bg-amber-600' },
   { id: 'gemini',     name: 'Gemini',         url: 'https://gemini.google.com', color: 'bg-blue-600' },

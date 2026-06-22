@@ -31,15 +31,25 @@ import type { HistoryEntry } from './pages/HistoryPage';
 import type { BookmarkEntry } from './pages/BookmarksPage';
 import { SEARCH_ENGINES, type BrowserSettings } from './pages/SettingsPage';
 
-// Lazy load heavy internal pages
-const NewTabPage = React.lazy(() => import('./pages/NewTabPage').then(m => ({ default: m.NewTabPage })));
-const HistoryPage = React.lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
-const BookmarksPage = React.lazy(() => import('./pages/BookmarksPage').then(m => ({ default: m.BookmarksPage })));
-const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
-const ExtensionsPage = React.lazy(() => import('./pages/ExtensionsPage').then(m => ({ default: m.ExtensionsPage })));
-const DownloadsPage = React.lazy(() => import('./pages/DownloadsPage').then(m => ({ default: m.DownloadsPage })));
+import { NewTabPage } from './pages/NewTabPage';
+import { HistoryPage } from './pages/HistoryPage';
+import { BookmarksPage } from './pages/BookmarksPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { ExtensionsPage } from './pages/ExtensionsPage';
+import { DownloadsPage } from './pages/DownloadsPage';
 
 // ── Internal Pages ─────────────────────────────────────────────────────────
+const getCleanTitle = (url: string): string => {
+  if (!url) return 'New Tab';
+  const urlLower = url.toLowerCase();
+  if (urlLower === 'lumo://newtab') return 'New Tab';
+  if (urlLower.startsWith('lumo://')) {
+    const page = urlLower.replace('lumo://', '').split('?')[0];
+    return page.charAt(0).toUpperCase() + page.slice(1);
+  }
+  return url.replace(/^https?:\/\//, '').split('/')[0];
+};
+
 function InternalPage({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
@@ -295,9 +305,8 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
       id={`webview-${tabId}`}
       src={initialUrl.current || 'about:blank'}
       className="w-full h-full border-none bg-white"
-      allowpopups="true"
       useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-      partition="persist:nova-main"
+      partition={window.location.search.includes('disposable=true') ? window._lumoDisposablePartition : "persist:nova-main"}
     />
   );
 }
@@ -332,6 +341,11 @@ const emptyHistory = (): NavHistory => ({ stack: [], cursor: -1 });
 
 // ── App ────────────────────────────────────────────────────────────────────
 export default function App(): React.ReactElement {
+  const isDisposable = window.location.search.includes('disposable=true');
+  if (isDisposable && !(window as any)._lumoDisposablePartition) {
+    (window as any)._lumoDisposablePartition = `disposable-session-${Date.now()}`;
+  }
+
   // Theme
   const [isDark, setIsDark] = useState(true);
 
@@ -376,17 +390,26 @@ export default function App(): React.ReactElement {
 
   // Bookmark state — rich entries with title and timestamp
   const [bookmarkEntries, setBookmarkEntries] = useState<BookmarkEntry[]>(() => {
-    try { return JSON.parse(localStorage.getItem('lumo-bookmarks') || '[]'); } catch { return []; }
+    try {
+      const parsed = JSON.parse(localStorage.getItem('lumo-bookmarks') || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
   });
 
   // History state
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(() => {
-    try { return JSON.parse(localStorage.getItem('lumo-history') || '[]'); } catch { return []; }
+    try {
+      const parsed = JSON.parse(localStorage.getItem('lumo-history') || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
   });
 
   // Download items — shared state so toolbar badge can show count
   const [downloadItems, setDownloadItems] = useState<any[]>(() => {
-    try { return JSON.parse(localStorage.getItem('lumo-downloads') || '[]'); } catch { return []; }
+    try {
+      const parsed = JSON.parse(localStorage.getItem('lumo-downloads') || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
   });
 
   // Listen for download progress from main process
@@ -766,7 +789,7 @@ export default function App(): React.ReactElement {
 
   const addTab = useCallback((overrideUrl?: string | any) => {
     const startUrl = typeof overrideUrl === 'string' ? overrideUrl : '';
-    const t = mkTab({ isActive: true, url: startUrl, title: startUrl ? startUrl.replace(/^https?:\/\//, '').split('/')[0] : 'New Tab' });
+    const t = mkTab({ isActive: true, url: startUrl, title: getCleanTitle(startUrl) });
     setTabs((prev) => [...prev.map((x) => ({ ...x, isActive: false })), t]);
     setNavHistories((prev) => {
       const h = emptyHistory();
@@ -778,20 +801,25 @@ export default function App(): React.ReactElement {
     });
   }, []);
 
+  const handleNewDisposableWindow = useCallback(() => {
+    (window as any).electron?.send?.('lumo:new-disposable-window');
+  }, []);
+
   // ── Navigation ────────────────────────────────────────────────────────────
   const navigate = useCallback((url: string) => {
+    if (!url || typeof url !== 'string') return;
     if (!activeTab) return;
     const tabId = activeTab.id;
 
     // Don't add internal pages to history
-    const isInternal = url.startsWith('lumo://');
+    const isInternal = url.toLowerCase().startsWith('lumo://');
 
     // Add to browsing history
     if (!isInternal && url) {
       const entry: HistoryEntry = {
         id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         url,
-        title: url.replace(/^https?:\/\//, '').split('/')[0],
+        title: getCleanTitle(url),
         timestamp: Date.now(),
       };
       setHistoryEntries((prev) => [entry, ...prev].slice(0, 1000));
@@ -801,7 +829,7 @@ export default function App(): React.ReactElement {
     setTabs((prev) =>
       prev.map((t) =>
         t.id === tabId
-          ? { ...t, url, title: url ? url.replace(/^https?:\/\//, '').split('/')[0] : 'New Tab', isLoading: true }
+          ? { ...t, url, title: getCleanTitle(url), isLoading: true }
           : t
       )
     );
@@ -840,7 +868,7 @@ export default function App(): React.ReactElement {
     const newCursor = h.cursor - 1;
     const url = h.stack[newCursor];
     setNavHistories((prev) => ({ ...prev, [activeTab.id]: { ...h, cursor: newCursor } }));
-    setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, url, title: url.replace(/^https?:\/\//, '').split('/')[0] } : t));
+    setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, url, title: getCleanTitle(url) } : t));
   }, [activeTab, navHistories]);
 
   const goForward = useCallback(() => {
@@ -850,7 +878,7 @@ export default function App(): React.ReactElement {
     const newCursor = h.cursor + 1;
     const url = h.stack[newCursor];
     setNavHistories((prev) => ({ ...prev, [activeTab.id]: { ...h, cursor: newCursor } }));
-    setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, url, title: url.replace(/^https?:\/\//, '').split('/')[0] } : t));
+    setTabs((prev) => prev.map((t) => t.id === activeTab.id ? { ...t, url, title: getCleanTitle(url) } : t));
   }, [activeTab, navHistories]);
 
   const handleRefresh = () => {
@@ -873,7 +901,7 @@ export default function App(): React.ReactElement {
   const handleGoBack = () => {
     if (!activeTab) return;
     // For internal lumo:// pages there is no real webview — use React nav stack
-    if (activeTab.url?.startsWith('lumo://') || !activeTab.url) {
+    if (activeTab.url?.toLowerCase().startsWith('lumo://') || !activeTab.url) {
       goBack();
       return;
     }
@@ -888,7 +916,7 @@ export default function App(): React.ReactElement {
   const handleGoForward = () => {
     if (!activeTab) return;
     // For internal lumo:// pages there is no real webview — use React nav stack
-    if (activeTab.url?.startsWith('lumo://') || !activeTab.url) {
+    if (activeTab.url?.toLowerCase().startsWith('lumo://') || !activeTab.url) {
       goForward();
       return;
     }
@@ -980,7 +1008,7 @@ export default function App(): React.ReactElement {
 
   // ── Smart Tab Grouping ────────────────────────────────────────────────────
   const groupTabsWithAI = useCallback(async () => {
-    const visibleTabs = tabs.filter(t => t.url && !t.url.startsWith('lumo://'));
+    const visibleTabs = tabs.filter(t => t.url && !t.url.toLowerCase().startsWith('lumo://'));
     if (visibleTabs.length < 2) {
       setTabGrouping({ isOpen: true, isLoading: false, groups: [], error: null });
       return;
@@ -1264,6 +1292,7 @@ Example response format:
           onToggleBookmark={toggleBookmark}
           onOpenMenu={() => setShowMenu((v) => !v)}
           offerTranslate={settings.offerTranslate}
+          isIncognito={activeTab?.isIncognito}
           onDownload={() => {
             if (currentUrl === 'lumo://downloads') {
               // Toggle off — go back to previous page (or new tab)
@@ -1299,7 +1328,9 @@ Example response format:
             onToggleTheme={handleToggleTheme}
             onOpenAccount={() => { setShowAccount(true); setShowMenu(false); }}
             onOpenSettings={() => { navigate('lumo://settings'); setShowMenu(false); }}
-            onNavigate={navigate}
+            onNavigate={(url) => { navigate(url); setShowMenu(false); }}
+            onNewTab={() => { addTab(); setShowMenu(false); }}
+            onNewDisposableWindow={() => { handleNewDisposableWindow(); setShowMenu(false); }}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onPrint={handlePrint}
@@ -1325,15 +1356,16 @@ Example response format:
         {/* ── Page content — fills remaining space ── */}
         <div className="flex-1 overflow-hidden bg-white dark:bg-[#1e1e1e] relative min-w-0">
           {tabs.map((tab) => {
-            const isNtp = !tab.url || tab.url === 'lumo://newtab';
-            const isSettings   = tab.url === 'lumo://settings';
-            const isHistory    = tab.url === 'lumo://history';
-            const isBookmarks  = tab.url === 'lumo://bookmarks';
-            const isAbout      = tab.url === 'lumo://about';
-            const isExtensions = tab.url === 'lumo://extensions';
-            const isDownloads  = tab.url === 'lumo://downloads';
-            const isCompare    = tab.url.startsWith('lumo://compare');
-            const isWelcome    = tab.url === 'lumo://welcome';
+            const tabUrlLower = (tab.url || '').toLowerCase();
+            const isNtp = !tabUrlLower || tabUrlLower === 'lumo://newtab';
+            const isSettings   = tabUrlLower === 'lumo://settings';
+            const isHistory    = tabUrlLower === 'lumo://history';
+            const isBookmarks  = tabUrlLower === 'lumo://bookmarks';
+            const isAbout      = tabUrlLower === 'lumo://about';
+            const isExtensions = tabUrlLower === 'lumo://extensions';
+            const isDownloads  = tabUrlLower === 'lumo://downloads';
+            const isCompare    = tabUrlLower.startsWith('lumo://compare');
+            const isWelcome    = tabUrlLower === 'lumo://welcome';
             const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isDownloads || isCompare || isWelcome;
 
             return (
@@ -1343,7 +1375,22 @@ Example response format:
               >
                 <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
                   {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
-                  {isNtp && !isWelcome && <NewTabPage onNavigate={navigate} isDark={isDark} />}
+                  {isNtp && !isWelcome && !isDisposable && <NewTabPage onNavigate={navigate} isDark={isDark} />}
+                  {isNtp && !isWelcome && isDisposable && (
+                    <div className="flex-1 flex flex-col items-center justify-center bg-[#0f0f13] text-white">
+                      <div className="w-24 h-24 mb-6 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                        <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </div>
+                      <h1 className="text-4xl font-bold tracking-tight mb-3">Disposable Workspace</h1>
+                      <p className="text-gray-400 max-w-md text-center text-sm leading-relaxed mb-8">
+                        Everything in this window is temporary. Once you close this window, all history, cookies, and site data will be permanently destroyed.
+                      </p>
+                      
+                      <form onSubmit={(e) => { e.preventDefault(); const v = (e.target as any).q.value; if(v) navigate(v.includes('.') ? `https://${v}` : `https://google.com/search?q=${v}`); }} className="w-full max-w-lg relative">
+                        <input name="q" autoFocus type="text" placeholder="Search or enter web address" className="w-full bg-[#1a1a24] border border-[#333] text-white rounded-xl px-5 py-3.5 focus:outline-none focus:border-red-500/50 shadow-xl" />
+                      </form>
+                    </div>
+                  )}
                   {isDownloads && <DownloadsPage onNavigate={navigate} />}
                   {isSettings && (
                     <SettingsPage

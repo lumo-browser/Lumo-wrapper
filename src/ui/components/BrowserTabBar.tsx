@@ -12,6 +12,7 @@ export interface BrowserTab {
   favicon?: string;
   isActive: boolean;
   isLoading: boolean;
+  isIncognito?: boolean;
   canGoBack?: boolean;
   canGoForward?: boolean;
   groupId?: string;
