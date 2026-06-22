@@ -280,6 +280,10 @@ The engine lives in `src/main/adBlocker.ts` and runs entirely in the **Electron 
 
 ### Architecture
 
+Lumo Browser uses a hybrid ad-blocking architecture:
+1. **High-Performance Rust Core (`adblock-rs`)**: Integrates compiled native Rust bindings to run EasyList filter sets efficiently in microseconds.
+2. **Zero-Dependency Fallback Engine**: If native bindings are unavailable, falls back to a custom JavaScript/TypeScript pattern matcher matching domains and paths.
+
 ```ts
 // Every network request passes through this check
 session.defaultSession.webRequest.onBeforeRequest(
