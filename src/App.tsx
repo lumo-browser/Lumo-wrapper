@@ -764,10 +764,18 @@ export default function App(): React.ReactElement {
       return next;
     }), []);
 
-  const addTab = useCallback(() => {
-    const t = mkTab({ isActive: true });
+  const addTab = useCallback((overrideUrl?: string) => {
+    const startUrl = overrideUrl || '';
+    const t = mkTab({ isActive: true, url: startUrl, title: startUrl ? startUrl.replace(/^https?:\/\//, '').split('/')[0] : 'New Tab' });
     setTabs((prev) => [...prev.map((x) => ({ ...x, isActive: false })), t]);
-    setNavHistories((prev) => ({ ...prev, [t.id]: emptyHistory() }));
+    setNavHistories((prev) => {
+      const h = emptyHistory();
+      if (startUrl) {
+        h.stack.push(startUrl);
+        h.cursor = 0;
+      }
+      return { ...prev, [t.id]: h };
+    });
   }, []);
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -1488,7 +1496,7 @@ Example response format:
 
             // Open link in new tab
             if (hasLink) {
-              items.push({ id: 'open-link', label: 'Open Link in New Tab', icon: <ArrowRight size={15} />, onClick: () => { addTab(); navigate(contextMenu.params.linkURL); } });
+              items.push({ id: 'open-link', label: 'Open Link in New Tab', icon: <ArrowRight size={15} />, onClick: () => { addTab(contextMenu.params.linkURL); } });
               items.push({ id: 'copy-link', label: 'Copy Link Address', icon: <Copy size={15} />, onClick: () => navigator.clipboard.writeText(contextMenu.params.linkURL) });
               items.push({ id: 's-link', label: '', isSeparator: true });
             }
@@ -1515,7 +1523,7 @@ Example response format:
                   }
                 }
               } });
-              items.push({ id: 'view-source', label: 'View Page Source', icon: <FileText size={15} />, shortcut: 'Ctrl+U', onClick: () => { addTab(); navigate(`view-source:${wv.getURL()}`); } });
+              items.push({ id: 'view-source', label: 'View Page Source', icon: <FileText size={15} />, shortcut: 'Ctrl+U', onClick: () => { addTab(`view-source:${wv.getURL()}`); } });
               items.push({ id: 's-page', label: '', isSeparator: true });
             }
 
