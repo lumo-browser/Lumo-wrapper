@@ -486,29 +486,56 @@ app.on('ready', () => {
       return results;
     });
 
+    // Helper to extract the apex/root domain for WHOIS queries
+    const getApexDomain = (host: string): string => {
+      if (!host) return '';
+      const parts = host.toLowerCase().trim().replace(/\.$/, '').split('.');
+      if (parts.length <= 2) return host;
+
+      const ccSLDs = [
+        'co.uk', 'org.uk', 'me.uk', 'ltd.uk', 'plc.uk',
+        'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au',
+        'co.jp', 'ne.jp', 'or.jp', 'go.jp', 'ac.jp',
+        'com.br', 'net.br', 'org.br', 'edu.br', 'gov.br',
+        'co.in', 'net.in', 'org.in', 'firm.in', 'gen.in', 'ind.in', 'me.in', 'edu.in', 'res.in', 'gov.in',
+        'com.cn', 'net.cn', 'org.cn', 'edu.cn', 'gov.cn',
+        'com.tw', 'net.tw', 'org.tw', 'edu.tw', 'gov.tw',
+        'com.sg', 'net.sg', 'org.sg', 'edu.sg', 'gov.sg',
+        'com.tr', 'net.tr', 'org.tr', 'edu.tr', 'gov.tr',
+        'co.za', 'net.za', 'org.za', 'web.za', 'ac.za', 'gov.za'
+      ];
+
+      const lastTwo = parts.slice(-2).join('.');
+      if (ccSLDs.includes(lastTwo)) {
+        return parts.slice(-3).join('.');
+      }
+      return parts.slice(-2).join('.');
+    };
+
     // Resolve WHOIS info for domain
     ipcMain.handle('lumo:resolve-whois', async (event, { domain }: { domain: string }) => {
+      const apexDomain = getApexDomain(domain);
       return new Promise<string>((resolve) => {
         const net = require('net');
         const client = new net.Socket();
         
         let server = 'whois.iana.org';
-        if (domain.endsWith('.com') || domain.endsWith('.net')) {
+        if (apexDomain.endsWith('.com') || apexDomain.endsWith('.net')) {
           server = 'whois.verisign-grs.com';
-        } else if (domain.endsWith('.org')) {
+        } else if (apexDomain.endsWith('.org')) {
           server = 'whois.pir.org';
-        } else if (domain.endsWith('.edu')) {
+        } else if (apexDomain.endsWith('.edu')) {
           server = 'whois.educause.edu';
-        } else if (domain.endsWith('.io')) {
+        } else if (apexDomain.endsWith('.io')) {
           server = 'whois.nic.io';
-        } else if (domain.endsWith('.in')) {
+        } else if (apexDomain.endsWith('.in')) {
           server = 'whois.registry.in';
         }
 
         let data = '';
         client.setTimeout(6000);
         client.connect(43, server, () => {
-          client.write(domain + '\r\n');
+          client.write(apexDomain + '\r\n');
         });
         client.on('data', (chunk: any) => {
           data += chunk.toString();
