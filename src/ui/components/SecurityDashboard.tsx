@@ -176,15 +176,13 @@ export function SecurityDashboard({
           .finally(() => setDnsLoading(false));
       } else {
         // Mock fallback for browser dev environments
-        setTimeout(() => {
-          setDnsData({
-            A: ['192.168.1.1'],
-            AAAA: ['fe80::1'],
-            MX: ['10 mail.lumo.local'],
-            TXT: ['v=spf1 include:_spf.google.com ~all']
-          });
-          setDnsLoading(false);
-        }, 300);
+        setDnsData({
+          A: ['192.168.1.1'],
+          AAAA: ['fe80::1'],
+          MX: ['10 mail.lumo.local'],
+          TXT: ['v=spf1 include:_spf.google.com ~all']
+        });
+        setDnsLoading(false);
       }
     }
 
@@ -197,10 +195,8 @@ export function SecurityDashboard({
           .catch((err: any) => setWhoisData(err.message || 'Error resolving WHOIS data'))
           .finally(() => setWhoisLoading(false));
       } else {
-        setTimeout(() => {
-          setWhoisData('Registrar: Lumo Registrar LLC\nStatus: active\nCreation Date: 2026-01-01');
-          setWhoisLoading(false);
-        }, 300);
+        setWhoisData('Registrar: Lumo Registrar LLC\nStatus: active\nCreation Date: 2026-01-01');
+        setWhoisLoading(false);
       }
     }
 
@@ -213,18 +209,16 @@ export function SecurityDashboard({
           .catch(() => setCertData({}))
           .finally(() => setCertLoading(false));
       } else {
-        setTimeout(() => {
-          setCertData({
-            issuer: { O: 'Lumo Authority CA' },
-            subject: { CN: domain },
-            validFrom: 'Jan 1 2026',
-            validTo: 'Dec 31 2026',
-            fingerprint: 'AB:CD:EF:12:34:56',
-            serialNumber: '987654321',
-            chain: 'Trusted'
-          });
-          setCertLoading(false);
-        }, 300);
+        setCertData({
+          issuer: { O: 'Lumo Authority CA' },
+          subject: { CN: domain },
+          validFrom: 'Jan 1 2026',
+          validTo: 'Dec 31 2026',
+          fingerprint: 'AB:CD:EF:12:34:56',
+          serialNumber: '987654321',
+          chain: 'Trusted'
+        });
+        setCertLoading(false);
       }
     }
 
@@ -237,13 +231,11 @@ export function SecurityDashboard({
           .catch(() => setHeadersData({}))
           .finally(() => setHeadersLoading(false));
       } else {
-        setTimeout(() => {
-          setHeadersData({
-            'content-security-policy': "default-src 'self'",
-            'strict-transport-security': 'max-age=31536000'
-          });
-          setHeadersLoading(false);
-        }, 300);
+        setHeadersData({
+          'content-security-policy': "default-src 'self'",
+          'strict-transport-security': 'max-age=31536000'
+        });
+        setHeadersLoading(false);
       }
     }
 
@@ -256,13 +248,11 @@ export function SecurityDashboard({
           .catch(() => setTechData({}))
           .finally(() => setTechLoading(false));
       } else {
-        setTimeout(() => {
-          setTechData({
-            Frontend: ['React'],
-            Server: ['Nginx']
-          });
-          setTechLoading(false);
-        }, 300);
+        setTechData({
+          Frontend: ['React'],
+          Server: ['Nginx']
+        });
+        setTechLoading(false);
       }
     }
 
@@ -275,14 +265,12 @@ export function SecurityDashboard({
           .catch(() => setThreatData({}))
           .finally(() => setThreatLoading(false));
       } else {
-        setTimeout(() => {
-          setThreatData({
-            riskLevel: 'Low',
-            reputationScore: 99,
-            detectedThreats: []
-          });
-          setThreatLoading(false);
-        }, 300);
+        setThreatData({
+          riskLevel: 'Low',
+          reputationScore: 99,
+          detectedThreats: []
+        });
+        setThreatLoading(false);
       }
     }
 
@@ -405,8 +393,7 @@ export function SecurityDashboard({
   };
 
   // Terminal commands interpreter
-  const handleTerminalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleTerminalSubmit = async () => {
     const cmd = terminalInput.trim();
     if (!cmd) return;
 
@@ -952,8 +939,7 @@ export function SecurityDashboard({
                     </div>
                   ))}
                 </div>
-                <form
-                  onSubmit={handleTerminalSubmit}
+                <div
                   className="border-t border-zinc-800 px-3 py-1.5 flex items-center bg-zinc-900"
                 >
                   <span className="text-green-500 mr-1.5 font-bold">&gt;</span>
@@ -961,11 +947,17 @@ export function SecurityDashboard({
                     type="text"
                     value={terminalInput}
                     onChange={(e) => setTerminalInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleTerminalSubmit();
+                      }
+                    }}
                     placeholder="Enter command (e.g. 'help')"
                     className="flex-1 bg-transparent border-none outline-none text-zinc-100"
                     spellCheck={false}
                   />
-                </form>
+                </div>
               </div>
             )}
 
