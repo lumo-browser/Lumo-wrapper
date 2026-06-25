@@ -136,7 +136,9 @@ function createDisposableWindow(): void {
 
   attachAdBlocker(disposableWindow.webContents.session);
   // Using a random partition to ensure it's completely ephemeral per window
-  attachAdBlocker(session.fromPartition(partitionId)); 
+  const ephemeralSession = session.fromPartition(partitionId);
+  ephemeralSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+  attachAdBlocker(ephemeralSession); 
 
   disposableWindow.loadURL(url);
 
@@ -414,6 +416,27 @@ app.on('ready', () => {
         session.defaultSession.setProxy({ proxyRules });
         session.fromPartition('persist:nova-main').setProxy({ proxyRules });
         console.log(`[Lumo] Proxy set: ${proxyRules}`);
+      }
+    });
+
+    // Private session proxy settings
+    ipcMain.on('lumo:set-private-proxy', (event, { enabled, partitionId, type, host, port }: { enabled: boolean; partitionId: string; type?: string; host?: string; port?: string }) => {
+      if (!partitionId) return;
+      const sess = session.fromPartition(partitionId);
+      if (!enabled) {
+        sess.setProxy({ proxyRules: 'direct://' }).then(() => {
+          console.log(`[Lumo] Ephemeral session proxy disabled for ${partitionId}`);
+        }).catch(err => console.error('[Lumo] Failed to disable private proxy:', err));
+      } else {
+        let proxyRules = '';
+        if (type === 'socks5') {
+          proxyRules = `socks5://${host}:${port}`;
+        } else {
+          proxyRules = `http=${host}:${port};https=${host}:${port}`;
+        }
+        sess.setProxy({ proxyRules }).then(() => {
+          console.log(`[Lumo] Ephemeral session proxy enabled for ${partitionId}: ${proxyRules}`);
+        }).catch(err => console.error('[Lumo] Failed to enable private proxy:', err));
       }
     });
 

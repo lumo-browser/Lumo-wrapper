@@ -80,6 +80,12 @@ export function PrivateNewTabPage({
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Private VPN / Proxy States
+  const [proxyEnabled, setProxyEnabled] = useState(false);
+  const [proxyType, setProxyType] = useState<'free' | 'tor' | 'custom'>('free');
+  const [customHost, setCustomHost] = useState('127.0.0.1');
+  const [customPort, setCustomPort] = useState('8080');
+
   // Time formatting
   const time = useTime();
   const dateStr = time.toLocaleDateString('en-US', {
@@ -98,6 +104,42 @@ export function PrivateNewTabPage({
     const t = setTimeout(() => inputRef.current?.focus(), 250);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    const partitionId = (window as any)._lumoDisposablePartition;
+    if (!partitionId || !window.electron?.send) return;
+
+    if (!proxyEnabled) {
+      window.electron.send('lumo:set-private-proxy', { enabled: false, partitionId });
+      return;
+    }
+
+    let host = '';
+    let port = '';
+    let type = 'http';
+
+    if (proxyType === 'free') {
+      host = 'us16.vpnbook.com';
+      port = '80';
+      type = 'http';
+    } else if (proxyType === 'tor') {
+      host = '127.0.0.1';
+      port = '9050';
+      type = 'socks5';
+    } else {
+      host = customHost;
+      port = customPort;
+      type = 'http';
+    }
+
+    window.electron.send('lumo:set-private-proxy', {
+      enabled: true,
+      partitionId,
+      type,
+      host,
+      port,
+    });
+  }, [proxyEnabled, proxyType, customHost, customPort]);
 
   // Search Engine resolution
   const activeEngine =
@@ -317,11 +359,77 @@ export function PrivateNewTabPage({
                     onChange={(v) => onUpdateSettings({ blockPopups: v })}
                   />
                 </div>
+
+                <div className="border-t border-white/5 pt-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-white">Secure Proxy / VPN</p>
+                      <p className="text-[10px] text-gray-500">Route traffic through gateway</p>
+                    </div>
+                    <ToggleSwitch
+                      enabled={proxyEnabled}
+                      onChange={setProxyEnabled}
+                    />
+                  </div>
+
+                  {proxyEnabled && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-white/5 border border-white/5 space-y-3 transition-all duration-200">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] uppercase tracking-wider text-gray-400 font-bold">Proxy Gateway</label>
+                        <select
+                          value={proxyType}
+                          onChange={(e) => setProxyType(e.target.value as any)}
+                          className="bg-[#1a1a24] border border-[#3e3e4f] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+                        >
+                          <option value="free">Auto Free Proxy (VPNBook US)</option>
+                          <option value="tor">Local Tor Gateway (SOCKS5)</option>
+                          <option value="custom">Custom Proxy Server</option>
+                        </select>
+                      </div>
+
+                      {proxyType === 'custom' && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="col-span-2 flex flex-col gap-1">
+                            <label className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Host / IP</label>
+                            <input
+                              type="text"
+                              value={customHost}
+                              onChange={(e) => setCustomHost(e.target.value)}
+                              className="bg-[#1a1a24] border border-[#3e3e4f] rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-violet-500"
+                              placeholder="127.0.0.1"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Port</label>
+                            <input
+                              type="text"
+                              value={customPort}
+                              onChange={(e) => setCustomPort(e.target.value)}
+                              className="bg-[#1a1a24] border border-[#3e3e4f] rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-violet-500"
+                              placeholder="8080"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Quick Stats / Info */}
-            <div className="mt-6 pt-4 border-t border-white/5 text-[11px] text-gray-500 flex flex-col gap-1">
+            <div className="mt-6 pt-4 border-t border-white/5 text-[11px] text-gray-500 flex flex-col gap-1.5">
+              <div className="flex justify-between">
+                <span>Secure Proxy/VPN:</span>
+                {proxyEnabled ? (
+                  <span className="text-violet-400 font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                    {proxyType === 'free' ? 'VPNBook US' : proxyType === 'tor' ? 'Tor SOCKS5' : 'Custom'}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">Direct Connection</span>
+                )}
+              </div>
               <div className="flex justify-between">
                 <span>Clock Mode:</span>
                 <span className="font-mono text-gray-400">{timeStr}</span>
