@@ -84,11 +84,11 @@ export function BrowserMenu({
   ];
 
   return (
-    <div className="absolute right-2 top-full mt-1 w-56 bg-white dark:bg-[#2d2d2d] rounded-xl shadow-2xl border border-gray-200 dark:border-[#3a3a3a] z-50 overflow-hidden py-1">
+    <div className="absolute right-2 top-full mt-1 w-56 dropdown-menu z-50 flex flex-col gap-0.5">
       {/* Sync strip */}
       <button
         onClick={() => { onOpenAccount(); onClose(); }}
-        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-[#3a3a3a] transition-colors border-b border-gray-100 dark:border-[#3a3a3a] mb-1"
+        className="w-[calc(100%-8px)] flex items-center gap-3 px-3 py-2.5 hover:bg-gray-100/50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5 mb-1 rounded-t-lg mx-1 text-left"
       >
         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
           <Download className="w-4 h-4" />
@@ -104,10 +104,10 @@ export function BrowserMenu({
         const Icon = item.icon;
         return (
           <React.Fragment key={item.id}>
-            {item.separator && <div className="my-1 border-t border-gray-100 dark:border-[#3a3a3a]" />}
+            {item.separator && <div className="my-1 border-t border-gray-100 dark:border-white/5" />}
             <button
               onClick={item.onClick}
-              className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-[#3a3a3a] transition-colors"
+              className="dropdown-item"
             >
               <div className="flex items-center gap-2.5">
                 <Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
