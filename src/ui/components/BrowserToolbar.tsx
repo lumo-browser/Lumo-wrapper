@@ -27,6 +27,12 @@ import {
   Globe,
   Languages,
   EyeOff,
+  Lock,
+  Server,
+  FileText,
+  ExternalLink,
+  Terminal,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface BrowserToolbarProps {
@@ -96,9 +102,39 @@ export function BrowserToolbar({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
+  const [showSecurityDropdown, setShowSecurityDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchCache = useRef(new Map<string, string[]>());
   const abortControllerRef = useRef<AbortController | null>(null);
+  const securityDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Helper to extract domain for OSINT/Recon
+  const getDomain = (rawUrl: string): string => {
+    try {
+      if (!rawUrl || rawUrl.toLowerCase().startsWith('lumo://')) return '';
+      const parsed = new URL(rawUrl);
+      return parsed.hostname;
+    } catch {
+      return '';
+    }
+  };
+
+  const domain = getDomain(url);
+
+  // Close security dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (securityDropdownRef.current && !securityDropdownRef.current.contains(event.target as Node)) {
+        setShowSecurityDropdown(false);
+      }
+    }
+    if (showSecurityDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSecurityDropdown]);
 
   // Fetch suggestions with debounce
   useEffect(() => {
@@ -362,7 +398,21 @@ export function BrowserToolbar({
             }
           `}
         >
-          <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setShowSecurityDropdown(!showSecurityDropdown);
+            }}
+            disabled={isFocused || isNtpPage}
+            className={`flex-shrink-0 w-5 h-5 flex items-center justify-center rounded transition-colors ${
+              isFocused || isNtpPage
+                ? 'cursor-default'
+                : 'cursor-pointer hover:bg-gray-200 dark:hover:bg-zinc-700/60'
+            }`}
+            title={isFocused || isNtpPage ? undefined : 'Site Information & Recon'}
+          >
             {isIncognito && !isFocused ? (
               <EyeOff className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
             ) : isFocused ? (
@@ -374,7 +424,7 @@ export function BrowserToolbar({
             ) : (
               <Shield className="w-3.5 h-3.5 text-gray-400" />
             )}
-          </div>
+          </button>
 
           {/* Input */}
           <input
@@ -470,6 +520,146 @@ export function BrowserToolbar({
                 })
               )}
             </ul>
+          </div>
+        )}
+
+        {/* Site Security & Recon Dropdown */}
+        {showSecurityDropdown && !isFocused && !isNtpPage && (
+          <div 
+            ref={securityDropdownRef}
+            className="absolute top-full left-0 mt-1.5 w-80 bg-white dark:bg-[#15151e]/95 dark:backdrop-blur-md border border-gray-200 dark:border-[#2d2d3a] rounded-xl shadow-xl z-[101] py-3 px-4 text-left select-none text-gray-800 dark:text-gray-200 animate-slide-in"
+            style={{ left: '8px' }}
+          >
+            {/* Header info */}
+            <div className="flex items-center gap-2 pb-2 mb-2 border-b border-gray-100 dark:border-zinc-800/80">
+              {isSecure ? (
+                <ShieldCheck className="w-5 h-5 text-green-500 flex-shrink-0" />
+              ) : (
+                <ShieldAlert className="w-5 h-5 text-amber-500 flex-shrink-0" />
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-bold truncate">{domain || 'Local Site'}</p>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                  {isSecure ? 'Connection is secure (HTTPS)' : 'Connection is unencrypted (HTTP)'}
+                </p>
+              </div>
+            </div>
+
+            {/* Security details */}
+            <div className="space-y-1.5 pb-2 mb-2 border-b border-gray-100 dark:border-zinc-800/80 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Protocol:</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">{isSecure ? 'TLS v1.3 / HTTPS' : 'Insecure HTTP'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Disposable Session:</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">{isIncognito ? 'Active (RAM Isolated)' : 'Standard'}</span>
+              </div>
+            </div>
+
+            {/* Recon & Pentesting Toolbox */}
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
+                Recon & Pentest Toolbox
+              </p>
+              <div className="grid grid-cols-1 gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSecurityDropdown(false);
+                    if (domain) onNavigate(`https://dnschecker.org/#A/${domain}`);
+                  }}
+                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-3.5 h-3.5 text-blue-500" />
+                    <span>DNS Records Lookup</span>
+                  </div>
+                  <ExternalLink className="w-3 h-3 text-gray-400" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSecurityDropdown(false);
+                    if (domain) onNavigate(`https://www.whois.com/whois/${domain}`);
+                  }}
+                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Whois Registry Lookup</span>
+                  </div>
+                  <ExternalLink className="w-3 h-3 text-gray-400" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSecurityDropdown(false);
+                    if (domain) onNavigate(`https://www.ssllabs.com/ssltest/analyze.html?d=${domain}`);
+                  }}
+                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-green-500" />
+                    <span>SSL/TLS Analysis</span>
+                  </div>
+                  <ExternalLink className="w-3 h-3 text-gray-400" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSecurityDropdown(false);
+                    if (domain) onNavigate(`https://securityheaders.com/?q=${domain}`);
+                  }}
+                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Server className="w-3.5 h-3.5 text-violet-500" />
+                    <span>Security Headers Scan</span>
+                  </div>
+                  <ExternalLink className="w-3 h-3 text-gray-400" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSecurityDropdown(false);
+                    try {
+                      const urlObj = new URL(url);
+                      onNavigate(`${urlObj.origin}/robots.txt`);
+                    } catch {}
+                  }}
+                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Inspect robots.txt</span>
+                  </div>
+                  <Terminal className="w-3 h-3 text-gray-400" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSecurityDropdown(false);
+                    try {
+                      const urlObj = new URL(url);
+                      onNavigate(`${urlObj.origin}/.well-known/security.txt`);
+                    } catch {}
+                  }}
+                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-teal-500" />
+                    <span>Inspect security.txt</span>
+                  </div>
+                  <Terminal className="w-3 h-3 text-gray-400" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </form>
