@@ -285,9 +285,30 @@ select {
   background-repeat: no-repeat !important;
   background-size: 1.1em 1.1em !important;
   padding-right: 2.25rem !important;
-  cursor: pointer;
+  cursor: pointer !important;
+  border-radius: 0.5rem !important; /* rounded-lg */
+  border-width: 1px !important;
+  transition: all 0.2s ease-in-out !important;
+  background-color: #f3f4f6 !important; /* bg-gray-100 */
+  border-color: #d1d5db !important; /* border-gray-300 */
+  color: #1f2937 !important; /* text-gray-800 */
+}
+
+select:focus {
+  border-color: #3b82f6 !important; /* focus:border-blue-500 */
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  outline: none !important;
 }
 
 .dark select {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E") !important;
+  background-color: #2d2d3a !important; /* premium dark gray */
+  border-color: #3f3f46 !important; /* border-zinc-700 */
+  color: #f4f4f5 !important; /* text-zinc-100 */
+}
+
+.dark select:focus {
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important;
+  outline: none !important;
 }
