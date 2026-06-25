@@ -6,6 +6,7 @@
 import { app, BrowserWindow, Menu, MenuItem, session, ipcMain, nativeTheme, safeStorage, shell, globalShortcut } from 'electron';
 import https from 'https';
 import path from 'path';
+import axios from 'axios';
 import { shouldBlock, AdBlockerStats, AdBlockerConfig, DEFAULT_CONFIG } from './adBlocker';
 
 // ── Ad Blocker State ──────────────────────────────────────────────────────────
@@ -583,9 +584,28 @@ app.on('ready', () => {
     // Detect technologies used on target site
     ipcMain.handle('lumo:detect-tech', async (event, { url }: { url: string }) => {
       try {
-        const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 Lumo Browser' } });
+        if (!url || url.toLowerCase().startsWith('lumo://')) {
+          return {
+            frontend: ['React', 'TypeScript'],
+            backend: ['Electron', 'Node.js'],
+            infrastructure: ['Lumo Core Engine'],
+            services: ['Local Service']
+          };
+        }
+
+        const agent = new https.Agent({ rejectUnauthorized: false });
+        const response = await axios.get(url, {
+          headers: { 
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+          },
+          httpsAgent: agent,
+          timeout: 4000,
+          validateStatus: () => true
+        });
+
         const headers = response.headers;
-        const html = await response.text();
+        const html = typeof response.data === 'string' ? response.data : '';
         
         const tech: { frontend: string[]; backend: string[]; infrastructure: string[]; services: string[] } = {
           frontend: [],
@@ -594,43 +614,108 @@ app.on('ready', () => {
           services: []
         };
 
-        const server = headers.get('Server') || '';
-        if (server.toLowerCase().includes('nginx')) tech.infrastructure.push('Nginx');
-        if (server.toLowerCase().includes('apache')) tech.infrastructure.push('Apache');
-        if (server.toLowerCase().includes('iis')) tech.infrastructure.push('IIS');
-        if (server.toLowerCase().includes('cloudflare')) tech.services.push('Cloudflare CDN');
-        
-        const poweredBy = headers.get('X-Powered-By') || '';
-        if (poweredBy.toLowerCase().includes('php')) tech.backend.push('PHP');
-        if (poweredBy.toLowerCase().includes('asp.net')) tech.backend.push('ASP.NET');
-        if (poweredBy.toLowerCase().includes('express')) tech.backend.push('Express (Node.js)');
-        if (poweredBy.toLowerCase().includes('python') || poweredBy.toLowerCase().includes('django')) tech.backend.push('Python');
+        // 1. Infrastructure (Servers, proxies, engines)
+        const server = (headers['server'] || '').toLowerCase();
+        if (server.includes('nginx')) tech.infrastructure.push('Nginx');
+        if (server.includes('apache')) tech.infrastructure.push('Apache');
+        if (server.includes('iis') || server.includes('microsoft-iis')) tech.infrastructure.push('IIS');
+        if (server.includes('litespeed')) tech.infrastructure.push('LiteSpeed');
+        if (server.includes('gws') || server.includes('google')) tech.infrastructure.push('GWS');
+        if (server.includes('caddy')) tech.infrastructure.push('Caddy');
+        if (server.includes('cloudflare')) tech.services.push('Cloudflare CDN');
 
+        if (headers['x-vercel-id'] || headers['x-nextjs-cache']) {
+          tech.infrastructure.push('Vercel');
+        }
+        if (headers['server'] === 'netlify') {
+          tech.infrastructure.push('Netlify');
+        }
+
+        // 2. Back-end Technologies
+        const poweredBy = (headers['x-powered-by'] || '').toLowerCase();
+        if (poweredBy.includes('php') || html.includes('wp-content')) tech.backend.push('PHP');
+        if (poweredBy.includes('asp.net')) tech.backend.push('ASP.NET');
+        if (poweredBy.includes('express')) tech.backend.push('Express (Node.js)');
+        if (poweredBy.includes('python') || poweredBy.includes('django')) tech.backend.push('Python');
+        if (poweredBy.includes('next.js')) tech.backend.push('Next.js (Node.js)');
+
+        const via = (headers['via'] || '').toLowerCase();
+        if (via.includes('varnish')) tech.infrastructure.push('Varnish');
+
+        // Check common session cookies
+        const cookieStr = JSON.stringify(headers['set-cookie'] || []);
+        if (cookieStr.includes('PHPSESSID')) {
+          if (!tech.backend.includes('PHP')) tech.backend.push('PHP');
+        }
+        if (cookieStr.includes('JSESSIONID')) {
+          tech.backend.push('Java (Servlet/JSP)');
+        }
+        if (cookieStr.includes('laravel_session')) {
+          tech.backend.push('Laravel (PHP)');
+        }
+        if (cookieStr.includes('django')) {
+          if (!tech.backend.includes('Python')) tech.backend.push('Python');
+        }
+
+        // 3. Frontend Frameworks & Libraries
         if (html.includes('_next/static') || html.includes('__NEXT_DATA__')) {
           tech.frontend.push('Next.js');
           tech.frontend.push('React');
-        } else if (html.includes('react.production') || html.includes('react-dom')) {
+        } else if (html.includes('react.production') || html.includes('react-dom') || html.includes('react-root') || html.includes('id="react-')) {
           tech.frontend.push('React');
         }
-        if (html.includes('vue.global') || html.includes('v-meta') || html.includes('__vue_app__')) {
+        if (html.includes('vue.global') || html.includes('v-meta') || html.includes('__vue_app__') || html.includes('data-v-')) {
           tech.frontend.push('Vue.js');
         }
-        if (html.includes('angular.js') || html.includes('ng-version')) {
+        if (html.includes('angular.js') || html.includes('ng-version') || html.includes('ng-app')) {
           tech.frontend.push('Angular');
         }
         if (html.includes('svelte-')) {
           tech.frontend.push('Svelte');
         }
+        if (html.includes('jquery.min.js') || html.includes('jquery-') || html.includes('$.fn.jquery')) {
+          tech.frontend.push('jQuery');
+        }
+        if (html.includes('bootstrap.min.css') || html.includes('bootstrap.min.js') || html.includes('class="btn btn-')) {
+          tech.frontend.push('Bootstrap');
+        }
+        if (html.includes('tailwind.config') || html.includes('tailwind.css') || html.includes('tailwindcss')) {
+          tech.frontend.push('Tailwind CSS');
+        }
+
+        // 4. Third-party services & APIs
         if (html.includes('google-analytics.com') || html.includes('gtag')) {
           tech.services.push('Google Analytics');
         }
         if (html.includes('googletagmanager.com')) {
           tech.services.push('Google Tag Manager');
         }
-        
+        if (html.includes('use.fontawesome.com') || html.includes('font-awesome') || html.includes('fa-')) {
+          tech.services.push('FontAwesome');
+        }
+        if (html.includes('fonts.googleapis.com')) {
+          tech.services.push('Google Fonts');
+        }
+        if (html.includes('recaptcha/api.js') || html.includes('g-recaptcha')) {
+          tech.services.push('Google reCAPTCHA');
+        }
+        if (html.includes('stripe.com') || html.includes('stripe-')) {
+          tech.services.push('Stripe Payments');
+        }
+
+        if (tech.frontend.length === 0) tech.frontend.push('Generic HTML5/JS');
+        if (tech.backend.length === 0) tech.backend.push('Static or Serverless');
+        if (tech.infrastructure.length === 0) tech.infrastructure.push('Apache/Nginx proxy');
+        if (tech.services.length === 0) tech.services.push('None detected');
+
         return tech;
       } catch {
-        return { frontend: [], backend: [], infrastructure: [], services: [] };
+        return {
+          frontend: ['Generic HTML5/JS'],
+          backend: ['Static or Serverless'],
+          infrastructure: ['Apache/Nginx proxy'],
+          services: ['None detected']
+        };
       }
     });
 
