@@ -362,7 +362,7 @@ export function SecurityDashboard({
         const res = await window.electron.invoke('lumo:resolve-dns', { domain });
         const dnsStr = Object.entries(res)
           .map(([type, records]: any) => {
-            if (!records || !records.length) return `${type}: None`;
+            if (!records || !Array.isArray(records) || !records.length) return `${type}: None`;
             return `${type}:\n  ${records.join('\n  ')}`;
           })
           .join('\n');
@@ -613,7 +613,7 @@ export function SecurityDashboard({
                     {Object.entries(dnsData).map(([type, records]: any) => (
                       <div key={type} className="space-y-1">
                         <span className="font-bold text-blue-500">{type}</span>
-                        {records && records.length ? (
+                        {records && Array.isArray(records) && records.length ? (
                           <div className="pl-3 border-l border-gray-200 dark:border-zinc-800 space-y-0.5">
                             {records.map((rec: any, i: number) => (
                               <div key={i} className="text-gray-600 dark:text-gray-300">
@@ -843,7 +843,7 @@ export function SecurityDashboard({
                     </div>
                     <div>
                       <span className="text-gray-400 block mb-1">Detected Threats</span>
-                      {threatData.detectedThreats.length ? (
+                      {threatData.detectedThreats && Array.isArray(threatData.detectedThreats) && threatData.detectedThreats.length ? (
                         <div className="pl-3 border-l border-red-500 text-red-500">
                           {threatData.detectedThreats.join('\n')}
                         </div>
