@@ -103,6 +103,9 @@ export function BrowserToolbar({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
   const [showSecurityDropdown, setShowSecurityDropdown] = useState(false);
+  const [activeTool, setActiveTool] = useState<'none' | 'dns' | 'whois' | 'headers' | 'robots' | 'security'>('none');
+  const [toolLoading, setToolLoading] = useState(false);
+  const [toolResult, setToolResult] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const searchCache = useRef(new Map<string, string[]>());
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -126,6 +129,7 @@ export function BrowserToolbar({
     function handleClickOutside(event: MouseEvent) {
       if (securityDropdownRef.current && !securityDropdownRef.current.contains(event.target as Node)) {
         setShowSecurityDropdown(false);
+        setActiveTool('none');
       }
     }
     if (showSecurityDropdown) {
@@ -135,6 +139,85 @@ export function BrowserToolbar({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showSecurityDropdown]);
+
+  // Execute Security/OSINT tools locally in dropdown
+  const runTool = async (tool: 'dns' | 'whois' | 'headers' | 'robots' | 'security') => {
+    setActiveTool(tool);
+    setToolLoading(true);
+    setToolResult('');
+
+    try {
+      if (tool === 'dns') {
+        const res = await window.electron.invoke('lumo:resolve-dns', { domain }) as any;
+        if (!res || Object.keys(res).length === 0) {
+          setToolResult('No DNS records found.');
+        } else {
+          let output = '';
+          if (res.A?.length) output += `[A Records]\n${res.A.join('\n')}\n\n`;
+          if (res.AAAA?.length) output += `[AAAA Records]\n${res.AAAA.join('\n')}\n\n`;
+          if (res.NS?.length) output += `[NS Records]\n${res.NS.join('\n')}\n\n`;
+          if (res.MX?.length) output += `[MX Records]\n${res.MX.map((m: any) => `${m.exchange} (Priority: ${m.priority})`).join('\n')}\n\n`;
+          if (res.TXT?.length) output += `[TXT Records]\n${res.TXT.map((t: any) => t.join(' ')).join('\n')}\n\n`;
+          setToolResult(output.trim() || 'No active records resolved.');
+        }
+      } else if (tool === 'whois') {
+        const res = await window.electron.invoke('lumo:resolve-whois', { domain }) as string;
+        setToolResult(res.slice(0, 5000));
+      } else if (tool === 'headers') {
+        const res = await window.electron.invoke('lumo:resolve-headers', { url }) as any;
+        if (res.error) {
+          setToolResult(`Error checking headers: ${res.error}`);
+        } else {
+          const importantHeaders = [
+            { name: 'Content-Security-Policy', desc: 'Prevents XSS & injection' },
+            { name: 'Strict-Transport-Security', desc: 'Forces secure HTTPS' },
+            { name: 'X-Frame-Options', desc: 'Prevents Clickjacking' },
+            { name: 'X-Content-Type-Options', desc: 'Prevents MIME sniffing' },
+            { name: 'Referrer-Policy', desc: 'Controls referrer disclosure' },
+            { name: 'Permissions-Policy', desc: 'Controls device feature access' }
+          ];
+          
+          let output = '[Security Headers Audit]\n\n';
+          importantHeaders.forEach(h => {
+            const val = res[h.name.toLowerCase()] || res[h.name];
+            if (val) {
+              output += `✅ ${h.name}: PRESENT\n   Value: ${val.slice(0, 60)}${val.length > 60 ? '...' : ''}\n\n`;
+            } else {
+              output += `❌ ${h.name}: MISSING\n   ${h.desc}\n\n`;
+            }
+          });
+          
+          output += '\n[All Response Headers]\n';
+          Object.entries(res).forEach(([k, v]) => {
+            output += `${k}: ${v}\n`;
+          });
+          setToolResult(output);
+        }
+      } else if (tool === 'robots') {
+        const urlObj = new URL(url);
+        const res = await fetch(`${urlObj.origin}/robots.txt`);
+        if (res.ok) {
+          const text = await res.text();
+          setToolResult(text.slice(0, 5000));
+        } else {
+          setToolResult(`Status code ${res.status}: Failed to retrieve robots.txt`);
+        }
+      } else if (tool === 'security') {
+        const urlObj = new URL(url);
+        const res = await fetch(`${urlObj.origin}/.well-known/security.txt`);
+        if (res.ok) {
+          const text = await res.text();
+          setToolResult(text.slice(0, 5000));
+        } else {
+          setToolResult(`Status code ${res.status}: Failed to retrieve security.txt`);
+        }
+      }
+    } catch (err: any) {
+      setToolResult(`Lookup failed: ${err.message}`);
+    } finally {
+      setToolLoading(false);
+    }
+  };
 
   // Fetch suggestions with debounce
   useEffect(() => {
@@ -530,136 +613,175 @@ export function BrowserToolbar({
             className="absolute top-full left-0 mt-1.5 w-80 bg-white dark:bg-[#15151e]/95 dark:backdrop-blur-md border border-gray-200 dark:border-[#2d2d3a] rounded-xl shadow-xl z-[101] py-3 px-4 text-left select-none text-gray-800 dark:text-gray-200 animate-slide-in"
             style={{ left: '8px' }}
           >
-            {/* Header info */}
-            <div className="flex items-center gap-2 pb-2 mb-2 border-b border-gray-100 dark:border-zinc-800/80">
-              {isSecure ? (
-                <ShieldCheck className="w-5 h-5 text-green-500 flex-shrink-0" />
-              ) : (
-                <ShieldAlert className="w-5 h-5 text-amber-500 flex-shrink-0" />
-              )}
-              <div className="min-w-0">
-                <p className="text-xs font-bold truncate">{domain || 'Local Site'}</p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                  {isSecure ? 'Connection is secure (HTTPS)' : 'Connection is unencrypted (HTTP)'}
-                </p>
-              </div>
-            </div>
-
-            {/* Security details */}
-            <div className="space-y-1.5 pb-2 mb-2 border-b border-gray-100 dark:border-zinc-800/80 text-[11px]">
-              <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Protocol:</span>
-                <span className="font-semibold text-gray-700 dark:text-gray-300">{isSecure ? 'TLS v1.3 / HTTPS' : 'Insecure HTTP'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Disposable Session:</span>
-                <span className="font-semibold text-gray-700 dark:text-gray-300">{isIncognito ? 'Active (RAM Isolated)' : 'Standard'}</span>
-              </div>
-            </div>
-
-            {/* Recon & Pentesting Toolbox */}
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
-                Recon & Pentest Toolbox
-              </p>
-              <div className="grid grid-cols-1 gap-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSecurityDropdown(false);
-                    if (domain) onNavigate(`https://dnschecker.org/#A/${domain}`);
-                  }}
-                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-3.5 h-3.5 text-blue-500" />
-                    <span>DNS Records Lookup</span>
+            {activeTool === 'none' ? (
+              <>
+                {/* Header info */}
+                <div className="flex items-center gap-2 pb-2 mb-2 border-b border-gray-100 dark:border-zinc-800/80">
+                  {isSecure ? (
+                    <ShieldCheck className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <ShieldAlert className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold truncate">{domain || 'Local Site'}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                      {isSecure ? 'Connection is secure (HTTPS)' : 'Connection is unencrypted (HTTP)'}
+                    </p>
                   </div>
-                  <ExternalLink className="w-3 h-3 text-gray-400" />
-                </button>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSecurityDropdown(false);
-                    if (domain) onNavigate(`https://www.whois.com/whois/${domain}`);
-                  }}
-                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <User className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>Whois Registry Lookup</span>
+                {/* Security details */}
+                <div className="space-y-1.5 pb-2 mb-2 border-b border-gray-100 dark:border-zinc-800/80 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Protocol:</span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">{isSecure ? 'TLS v1.3 / HTTPS' : 'Insecure HTTP'}</span>
                   </div>
-                  <ExternalLink className="w-3 h-3 text-gray-400" />
-                </button>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 dark:text-gray-400">Disposable Session:</span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">{isIncognito ? 'Active (RAM Isolated)' : 'Standard'}</span>
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSecurityDropdown(false);
-                    if (domain) onNavigate(`https://www.ssllabs.com/ssltest/analyze.html?d=${domain}`);
-                  }}
-                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <Lock className="w-3.5 h-3.5 text-green-500" />
-                    <span>SSL/TLS Analysis</span>
-                  </div>
-                  <ExternalLink className="w-3 h-3 text-gray-400" />
-                </button>
+                {/* Recon & Pentesting Toolbox */}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
+                    Recon & Pentest Toolbox
+                  </p>
+                  <div className="grid grid-cols-1 gap-1 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => runTool('dns')}
+                      className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-3.5 h-3.5 text-blue-500" />
+                        <span>DNS Records Lookup</span>
+                      </div>
+                      <ChevronRight className="w-3 h-3 text-gray-400" />
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSecurityDropdown(false);
-                    if (domain) onNavigate(`https://securityheaders.com/?q=${domain}`);
-                  }}
-                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <Server className="w-3.5 h-3.5 text-violet-500" />
-                    <span>Security Headers Scan</span>
-                  </div>
-                  <ExternalLink className="w-3 h-3 text-gray-400" />
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => runTool('whois')}
+                      className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <User className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Whois Registry Lookup</span>
+                      </div>
+                      <ChevronRight className="w-3 h-3 text-gray-400" />
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSecurityDropdown(false);
-                    try {
-                      const urlObj = new URL(url);
-                      onNavigate(`${urlObj.origin}/robots.txt`);
-                    } catch {}
-                  }}
-                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Inspect robots.txt</span>
-                  </div>
-                  <Terminal className="w-3 h-3 text-gray-400" />
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => runTool('headers')}
+                      className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Server className="w-3.5 h-3.5 text-violet-500" />
+                        <span>Security Headers Scan</span>
+                      </div>
+                      <ChevronRight className="w-3 h-3 text-gray-400" />
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSecurityDropdown(false);
-                    try {
-                      const urlObj = new URL(url);
-                      onNavigate(`${urlObj.origin}/.well-known/security.txt`);
-                    } catch {}
-                  }}
-                  className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-teal-500" />
-                    <span>Inspect security.txt</span>
+                    <button
+                      type="button"
+                      onClick={() => runTool('robots')}
+                      className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Inspect robots.txt</span>
+                      </div>
+                      <Terminal className="w-3 h-3 text-gray-400" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => runTool('security')}
+                      className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors w-full text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-3.5 h-3.5 text-teal-500" />
+                        <span>Inspect security.txt</span>
+                      </div>
+                      <Terminal className="w-3 h-3 text-gray-400" />
+                    </button>
                   </div>
-                  <Terminal className="w-3 h-3 text-gray-400" />
-                </button>
-              </div>
-            </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Tool Detail Header */}
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-gray-100 dark:border-zinc-800/80">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTool('none')}
+                    className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 hover:text-blue-500 transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800"
+                  >
+                    ← Back
+                  </button>
+                  <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">
+                    {activeTool === 'dns' && 'DNS Lookup'}
+                    {activeTool === 'whois' && 'WHOIS Registry'}
+                    {activeTool === 'headers' && 'Security Headers'}
+                    {activeTool === 'robots' && 'robots.txt'}
+                    {activeTool === 'security' && 'security.txt'}
+                  </span>
+                </div>
+
+                {/* Tool Detail Content */}
+                <div className="h-60 overflow-y-auto font-mono text-[10px] p-2 bg-gray-50 dark:bg-zinc-950/80 rounded-lg border border-gray-100 dark:border-zinc-800 leading-relaxed select-text scrollbar-thin">
+                  {toolLoading ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-2 text-gray-500">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
+                      <span className="text-[9px]">Querying host...</span>
+                    </div>
+                  ) : (
+                    <pre className="whitespace-pre-wrap">{toolResult}</pre>
+                  )}
+                </div>
+
+                {/* Quick actions row */}
+                <div className="flex items-center justify-between mt-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(toolResult);
+                    }}
+                    disabled={toolLoading || !toolResult}
+                    className="text-[10px] text-blue-500 hover:text-blue-600 font-semibold disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    Copy Output
+                  </button>
+                  
+                  {activeTool === 'dns' && domain && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSecurityDropdown(false);
+                        onNavigate(`https://dnschecker.org/#A/${domain}`);
+                      }}
+                      className="text-[10px] text-gray-500 hover:text-blue-500 transition-colors flex items-center gap-1"
+                    >
+                      External Link <ExternalLink className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                  {activeTool === 'whois' && domain && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSecurityDropdown(false);
+                        onNavigate(`https://www.whois.com/whois/${domain}`);
+                      }}
+                      className="text-[10px] text-gray-500 hover:text-blue-500 transition-colors flex items-center gap-1"
+                    >
+                      External Link <ExternalLink className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </form>

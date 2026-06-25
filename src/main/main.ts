@@ -456,6 +456,82 @@ app.on('ready', () => {
       });
     });
 
+    // Resolve DNS records for domain
+    ipcMain.handle('lumo:resolve-dns', async (event, { domain }: { domain: string }) => {
+      const dns = require('dns').promises;
+      const results: Record<string, any> = {};
+      try {
+        results.A = await dns.resolve4(domain).catch(() => []);
+      } catch {}
+      try {
+        results.AAAA = await dns.resolve6(domain).catch(() => []);
+      } catch {}
+      try {
+        results.MX = await dns.resolveMx(domain).catch(() => []);
+      } catch {}
+      try {
+        results.TXT = await dns.resolveTxt(domain).catch(() => []);
+      } catch {}
+      try {
+        results.NS = await dns.resolveNs(domain).catch(() => []);
+      } catch {}
+      return results;
+    });
+
+    // Resolve WHOIS info for domain
+    ipcMain.handle('lumo:resolve-whois', async (event, { domain }: { domain: string }) => {
+      return new Promise<string>((resolve) => {
+        const net = require('net');
+        const client = new net.Socket();
+        
+        let server = 'whois.iana.org';
+        if (domain.endsWith('.com') || domain.endsWith('.net')) {
+          server = 'whois.verisign-grs.com';
+        } else if (domain.endsWith('.org')) {
+          server = 'whois.pir.org';
+        } else if (domain.endsWith('.edu')) {
+          server = 'whois.educause.edu';
+        } else if (domain.endsWith('.io')) {
+          server = 'whois.nic.io';
+        } else if (domain.endsWith('.in')) {
+          server = 'whois.registry.in';
+        }
+
+        let data = '';
+        client.setTimeout(6000);
+        client.connect(43, server, () => {
+          client.write(domain + '\r\n');
+        });
+        client.on('data', (chunk: any) => {
+          data += chunk.toString();
+        });
+        client.on('end', () => {
+          resolve(data || 'No WHOIS records found');
+        });
+        client.on('error', (err: any) => {
+          resolve(`Error querying WHOIS: ${err.message}`);
+        });
+        client.on('timeout', () => {
+          client.destroy();
+          resolve('Timeout querying WHOIS server');
+        });
+      });
+    });
+
+    // Fetch site security headers
+    ipcMain.handle('lumo:resolve-headers', async (event, { url }: { url: string }) => {
+      try {
+        const response = await fetch(url, { method: 'HEAD', redirect: 'follow' });
+        const headers: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          headers[key] = value;
+        });
+        return headers;
+      } catch (err: any) {
+        return { error: err.message || 'Failed to fetch headers' };
+      }
+    });
+
     // Import browser data (stub — opens a file dialog for HTML bookmarks)
     ipcMain.on('lumo:import-browser-data', async () => {
       const { dialog } = require('electron');
