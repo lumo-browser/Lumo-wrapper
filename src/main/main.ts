@@ -117,8 +117,11 @@ function createDisposableWindow(): void {
     },
   });
 
+  const partitionId = `disposable-session-${Date.now()}`;
   const isDev = !app.isPackaged;
-  const url = isDev ? 'http://127.0.0.1:5173?disposable=true' : `file://${path.join(__dirname, '../index.html')}?disposable=true`;
+  const url = isDev 
+    ? `http://127.0.0.1:5173?disposable=true&partition=${partitionId}` 
+    : `file://${path.join(__dirname, '../index.html')}?disposable=true&partition=${partitionId}`;
 
   const attachAdBlocker = (sess: Electron.Session) => {
     sess.webRequest.onBeforeRequest(
@@ -133,10 +136,16 @@ function createDisposableWindow(): void {
 
   attachAdBlocker(disposableWindow.webContents.session);
   // Using a random partition to ensure it's completely ephemeral per window
-  const partitionId = `disposable-session-${Date.now()}`;
   attachAdBlocker(session.fromPartition(partitionId)); 
 
   disposableWindow.loadURL(url);
+
+  disposableWindow.on('closed', () => {
+    console.log(`[Lumo] Cleaning up disposable session: ${partitionId}`);
+    session.fromPartition(partitionId).clearStorageData().catch(err => {
+      console.error('[Lumo] Failed to clear disposable storage data:', err);
+    });
+  });
 }
 
 function createMenu(): void {

@@ -102,7 +102,7 @@ export function BrowserToolbar({
 
   // Fetch suggestions with debounce
   useEffect(() => {
-    if (!isFocused || !draftUrl.trim() || draftUrl === url) {
+    if (!isFocused || !draftUrl.trim() || draftUrl === url || isIncognito) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;

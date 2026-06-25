@@ -32,6 +32,7 @@ import type { BookmarkEntry } from './pages/BookmarksPage';
 import { SEARCH_ENGINES, type BrowserSettings } from './pages/SettingsPage';
 
 import { NewTabPage } from './pages/NewTabPage';
+import { PrivateNewTabPage } from './pages/PrivateNewTabPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { BookmarksPage } from './pages/BookmarksPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -343,7 +344,8 @@ const emptyHistory = (): NavHistory => ({ stack: [], cursor: -1 });
 export default function App(): React.ReactElement {
   const isDisposable = window.location.search.includes('disposable=true');
   if (isDisposable && !(window as any)._lumoDisposablePartition) {
-    (window as any)._lumoDisposablePartition = `disposable-session-${Date.now()}`;
+    const params = new URLSearchParams(window.location.search);
+    (window as any)._lumoDisposablePartition = params.get('partition') || `disposable-session-${Date.now()}`;
   }
 
   // Theme
@@ -421,12 +423,14 @@ export default function App(): React.ReactElement {
         const updated = prev.find((d: any) => d.id === item.id)
           ? prev.map((d: any) => d.id === item.id ? { ...d, ...item } : d)
           : [item, ...prev];
-        localStorage.setItem('lumo-downloads', JSON.stringify(updated));
+        if (!isDisposable) {
+          localStorage.setItem('lumo-downloads', JSON.stringify(updated));
+        }
         return updated;
       });
     });
     return () => unsub?.();
-  }, []);
+  }, [isDisposable]);
 
   // Listen for lumo:navigate messages from main process (e.g. downloads button)
   useEffect(() => {
@@ -647,7 +651,11 @@ export default function App(): React.ReactElement {
 
   // Persist bookmarks/history/settings to localStorage
   useEffect(() => { localStorage.setItem('lumo-bookmarks', JSON.stringify(bookmarkEntries)); }, [bookmarkEntries]);
-  useEffect(() => { localStorage.setItem('lumo-history', JSON.stringify(historyEntries)); }, [historyEntries]);
+  useEffect(() => {
+    if (!isDisposable) {
+      localStorage.setItem('lumo-history', JSON.stringify(historyEntries));
+    }
+  }, [historyEntries, isDisposable]);
   
   useEffect(() => { 
     const { openRouterApiKey, ...safeSettings } = settings;
@@ -815,7 +823,7 @@ export default function App(): React.ReactElement {
     const isInternal = url.toLowerCase().startsWith('lumo://');
 
     // Add to browsing history
-    if (!isInternal && url) {
+    if (!isInternal && url && !isDisposable) {
       const entry: HistoryEntry = {
         id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         url,
@@ -1292,7 +1300,7 @@ Example response format:
           onToggleBookmark={toggleBookmark}
           onOpenMenu={() => setShowMenu((v) => !v)}
           offerTranslate={settings.offerTranslate}
-          isIncognito={activeTab?.isIncognito}
+          isIncognito={activeTab?.isIncognito || isDisposable}
           onDownload={() => {
             if (currentUrl === 'lumo://downloads') {
               // Toggle off — go back to previous page (or new tab)
@@ -1377,19 +1385,11 @@ Example response format:
                   {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
                   {isNtp && !isWelcome && !isDisposable && <NewTabPage onNavigate={navigate} isDark={isDark} />}
                   {isNtp && !isWelcome && isDisposable && (
-                    <div className="flex-1 flex flex-col items-center justify-center bg-[#0f0f13] text-white">
-                      <div className="w-24 h-24 mb-6 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                        <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </div>
-                      <h1 className="text-4xl font-bold tracking-tight mb-3">Disposable Workspace</h1>
-                      <p className="text-gray-400 max-w-md text-center text-sm leading-relaxed mb-8">
-                        Everything in this window is temporary. Once you close this window, all history, cookies, and site data will be permanently destroyed.
-                      </p>
-                      
-                      <form onSubmit={(e) => { e.preventDefault(); const v = (e.target as any).q.value; if(v) navigate(v.includes('.') ? `https://${v}` : `https://google.com/search?q=${v}`); }} className="w-full max-w-lg relative">
-                        <input name="q" autoFocus type="text" placeholder="Search or enter web address" className="w-full bg-[#1a1a24] border border-[#333] text-white rounded-xl px-5 py-3.5 focus:outline-none focus:border-red-500/50 shadow-xl" />
-                      </form>
-                    </div>
+                    <PrivateNewTabPage
+                      onNavigate={navigate}
+                      settings={settings}
+                      onUpdateSettings={handleUpdateSettings}
+                    />
                   )}
                   {isDownloads && <DownloadsPage onNavigate={navigate} />}
                   {isSettings && (
