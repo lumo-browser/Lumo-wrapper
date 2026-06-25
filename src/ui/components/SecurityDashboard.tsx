@@ -168,56 +168,122 @@ export function SecurityDashboard({
   useEffect(() => {
     if (activeTab === 'dns' && !dnsData && !dnsLoading) {
       setDnsLoading(true);
-      window.electron
-        .invoke('lumo:resolve-dns', { domain })
-        .then((res) => setDnsData(res))
-        .catch(() => setDnsData({}))
-        .finally(() => setDnsLoading(false));
+      if (window.electron && typeof window.electron.invoke === 'function') {
+        window.electron
+          .invoke('lumo:resolve-dns', { domain })
+          .then((res) => setDnsData(res))
+          .catch(() => setDnsData({}))
+          .finally(() => setDnsLoading(false));
+      } else {
+        // Mock fallback for browser dev environments
+        setTimeout(() => {
+          setDnsData({
+            A: ['192.168.1.1'],
+            AAAA: ['fe80::1'],
+            MX: ['10 mail.lumo.local'],
+            TXT: ['v=spf1 include:_spf.google.com ~all']
+          });
+          setDnsLoading(false);
+        }, 300);
+      }
     }
 
     if (activeTab === 'whois' && !whoisData && !whoisLoading) {
       setWhoisLoading(true);
-      window.electron
-        .invoke('lumo:resolve-whois', { domain })
-        .then((res: any) => setWhoisData(res || ''))
-        .catch((err: any) => setWhoisData(err.message || 'Error resolving WHOIS data'))
-        .finally(() => setWhoisLoading(false));
+      if (window.electron && typeof window.electron.invoke === 'function') {
+        window.electron
+          .invoke('lumo:resolve-whois', { domain })
+          .then((res: any) => setWhoisData(res || ''))
+          .catch((err: any) => setWhoisData(err.message || 'Error resolving WHOIS data'))
+          .finally(() => setWhoisLoading(false));
+      } else {
+        setTimeout(() => {
+          setWhoisData('Registrar: Lumo Registrar LLC\nStatus: active\nCreation Date: 2026-01-01');
+          setWhoisLoading(false);
+        }, 300);
+      }
     }
 
     if (activeTab === 'certs' && !certData && !certLoading) {
       setCertLoading(true);
-      window.electron
-        .invoke('lumo:resolve-certificates', { host: domain })
-        .then((res) => setCertData(res))
-        .catch(() => setCertData({}))
-        .finally(() => setCertLoading(false));
+      if (window.electron && typeof window.electron.invoke === 'function') {
+        window.electron
+          .invoke('lumo:resolve-certificates', { host: domain })
+          .then((res) => setCertData(res))
+          .catch(() => setCertData({}))
+          .finally(() => setCertLoading(false));
+      } else {
+        setTimeout(() => {
+          setCertData({
+            issuer: { O: 'Lumo Authority CA' },
+            subject: { CN: domain },
+            validFrom: 'Jan 1 2026',
+            validTo: 'Dec 31 2026',
+            fingerprint: 'AB:CD:EF:12:34:56',
+            serialNumber: '987654321',
+            chain: 'Trusted'
+          });
+          setCertLoading(false);
+        }, 300);
+      }
     }
 
     if (activeTab === 'headers' && !headersData && !headersLoading) {
       setHeadersLoading(true);
-      window.electron
-        .invoke('lumo:resolve-headers', { url })
-        .then((res) => setHeadersData(res))
-        .catch(() => setHeadersData({}))
-        .finally(() => setHeadersLoading(false));
+      if (window.electron && typeof window.electron.invoke === 'function') {
+        window.electron
+          .invoke('lumo:resolve-headers', { url })
+          .then((res) => setHeadersData(res))
+          .catch(() => setHeadersData({}))
+          .finally(() => setHeadersLoading(false));
+      } else {
+        setTimeout(() => {
+          setHeadersData({
+            'content-security-policy': "default-src 'self'",
+            'strict-transport-security': 'max-age=31536000'
+          });
+          setHeadersLoading(false);
+        }, 300);
+      }
     }
 
     if (activeTab === 'tech' && !techData && !techLoading) {
       setTechLoading(true);
-      window.electron
-        .invoke('lumo:detect-tech', { url })
-        .then((res) => setTechData(res))
-        .catch(() => setTechData({}))
-        .finally(() => setTechLoading(false));
+      if (window.electron && typeof window.electron.invoke === 'function') {
+        window.electron
+          .invoke('lumo:detect-tech', { url })
+          .then((res) => setTechData(res))
+          .catch(() => setTechData({}))
+          .finally(() => setTechLoading(false));
+      } else {
+        setTimeout(() => {
+          setTechData({
+            Frontend: ['React'],
+            Server: ['Nginx']
+          });
+          setTechLoading(false);
+        }, 300);
+      }
     }
 
     if (activeTab === 'threat' && !threatData && !threatLoading) {
       setThreatLoading(true);
-      window.electron
-        .invoke('lumo:threat-intel', { domain })
-        .then((res) => setThreatData(res))
-        .catch(() => setThreatData({}))
-        .finally(() => setThreatLoading(false));
+      if (window.electron && typeof window.electron.invoke === 'function') {
+        window.electron
+          .invoke('lumo:threat-intel', { domain })
+          .then((res) => setThreatData(res))
+          .catch(() => setThreatData({}))
+          .finally(() => setThreatLoading(false));
+      } else {
+        setTimeout(() => {
+          setThreatData({
+            riskLevel: 'Low',
+            reputationScore: 99,
+            detectedThreats: []
+          });
+          setThreatLoading(false);
+        }, 300);
+      }
     }
 
     if (activeTab === 'robots' && !robotsText && !robotsLoading) {
@@ -242,10 +308,17 @@ export function SecurityDashboard({
   // Pre-load headers/certificates for Overview ratings
   useEffect(() => {
     if (!headersData && !headersLoading) {
-      window.electron
-        .invoke('lumo:resolve-headers', { url })
-        .then((res) => setHeadersData(res))
-        .catch(() => {});
+      if (window.electron && typeof window.electron.invoke === 'function') {
+        window.electron
+          .invoke('lumo:resolve-headers', { url })
+          .then((res) => setHeadersData(res))
+          .catch(() => {});
+      } else {
+        setHeadersData({
+          'content-security-policy': "default-src 'self'",
+          'strict-transport-security': 'max-age=31536000'
+        });
+      }
     }
   }, [url]);
 
@@ -359,28 +432,36 @@ export function SecurityDashboard({
     } else if (mainCommand === 'dns' && args[1] === 'lookup') {
       setTerminalHistory((prev) => [...prev, 'Resolving DNS records...']);
       try {
-        const res = await window.electron.invoke('lumo:resolve-dns', { domain });
-        const dnsStr = Object.entries(res)
-          .map(([type, records]: any) => {
-            if (!records || !Array.isArray(records) || !records.length) return `${type}: None`;
-            return `${type}:\n  ${records.join('\n  ')}`;
-          })
-          .join('\n');
-        setTerminalHistory((prev) => [...prev, dnsStr || 'No DNS records found.', '']);
+        if (window.electron && typeof window.electron.invoke === 'function') {
+          const res = await window.electron.invoke('lumo:resolve-dns', { domain });
+          const dnsStr = Object.entries(res)
+            .map(([type, records]: any) => {
+              if (!records || !Array.isArray(records) || !records.length) return `${type}: None`;
+              return `${type}:\n  ${records.join('\n  ')}`;
+            })
+            .join('\n');
+          setTerminalHistory((prev) => [...prev, dnsStr || 'No DNS records found.', '']);
+        } else {
+          setTerminalHistory((prev) => [...prev, 'A:\n  192.168.1.1\n\nAAAA:\n  fe80::1\n', '']);
+        }
       } catch (err: any) {
         setTerminalHistory((prev) => [...prev, `DNS resolution failed: ${err.message}`, '']);
       }
     } else if (mainCommand === 'scan' && args[1] === 'headers') {
       setTerminalHistory((prev) => [...prev, 'Scanning headers...']);
       try {
-        const res = (await window.electron.invoke('lumo:resolve-headers', { url })) as any;
-        if (res.error) {
-          setTerminalHistory((prev) => [...prev, `Failed: ${res.error}`, '']);
+        if (window.electron && typeof window.electron.invoke === 'function') {
+          const res = (await window.electron.invoke('lumo:resolve-headers', { url })) as any;
+          if (res.error) {
+            setTerminalHistory((prev) => [...prev, `Failed: ${res.error}`, '']);
+          } else {
+            const lines = Object.entries(res)
+              .map(([k, v]) => `  ${k}: ${v}`)
+              .join('\n');
+            setTerminalHistory((prev) => [...prev, lines, '']);
+          }
         } else {
-          const lines = Object.entries(res)
-            .map(([k, v]) => `  ${k}: ${v}`)
-            .join('\n');
-          setTerminalHistory((prev) => [...prev, lines, '']);
+          setTerminalHistory((prev) => [...prev, '  content-security-policy: default-src \'self\'\n  strict-transport-security: max-age=31536000\n', '']);
         }
       } catch (err: any) {
         setTerminalHistory((prev) => [...prev, `Scan failed: ${err.message}`, '']);
@@ -388,11 +469,15 @@ export function SecurityDashboard({
     } else if (mainCommand === 'tech' && args[1] === 'detect') {
       setTerminalHistory((prev) => [...prev, 'Fingerprinting target technologies...']);
       try {
-        const res = (await window.electron.invoke('lumo:detect-tech', { url })) as any;
-        const lines = Object.entries(res)
-          .map(([cat, items]: any) => `  ${cat}: ${items.join(', ') || 'None'}`)
-          .join('\n');
-        setTerminalHistory((prev) => [...prev, lines, '']);
+        if (window.electron && typeof window.electron.invoke === 'function') {
+          const res = (await window.electron.invoke('lumo:detect-tech', { url })) as any;
+          const lines = Object.entries(res)
+            .map(([cat, items]: any) => `  ${cat}: ${items.join(', ') || 'None'}`)
+            .join('\n');
+          setTerminalHistory((prev) => [...prev, lines, '']);
+        } else {
+          setTerminalHistory((prev) => [...prev, '  Frontend: React\n  Server: Nginx\n', '']);
+        }
       } catch (err: any) {
         setTerminalHistory((prev) => [...prev, `Detection failed: ${err.message}`, '']);
       }
