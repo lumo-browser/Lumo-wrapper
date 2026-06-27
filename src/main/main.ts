@@ -8,6 +8,7 @@ import https from 'https';
 import path from 'path';
 import axios from 'axios';
 import { shouldBlock, AdBlockerStats, AdBlockerConfig, DEFAULT_CONFIG } from './adBlocker';
+import { monitorNetworkRequests, registerSecurityIPC } from './securityMonitor';
 
 // ── Ad Blocker State ──────────────────────────────────────────────────────────
 let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
@@ -68,6 +69,11 @@ function createWindow(): void {
 
   attachAdBlocker(session.defaultSession);              // renderer
   attachAdBlocker(session.fromPartition('persist:lumo-main')); // all <webview> tabs
+
+  // ── Security Monitor — Phase 1: passive network telemetry ──────────────────
+  const getMainWindow = () => mainWindow;
+  monitorNetworkRequests(session.defaultSession, getMainWindow, 'default');
+  monitorNetworkRequests(session.fromPartition('persist:lumo-main'), getMainWindow, 'persist:lumo-main');
 
   mainWindow.loadURL(url);
 
@@ -198,6 +204,9 @@ function createMenu(): void {
 
 app.on('ready', () => {
   console.log('[Lumo] App ready');
+
+  // ── Security Monitor IPC ────────────────────────────────────────────────────
+  registerSecurityIPC(() => mainWindow);
 
   // Handle ad blocker toggle + config from renderer
     ipcMain.on('lumo:set-ad-blocker', (event, enabled: boolean) => {

@@ -55,14 +55,14 @@ export function SecurityDashboard({
 
   // Extension Architecture State
   const [monitorStats, setMonitorStats] = useState({
-    domMutations: 14,
-    permissions: 3,
-    networkRequests: 184,
-    browserApis: 42,
-    userEvents: 128,
-    fileIO: 2,
-    extensions: 5,
-    wasmExec: 1,
+    domMutations: 0,
+    permissions: 0,
+    networkRequests: 0,
+    browserApis: 0,
+    userEvents: 0,
+    fileIO: 0,
+    extensions: 0,
+    wasmExec: 0,
   });
 
   const [monitorToggles, setMonitorToggles] = useState({
@@ -129,6 +129,54 @@ export function SecurityDashboard({
       simConsoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [archSimLogs]);
+
+  // ── Real-time Security Event Listener (Phase 1 Backend Integration) ────────
+  useEffect(() => {
+    if (!window.electron?.onSecurityEvent) return;
+
+    const unsubscribe = window.electron.onSecurityEvent((event) => {
+      // Increment the correct monitor counter based on event type
+      setMonitorStats((prev) => {
+        switch (event.type) {
+          case 'network_request':
+            return { ...prev, networkRequests: prev.networkRequests + 1 };
+          case 'dom_mutation':
+            return { ...prev, domMutations: prev.domMutations + 1 };
+          case 'browser_api':
+            return { ...prev, browserApis: prev.browserApis + 1 };
+          case 'wasm_exec':
+            return { ...prev, wasmExec: prev.wasmExec + 1 };
+          case 'file_io':
+            return { ...prev, fileIO: prev.fileIO + 1 };
+          case 'permission_request':
+            return { ...prev, permissions: prev.permissions + 1 };
+          case 'user_event':
+            return { ...prev, userEvents: prev.userEvents + 1 };
+          default:
+            return prev;
+        }
+      });
+
+      // Only append real-time logs when on the architecture tab to avoid memory buildup
+      if (activeTab === 'architecture') {
+        setArchSimLogs((prev) => {
+          const newLog = {
+            time: new Date(event.timestamp).toLocaleTimeString(),
+            level: (event.suspicious ? 'warn' : 'info') as 'info' | 'warn' | 'success' | 'danger',
+            stage: 'MONITOR',
+            message: event.details,
+          };
+          // Keep only the last 200 log entries to prevent memory bloat
+          const updated = [...prev, newLog];
+          return updated.length > 200 ? updated.slice(-200) : updated;
+        });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeTab]);
 
   const runArchSimulation = async (type: 'dom_mutation' | 'file_download' | 'clipboard_theft' | 'wasm_crypto') => {
     if (simulating) return;
