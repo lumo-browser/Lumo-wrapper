@@ -1,6 +1,6 @@
 /**
  * GeneralSettingsTab — Fully functional General settings panel.
- * All settings persist to localStorage under 'nova-general-settings'.
+ * All settings persist to localStorage under 'lumo-general-settings'.
  * Settings that require Electron IPC are sent via window.electron.send/invoke.
  */
 

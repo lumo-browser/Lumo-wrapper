@@ -49,7 +49,7 @@ function createWindow(): void {
   const url = isDev ? 'http://127.0.0.1:5173' : `file://${path.join(__dirname, '../index.html')}`;
 
   // ── Ad Blocker — attach to ALL sessions used by the app ──────────────────
-  // The <webview> tags use partition="persist:nova-main" which is a SEPARATE
+  // The <webview> tags use partition="persist:lumo-main" which is a SEPARATE
   // session from defaultSession. We must hook BOTH or webview traffic bypasses
   // the blocker entirely.
   const attachAdBlocker = (sess: Electron.Session) => {
@@ -67,7 +67,7 @@ function createWindow(): void {
   };
 
   attachAdBlocker(session.defaultSession);              // renderer
-  attachAdBlocker(session.fromPartition('persist:nova-main')); // all <webview> tabs
+  attachAdBlocker(session.fromPartition('persist:lumo-main')); // all <webview> tabs
 
   mainWindow.loadURL(url);
 
@@ -224,7 +224,7 @@ app.on('ready', () => {
       nativeTheme.themeSource = theme;
     });
 
-    // Default zoom — apply to the persist:nova-main session
+    // Default zoom — apply to the persist:lumo-main session
     ipcMain.on('lumo:set-default-zoom', (event, factor: number) => {
       console.log(`[Lumo] Default zoom set to ${factor}`);
       // Zoom is applied per-webContents by the renderer; stored for new tabs
@@ -239,7 +239,7 @@ app.on('ready', () => {
       if (session.defaultSession) {
         session.defaultSession.setSpellCheckerEnabled(enabled);
       }
-      session.fromPartition('persist:nova-main').setSpellCheckerEnabled(enabled);
+      session.fromPartition('persist:lumo-main').setSpellCheckerEnabled(enabled);
       console.log(`[Lumo] Spell check ${enabled ? 'enabled' : 'disabled'}`);
     });
 
@@ -312,9 +312,9 @@ app.on('ready', () => {
         item.setSavePath(require('path').join(expanded, safeName));
       };
       session.defaultSession.removeAllListeners('will-download');
-      session.fromPartition('persist:nova-main').removeAllListeners('will-download');
+      session.fromPartition('persist:lumo-main').removeAllListeners('will-download');
       session.defaultSession.on('will-download', handleDownload);
-      session.fromPartition('persist:nova-main').on('will-download', handleDownload);
+      session.fromPartition('persist:lumo-main').on('will-download', handleDownload);
       console.log(`[Lumo] Download path set to ${dlPath}, alwaysAsk=${alwaysAsk}`);
     });
 
@@ -381,9 +381,9 @@ app.on('ready', () => {
 
     // Attach download listener to both sessions
     session.defaultSession.on('will-download', handleDownloadItem);
-    session.fromPartition('persist:nova-main').on('will-download', handleDownloadItem);
+    session.fromPartition('persist:lumo-main').on('will-download', handleDownloadItem);
 
-    // Open file with default OS app or locally in Nova Browser if it is a web-renderable format
+    // Open file with default OS app or locally in Lumo Browser if it is a web-renderable format
     ipcMain.on('lumo:open-file', (_event, filePath: string) => {
       const ext = path.extname(filePath).toLowerCase();
       const webExtensions = ['.html', '.htm', '.txt', '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.mp3', '.mp4', '.webm', '.ogg', '.wav'];
@@ -415,7 +415,7 @@ app.on('ready', () => {
       }
       if (proxyRules) {
         session.defaultSession.setProxy({ proxyRules });
-        session.fromPartition('persist:nova-main').setProxy({ proxyRules });
+        session.fromPartition('persist:lumo-main').setProxy({ proxyRules });
         console.log(`[Lumo] Proxy set: ${proxyRules}`);
       }
     });
@@ -849,8 +849,8 @@ app.on('ready', () => {
               Authorization: `Bearer ${apiKey}`,
               'Content-Type': 'application/json',
               'Content-Length': Buffer.byteLength(body),
-              'HTTP-Referer': 'https://nova-browser.local',
-              'X-Title': 'Nova Browser',
+              'HTTP-Referer': 'https://lumo-browser.local',
+              'X-Title': 'Lumo Browser',
             },
           },
           (res) => {

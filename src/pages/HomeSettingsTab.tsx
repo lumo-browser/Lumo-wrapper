@@ -46,7 +46,7 @@ const DEFAULT_CONFIG: DashboardConfig = {
   showDate: true,
   showGreetingMsg: true,
   customBgImage: '',
-  homepageUrl: 'nova://newtab',
+  homepageUrl: 'lumo://newtab',
   openWhat: 'newtab',
 };
 

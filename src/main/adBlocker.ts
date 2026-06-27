@@ -213,7 +213,7 @@ export function shouldBlock(url: string, config: AdBlockerConfig): boolean {
   if (adblockEngine && config.blockAds) {
     try {
       // Check using the rust core (sourceUrl is empty as we intercept globally)
-      const result = adblockEngine.check(url, "https://nova-browser.local", "script");
+      const result = adblockEngine.check(url, "https://lumo-browser.local", "script");
       if (result && result.matched) {
         return true;
       }

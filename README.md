@@ -3,7 +3,7 @@
 > **An AI-native, production-ready browser built on Chromium and Electron**  
 > Full-featured browsing + autonomous AI agent + production-grade privacy engine
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/yourusername/nova-browser)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/yourusername/lumo-browser)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-≥18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Electron](https://img.shields.io/badge/Electron-27.3.11-lightblue.svg)](https://www.electronjs.org/)
@@ -38,7 +38,7 @@ Lumo Browser combines a full-featured Chromium browser with a modular AI autonom
 ### Vision
 
 **Traditional Browsing**: Manual navigation → Click → Fill forms → Search  
-**Nova Browsing**: Natural language goal → AI planner → Automated execution → Verified results
+**Lumo Browsing**: Natural language goal → AI planner → Automated execution → Verified results
 
 ### Example Use Cases
 
@@ -57,7 +57,7 @@ Lumo Browser combines a full-featured Chromium browser with a modular AI autonom
 ### Browser Core
 -  **Multi-tab browsing** with Ctrl+T / Ctrl+W / Ctrl+Tab management
 -  **Full Chromium rendering engine** via Electron `<webview>` tags
--  **Smart address bar** — auto-resolves URLs, searches, and `nova://` internal pages
+-  **Smart address bar** — auto-resolves URLs, searches, and `lumo://` internal pages
 -  **Navigation controls** — back, forward, refresh, stop, zoom in/out
 -  **Global keyboard shortcuts** — Ctrl+L, Ctrl+T, Ctrl+W, Ctrl+R, Ctrl+B, Ctrl+H, Ctrl+,, Alt+←/→
 -  **Dark / Light / System theme** with live switching
@@ -149,8 +149,8 @@ Lumo has a fully modular settings architecture organized into a sidebar layout:
 ### Clone & Install
 
 ```bash
-git clone https://github.com/yourusername/nova-browser.git
-cd nova-browser
+git clone https://github.com/yourusername/lumo-browser.git
+cd lumo-browser
 npm install
 cd backend && npm install && cd ..
 ```
@@ -177,7 +177,7 @@ npm run package
 ### Project Structure
 
 ```
-nova-browser/
+lumo-browser/
 ├── src/
 │   ├── main/                          # Electron main process
 │   │   ├── main.ts                    # App init, IPC, session management
@@ -491,4 +491,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 **Made with  by the Lumo Team**
 
-[ Back to top](#nova-browser)
+[ Back to top](#lumo-browser)

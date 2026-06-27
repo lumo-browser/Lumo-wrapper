@@ -99,8 +99,8 @@ export function SecurityDashboard({
 
   const [threatHuntState, setThreatHuntState] = useState({
     deviceType: 'managed',
-    deviceName: 'DESKTOP-NOVA-SECURE',
-    tenantDomain: 'nova-enterprise.internal',
+    deviceName: 'DESKTOP-LUMO-SECURE',
+    tenantDomain: 'lumo-enterprise.internal',
     logSync: true,
     alertCount: 0,
   });
@@ -1496,7 +1496,7 @@ export function SecurityDashboard({
                             onClick={() => setThreatHuntState(prev => ({
                               ...prev,
                               deviceType: prev.deviceType === 'managed' ? 'unmanaged' : 'managed',
-                              deviceName: prev.deviceType === 'managed' ? 'BYOD-NOVA-ENDPOINT' : 'DESKTOP-NOVA-SECURE'
+                              deviceName: prev.deviceType === 'managed' ? 'BYOD-LUMO-ENDPOINT' : 'DESKTOP-LUMO-SECURE'
                             }))}
                             className="px-2 py-0.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-[9px] rounded transition-colors font-semibold"
                           >
@@ -1520,7 +1520,7 @@ export function SecurityDashboard({
                           <circle cx="20%" cy="50%" r="8" fill="#1e1e1e" stroke="#22c55e" strokeWidth="2" />
                           <text x="20%" y="70%" fill="#888" fontSize="8" textAnchor="middle">Endpoint A</text>
 
-                          {/* Node B (Target Device / Local Nova Browser) */}
+                          {/* Node B (Target Device / Local Lumo Browser) */}
                           <circle
                             cx="50%"
                             cy="25%"

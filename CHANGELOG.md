@@ -66,7 +66,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Initial release of Lumo Browser (formerly Lumo Browser)
 - Multi-tab Chromium browser core using Electron `<webview>` tags
-- Smart address bar with URL/search/`nova://` handling
+- Smart address bar with URL/search/`lumo://` handling
 - Navigation controls: back, forward, reload, stop
 - Dark / Light / System theme with `nativeTheme` integration
 - Bookmark manager with persistent localStorage storage
@@ -83,5 +83,5 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-[0.2.0]: https://github.com/yourusername/nova-browser/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/yourusername/nova-browser/releases/tag/v0.1.0
+[0.2.0]: https://github.com/yourusername/lumo-browser/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/yourusername/lumo-browser/releases/tag/v0.1.0

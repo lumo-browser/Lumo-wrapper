@@ -265,7 +265,7 @@ export function PrivateNewTabPage({
               <div className="bg-[#121218]/65 backdrop-blur-md border border-white/5 rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-3 text-green-400">
                   <Shield className="w-4 h-4" />
-                  <h3 className="text-sm font-bold tracking-wide">WHAT NOVA SHIELDS</h3>
+                  <h3 className="text-sm font-bold tracking-wide">WHAT LUMO SHIELDS</h3>
                 </div>
                 <ul className="text-xs text-gray-400 space-y-2.5">
                   <li className="flex items-start gap-2">
@@ -448,7 +448,7 @@ export function PrivateNewTabPage({
 
       {/* Footer stamp */}
       <div className="absolute bottom-4 text-[10px] font-semibold tracking-[0.4em] uppercase text-white/10 select-none">
-        Nova Private Workspace v0.2.0
+        Lumo Private Workspace v0.2.0
       </div>
     </div>
   );

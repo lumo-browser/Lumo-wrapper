@@ -1,5 +1,5 @@
 /**
- * OnboardingOverlay.tsx — Nova Browser First-Launch Welcome Page
+ * OnboardingOverlay.tsx — Lumo Browser First-Launch Welcome Page
  * Renders at lumo://welcome · No emojis · Professional animations
  */
 import React, { useState, useEffect } from 'react';
@@ -93,7 +93,7 @@ function StepDefault({ onNext }: { onNext: () => void }) {
 
       <div className="space-y-3 anim-fade-up-1">
         <h1 className="text-4xl font-black tracking-tight text-white">
-          Welcome to <span className="shimmer-text">Nova Browser</span>
+          Welcome to <span className="shimmer-text">Lumo Browser</span>
         </h1>
         <p className="text-gray-400 text-base leading-relaxed">
           The AI-native browser engineered for speed, privacy, and intelligence.<br />
@@ -117,9 +117,9 @@ function StepDefault({ onNext }: { onNext: () => void }) {
 
       <div className="flex flex-col items-center gap-2.5 w-full max-w-xs anim-fade-up-3">
         {done
-          ? <p className="flex items-center gap-2 text-emerald-400 font-medium text-sm"><CheckCircle2 size={18} /> Nova is now your default browser</p>
+          ? <p className="flex items-center gap-2 text-emerald-400 font-medium text-sm"><CheckCircle2 size={18} /> Lumo is now your default browser</p>
           : <>
-              <button onClick={handle} className={PRIMARY_BTN}><Globe size={17} /> Set Nova as Default Browser</button>
+              <button onClick={handle} className={PRIMARY_BTN}><Globe size={17} /> Set Lumo as Default Browser</button>
               <button onClick={onNext} className={SKIP_BTN}>Skip for now</button>
             </>
         }
@@ -268,7 +268,7 @@ function StepPersonalize({ prefs, setPrefs, onFinish }: {
       </div>
 
       <button onClick={onFinish} className={`${PRIMARY_BTN} max-w-xs anim-fade-up-2`}>
-        <Zap size={17} /> Launch Nova Browser <ArrowRight size={15} />
+        <Zap size={17} /> Launch Lumo Browser <ArrowRight size={15} />
       </button>
     </div>
   );
@@ -297,7 +297,7 @@ export function WelcomePage({ onComplete }: Props) {
   const next = () => step < 2 && goTo(step + 1, 'fwd');
   const back = () => step > 0 && goTo(step - 1, 'bk');
   const finish = () => {
-    localStorage.setItem('nova-onboarding', JSON.stringify({ complete: true, v: '1' }));
+    localStorage.setItem('lumo-onboarding', JSON.stringify({ complete: true, v: '1' }));
     onComplete(prefs);
   };
 
@@ -397,7 +397,7 @@ export function WelcomePage({ onComplete }: Props) {
 
       {/* Version */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-800 font-mono pointer-events-none tracking-widest uppercase">
-        Nova Browser · v0.2.0
+        Lumo Browser · v0.2.0
       </div>
     </div>
   );

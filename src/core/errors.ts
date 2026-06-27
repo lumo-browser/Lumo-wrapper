@@ -1,20 +1,20 @@
 /**
- * Core error definitions for Nova Browser
+ * Core error definitions for Lumo Browser
  */
 
-export class NovaBrowserError extends Error {
+export class LumoBrowserError extends Error {
   constructor(
     public code: string,
     public message: string,
     public details?: Record<string, unknown>
   ) {
     super(message);
-    this.name = 'NovaBrowserError';
-    Object.setPrototypeOf(this, NovaBrowserError.prototype);
+    this.name = 'LumoBrowserError';
+    Object.setPrototypeOf(this, LumoBrowserError.prototype);
   }
 }
 
-export class ValidationError extends NovaBrowserError {
+export class ValidationError extends LumoBrowserError {
   constructor(message: string, details?: Record<string, unknown>) {
     super('VALIDATION_ERROR', message, details);
     this.name = 'ValidationError';
@@ -22,7 +22,7 @@ export class ValidationError extends NovaBrowserError {
   }
 }
 
-export class AuthenticationError extends NovaBrowserError {
+export class AuthenticationError extends LumoBrowserError {
   constructor(message: string = 'Authentication failed') {
     super('AUTHENTICATION_ERROR', message);
     this.name = 'AuthenticationError';
@@ -30,7 +30,7 @@ export class AuthenticationError extends NovaBrowserError {
   }
 }
 
-export class PermissionDeniedError extends NovaBrowserError {
+export class PermissionDeniedError extends LumoBrowserError {
   constructor(message: string = 'Permission denied') {
     super('PERMISSION_DENIED', message);
     this.name = 'PermissionDeniedError';
@@ -38,7 +38,7 @@ export class PermissionDeniedError extends NovaBrowserError {
   }
 }
 
-export class AutomationError extends NovaBrowserError {
+export class AutomationError extends LumoBrowserError {
   constructor(message: string, details?: Record<string, unknown>) {
     super('AUTOMATION_ERROR', message, details);
     this.name = 'AutomationError';
@@ -46,7 +46,7 @@ export class AutomationError extends NovaBrowserError {
   }
 }
 
-export class PageNotFoundError extends NovaBrowserError {
+export class PageNotFoundError extends LumoBrowserError {
   constructor(message: string = 'Page not found') {
     super('PAGE_NOT_FOUND', message);
     this.name = 'PageNotFoundError';
@@ -54,7 +54,7 @@ export class PageNotFoundError extends NovaBrowserError {
   }
 }
 
-export class DatabaseError extends NovaBrowserError {
+export class DatabaseError extends LumoBrowserError {
   constructor(message: string, details?: Record<string, unknown>) {
     super('DATABASE_ERROR', message, details);
     this.name = 'DatabaseError';
@@ -62,7 +62,7 @@ export class DatabaseError extends NovaBrowserError {
   }
 }
 
-export class APIError extends NovaBrowserError {
+export class APIError extends LumoBrowserError {
   constructor(
     public statusCode: number,
     message: string,
@@ -74,7 +74,7 @@ export class APIError extends NovaBrowserError {
   }
 }
 
-export class TimeoutError extends NovaBrowserError {
+export class TimeoutError extends LumoBrowserError {
   constructor(message: string = 'Operation timed out') {
     super('TIMEOUT_ERROR', message);
     this.name = 'TimeoutError';

@@ -3,7 +3,7 @@
  */
 
 // Application Info
-export const APP_NAME = 'Nova Browser';
+export const APP_NAME = 'Lumo Browser';
 export const APP_VERSION = '0.1.0';
 export const APP_DESCRIPTION = 'AI-powered browser built on Chromium';
 
@@ -89,7 +89,7 @@ Keep organized records of what the user has done and what they want to do.`,
 };
 
 // Database
-export const DATABASE_NAME = 'nova_browser.db';
+export const DATABASE_NAME = 'lumo_browser.db';
 export const DATABASE_VERSION = 1;
 
 // UI Constants
@@ -128,9 +128,9 @@ export const LOG_LEVEL = getEnvVar('VITE_DEBUG') ? LogLevel.DEBUG : LogLevel.INF
 // File Paths (for Electron context)
 export const CONFIG_PATHS = {
   HOME: typeof process !== 'undefined' ? (process.env.HOME || '') : '',
-  CONFIG_DIR: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.nova` : '',
-  DB_PATH: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.nova/nova_browser.db` : '',
-  CACHE_DIR: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.nova/cache` : '',
+  CONFIG_DIR: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.lumo` : '',
+  DB_PATH: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.lumo/lumo_browser.db` : '',
+  CACHE_DIR: typeof process !== 'undefined' && process.env.HOME ? `${process.env.HOME}/.lumo/cache` : '',
 };
 
 // Automation

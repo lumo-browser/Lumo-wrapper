@@ -1,5 +1,5 @@
 /**
- * Nova Browser — Root Application Shell
+ * Lumo Browser — Root Application Shell
  *
  * Structure (top → bottom):
  *   [Tab Bar] — Chrome-style tabs
@@ -307,7 +307,7 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
       src={initialUrl.current || 'about:blank'}
       className="w-full h-full border-none bg-white"
       useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-      partition={window.location.search.includes('disposable=true') ? window._lumoDisposablePartition : "persist:nova-main"}
+      partition={window.location.search.includes('disposable=true') ? window._lumoDisposablePartition : "persist:lumo-main"}
     />
   );
 }
@@ -325,12 +325,12 @@ const mkTab = (overrides: Partial<BrowserTab> = {}): BrowserTab => ({
 });
 
 const _isFirstLaunch = (() => {
-  try { return !JSON.parse(localStorage.getItem('nova-onboarding') || '{}').complete; }
+  try { return !JSON.parse(localStorage.getItem('lumo-onboarding') || '{}').complete; }
   catch { return true; }
 })();
 
 const INITIAL_TABS: BrowserTab[] = [
-  mkTab({ id: 'tab-1', title: _isFirstLaunch ? 'Welcome to Nova' : 'New Tab', url: _isFirstLaunch ? 'lumo://welcome' : '', isActive: true }),
+  mkTab({ id: 'tab-1', title: _isFirstLaunch ? 'Welcome to Lumo' : 'New Tab', url: _isFirstLaunch ? 'lumo://welcome' : '', isActive: true }),
 ];
 
 // ── Navigation history per tab ─────────────────────────────────────────────
@@ -559,7 +559,7 @@ export default function App(): React.ReactElement {
     error: string | null;
   }>({ isOpen: false, isLoading: false, groups: [], error: null });
 
-  // Tab layout — read from nova-general-settings, update live via custom event
+  // Tab layout — read from lumo-general-settings, update live via custom event
   const [tabLayout, setTabLayout] = useState<'horizontal' | 'vertical'>(() => {
     try {
       const s = JSON.parse(localStorage.getItem('lumo-general-settings') || '{}');
@@ -620,7 +620,7 @@ export default function App(): React.ReactElement {
 
   // ── Boot ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    logger.info(SCOPE, 'Nova Browser started');
+    logger.info(SCOPE, 'Lumo Browser started');
 
     // Restore theme from settings
     const dark = settings.theme === 'dark' || (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -1147,7 +1147,7 @@ Example response format:
       } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n') {
         // Incognito (Coming soon alert)
         e.preventDefault();
-        alert('Incognito mode is coming in the next Nova update!');
+        alert('Incognito mode is coming in the next Lumo update!');
       } else if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
         // This is now handled below with lumo://settings
         e.preventDefault();
