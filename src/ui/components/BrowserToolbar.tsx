@@ -582,16 +582,6 @@ export function BrowserToolbar({
           </NavBtn>
         </div>
 
-        {/* Theme toggle */}
-        <div className="hidden md:block">
-          <NavBtn
-            onClick={onToggleTheme}
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            id="btn-theme"
-          >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </NavBtn>
-        </div>
 
         {/* Data Sync */}
         <div className="hidden lg:block">

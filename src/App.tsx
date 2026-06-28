@@ -268,6 +268,15 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
         })();
       `;
       wv.executeJavaScript(ytAdScript).catch(() => {});
+
+      // Force 100% zoom
+      if (typeof wv.setZoomLevel === 'function') {
+        try {
+          wv.setZoomLevel(0);
+        } catch (e) {
+          console.warn('Could not set zoom level', e);
+        }
+      }
     };
 
     const onContextMenu = (e: any) => {

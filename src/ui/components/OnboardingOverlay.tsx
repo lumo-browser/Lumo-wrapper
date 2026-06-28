@@ -128,62 +128,6 @@ function StepDefault({ onNext }: { onNext: () => void }) {
   );
 }
 
-// ── Step 2 ────────────────────────────────────────────────────────────────────
-function StepImport({ onNext }: { onNext: () => void }) {
-  const [sel, setSel] = useState<string | null>(null);
-  const [st, setSt] = useState<'idle' | 'loading' | 'done'>('idle');
-
-  const handle = () => {
-    if (!sel) return;
-    setSt('loading');
-    (window as any).electron?.invoke?.('lumo:import-browser-data', sel).catch(() => {});
-    setTimeout(() => { setSt('done'); setTimeout(onNext, 800); }, 1800);
-  };
-
-  return (
-    <div className="flex flex-col items-center text-center gap-6 max-w-lg w-full">
-      <div className="space-y-2 anim-fade-up">
-        <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-1">
-          <Download size={26} className="text-blue-400" />
-        </div>
-        <h2 className="text-3xl font-black text-white tracking-tight">Bring Your World With You</h2>
-        <p className="text-gray-400 text-sm leading-relaxed">
-          Import bookmarks, history, and passwords from your previous browser instantly.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3 w-full anim-fade-up-1">
-        {BROWSERS.map(b => (
-          <button key={b.id} onClick={() => setSel(b.id)}
-            className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 hover:scale-[1.04] ${
-              sel === b.id ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/15'
-                           : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
-            {sel === b.id && (
-              <div className="absolute top-2 right-2 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
-                <CheckCircle2 size={11} className="text-white" />
-              </div>
-            )}
-            <BrowserIcon id={b.id} size={30} />
-            <span className="text-xs font-semibold text-gray-300">{b.name}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col items-center gap-2.5 w-full max-w-xs anim-fade-up-2">
-        {st === 'done'
-          ? <p className="flex items-center gap-2 text-emerald-400 font-medium text-sm"><CheckCircle2 size={18} /> Import complete</p>
-          : <>
-              <button onClick={handle} disabled={!sel || st === 'loading'} className={PRIMARY_BTN}>
-                {st === 'loading'
-                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Importing...</>
-                  : <><Download size={17} /> Import Data</>}
-              </button>
-              <button onClick={onNext} className={SKIP_BTN}>Skip this step</button>
-            </>}
-      </div>
-    </div>
-  );
-}
 
 // ── Step 3 ────────────────────────────────────────────────────────────────────
 function StepPersonalize({ prefs, setPrefs, onFinish }: {
@@ -277,7 +221,6 @@ function StepPersonalize({ prefs, setPrefs, onFinish }: {
 // ── Step meta ─────────────────────────────────────────────────────────────────
 const STEPS = [
   { label: 'Default Browser', icon: Globe     },
-  { label: 'Import Data',     icon: Download  },
   { label: 'Personalize',     icon: Sparkles  },
 ];
 
@@ -294,7 +237,7 @@ export function WelcomePage({ onComplete }: Props) {
     setTimeout(() => { setStep(n); setAnimating(false); }, 260);
   };
 
-  const next = () => step < 2 && goTo(step + 1, 'fwd');
+  const next = () => step < 1 && goTo(step + 1, 'fwd');
   const back = () => step > 0 && goTo(step - 1, 'bk');
   const finish = () => {
     localStorage.setItem('lumo-onboarding', JSON.stringify({ complete: true, v: '1' }));
@@ -360,15 +303,14 @@ export function WelcomePage({ onComplete }: Props) {
       {/* Progress bar */}
       <div className="relative z-10 h-px bg-white/[0.04]">
         <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500 ease-out"
-          style={{ width: `${((step + 1) / 3) * 100}%` }} />
+          style={{ width: `${((step + 1) / 2) * 100}%` }} />
       </div>
 
       {/* Main content */}
       <div className="relative z-10 flex-1 flex items-center justify-center px-8 py-6 overflow-hidden">
         <div style={slide} className="w-full flex items-center justify-center">
           {step === 0 && <StepDefault onNext={next} />}
-          {step === 1 && <StepImport  onNext={next} />}
-          {step === 2 && <StepPersonalize prefs={prefs} setPrefs={setPrefs} onFinish={finish} />}
+          {step === 1 && <StepPersonalize prefs={prefs} setPrefs={setPrefs} onFinish={finish} />}
         </div>
       </div>
 
@@ -388,7 +330,7 @@ export function WelcomePage({ onComplete }: Props) {
           ))}
         </div>
 
-        {step < 2
+        {step < 1
           ? <button onClick={next} className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-200 font-medium transition-colors">
               Next <ChevronRight size={14} />
             </button>
