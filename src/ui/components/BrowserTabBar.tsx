@@ -116,7 +116,7 @@ export function BrowserTabBar({
 
   // ── Horizontal layout (default) ────────────────────────────────────────────
   return (
-    <div className="flex items-end h-10 bg-[#dee1e6] dark:bg-[#1e1e1e] px-2 overflow-x-auto scrollbar-none select-none flex-shrink-0">
+    <div className="flex items-end h-[50px] bg-[#dee1e6] dark:bg-[#1e1e1e] px-2 overflow-x-auto scrollbar-none select-none flex-shrink-0">
       <div className="flex items-end h-full gap-px">
         {tabs.map((tab, index) => {
           const isFirst = index === 0;
@@ -129,7 +129,7 @@ export function BrowserTabBar({
               role="tab"
               aria-selected={tab.isActive}
               className={`
-                group relative flex items-center gap-2 h-[34px] flex-1 min-w-[48px] max-w-[240px]
+                group relative flex items-center gap-2 h-[44px] flex-1 min-w-[48px] max-w-[240px]
                 px-2 sm:px-3 cursor-pointer select-none flex-shrink
                 rounded-t-[10px] transition-colors duration-100
                 ${tab.isActive

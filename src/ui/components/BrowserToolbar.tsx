@@ -341,7 +341,7 @@ export function BrowserToolbar({
   const isNtpPage = !url || url === 'lumo://newtab';
 
   return (
-    <div className="flex items-center gap-1.5 px-3 py-1.5 h-11
+    <div className="flex items-center gap-1.5 px-3 py-1.5 h-[54px]
       bg-white dark:bg-[#2d2d2d]
       border-b border-gray-200 dark:border-[#3a3a3a]
       flex-shrink-0">
@@ -392,7 +392,7 @@ export function BrowserToolbar({
       <form onSubmit={handleSubmit} className="relative flex-1 min-w-0 mx-1">
         <div
           className={`
-            flex items-center gap-2 h-8 px-3 rounded-full transition-all duration-150
+            flex items-center gap-2 h-[42px] px-3 rounded-full transition-all duration-150
             ${isFocused
               ? 'bg-white dark:bg-[#1e1e1e] ring-2 ring-blue-500 shadow-sm'
               : 'bg-gray-100 dark:bg-[#3a3a3a] hover:bg-gray-200 dark:hover:bg-[#404040]'
