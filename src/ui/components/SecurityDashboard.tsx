@@ -222,8 +222,25 @@ export function SecurityDashboard({
       }
     });
 
+    const unsubscribeReset = window.electron.on('lumo:security-reset-metrics', () => {
+      setMonitorStats({
+        domMutations: 0,
+        permissions: 0,
+        networkRequests: 0,
+        browserApis: 0,
+        userEvents: 0,
+        fileIO: 0,
+        extensions: 0,
+        wasmExec: 0,
+      });
+      setDetectThreatCount(0);
+      setMitigatedThreatCount(0);
+      setArchSimLogs([]);
+    });
+
     return () => {
       unsubscribe();
+      if (unsubscribeReset) unsubscribeReset();
     };
   }, [activeTab]);
 

@@ -38,6 +38,7 @@ import { BookmarksPage } from './pages/BookmarksPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ExtensionsPage } from './pages/ExtensionsPage';
 import { DownloadsPage } from './pages/DownloadsPage';
+import { SecurityDashboard } from './ui/components/SecurityDashboard';
 
 // ── Internal Pages ─────────────────────────────────────────────────────────
 const getCleanTitle = (url: string): string => {
@@ -51,16 +52,6 @@ const getCleanTitle = (url: string): string => {
   return url.replace(/^https?:\/\//, '').split('/')[0];
 };
 
-function InternalPage({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
-      <h1 className="text-2xl font-semibold mb-4">{title}</h1>
-      <div className="max-w-md text-center text-gray-500 dark:text-gray-400">
-        {children}
-      </div>
-    </div>
-  );
-}
 
 const SCOPE = 'App';
 
@@ -352,7 +343,7 @@ export default function App(): React.ReactElement {
   const [isDark, setIsDark] = useState(true);
 
   const handleOnboardingComplete = (prefs: OnboardingPrefs) => {
-    setSettings(s => ({ ...s, searchEngine: prefs.searchEngine, blockAds: prefs.adBlockEnabled }));
+    setSettings(s => ({ ...s, searchEngine: prefs.searchEngine as any, blockAds: prefs.adBlockEnabled }));
     window.electron?.send?.('lumo:set-ad-blocker', prefs.adBlockEnabled);
     // Navigate the welcome tab to new tab page
     navigate('');
@@ -382,7 +373,7 @@ export default function App(): React.ReactElement {
   }, []);
   // Tabs
   const [tabs, setTabs] = useState<BrowserTab[]>(INITIAL_TABS);
-  const [recentlyClosedTabs, setRecentlyClosedTabs] = useState<BrowserTab[]>([]);
+  const [, setRecentlyClosedTabs] = useState<BrowserTab[]>([]);
   const activeTab = tabs.find((t) => t.isActive) ?? tabs[0];
 
   // Per-tab nav history
@@ -407,7 +398,7 @@ export default function App(): React.ReactElement {
   });
 
   // Download items — shared state so toolbar badge can show count
-  const [downloadItems, setDownloadItems] = useState<any[]>(() => {
+  const [, setDownloadItems] = useState<any[]>(() => {
     try {
       const parsed = JSON.parse(localStorage.getItem('lumo-downloads') || '[]');
       return Array.isArray(parsed) ? parsed : [];
@@ -1100,8 +1091,6 @@ Example response format:
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-
       if (e.ctrlKey && e.key.toLowerCase() === 't') {
         if (e.shiftKey) {
           // Reopen closed tab (Ctrl+Shift+T)
@@ -1229,7 +1218,6 @@ Example response format:
   const canGoBack    = activeTab?.canGoBack ?? (currentHistory.cursor > 0);
   const canGoForward = activeTab?.canGoForward ?? (currentHistory.cursor < currentHistory.stack.length - 1);
   const isSecure     = currentUrl.startsWith('https://');
-  const isNtpPage    = !currentUrl;
 
 
   // Search engine URL from settings
@@ -1374,7 +1362,8 @@ Example response format:
             const isDownloads  = tabUrlLower === 'lumo://downloads';
             const isCompare    = tabUrlLower.startsWith('lumo://compare');
             const isWelcome    = tabUrlLower === 'lumo://welcome';
-            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isDownloads || isCompare || isWelcome;
+            const isSecurity   = tabUrlLower === 'lumo://security';
+            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isDownloads || isCompare || isWelcome || isSecurity;
 
             return (
               <div
@@ -1422,6 +1411,14 @@ Example response format:
                   )}
                   {isExtensions && (
                     <ExtensionsPage onNavigate={navigate} />
+                  )}
+                  {isSecurity && (
+                    <SecurityDashboard 
+                      url="lumo://security" 
+                      isSecure={true} 
+                      isIncognito={false} 
+                      onClose={() => navigate('lumo://newtab')} 
+                    />
                   )}
                   {isCompare && (
                     <ComparePage query={new URL(tab.url).searchParams.get('q') || ''} />

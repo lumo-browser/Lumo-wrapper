@@ -23,16 +23,17 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix && cd backend && npm run lint -- --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\" && cd backend && npm run format",
     "type-check": "tsc --noEmit && cd backend && npm run build",
-    "clean": "rm -rf dist build out node_modules && cd backend && rm -rf dist node_modules"
+    "clean": "rm -rf dist build out node_modules && cd backend && rm -rf dist node_modules",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "adblock-rs": "git+https://github.com/Rsaimukesh/adblock-rust.git",
     "axios": "^1.6.1",
     "clsx": "^2.0.0",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zustand": "^4.4.1",
-    "adblock-rs": "git+https://github.com/Rsaimukesh/adblock-rust.git"
+    "zustand": "^4.4.1"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.2.10",
