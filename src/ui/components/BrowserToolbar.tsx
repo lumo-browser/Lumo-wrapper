@@ -527,7 +527,7 @@ export function BrowserToolbar({
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('lumo:translate-page'))}
-          className="ml-1 w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] transition-all"
+          className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-100 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#3a3a3a] active:bg-gray-200 dark:active:bg-[#444]"
           title="Translate this page"
         >
           <Languages className="w-4 h-4" />
