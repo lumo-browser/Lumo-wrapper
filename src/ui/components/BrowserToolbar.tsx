@@ -445,21 +445,6 @@ export function BrowserToolbar({
           />
 
 
-          {/* Translate page — only when not focused and not NTP and allowed */}
-          {!isFocused && !isNtpPage && offerTranslate && (
-            <button
-              type="button"
-              onClick={(e) => { 
-                e.preventDefault(); 
-                window.dispatchEvent(new CustomEvent('lumo:translate-page')); 
-              }}
-              className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors mr-1"
-              title="Translate this page"
-            >
-              <Languages className="w-4 h-4" />
-            </button>
-          )}
-
           {/* Bookmark star — only when not focused and not NTP */}
           {!isFocused && !isNtpPage && (
             <button
@@ -536,6 +521,18 @@ export function BrowserToolbar({
           </div>
         )}
       </form>
+
+      {/* Translate page button — outside address bar, between address bar and right controls */}
+      {!isFocused && !isNtpPage && offerTranslate && (
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('lumo:translate-page'))}
+          className="ml-1 w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] transition-all"
+          title="Translate this page"
+        >
+          <Languages className="w-4 h-4" />
+        </button>
+      )}
 
       {/* ── Right Controls ── */}
       <div className="flex items-center gap-0.5">

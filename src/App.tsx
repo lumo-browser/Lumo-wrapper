@@ -1229,6 +1229,34 @@ Example response format:
       } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g') {
         e.preventDefault();
         groupTabsWithAI();
+      } else if (e.altKey && e.key.toLowerCase() === 'home') {
+        e.preventDefault();
+        navigate('lumo://newtab');
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        toggleBookmark();
+      } else if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        const wv = activeTab ? document.getElementById(`webview-${activeTab.id}`) as any : null;
+        if (wv?.getURL && wv?.downloadURL) {
+          wv.downloadURL(wv.getURL());
+        }
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        if (activeTab?.url && !activeTab.url.startsWith('lumo://')) {
+          addTab('view-source:' + activeTab.url);
+        }
+      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        window.electron?.send?.('lumo:toggle-devtools');
+      } else if (e.key === 'F11') {
+        e.preventDefault();
+        const el = document.documentElement;
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          el.requestFullscreen();
+        }
       }
     };
 
@@ -1247,7 +1275,7 @@ Example response format:
       window.removeEventListener('lumo:go-back',   onGoBack);
       window.removeEventListener('lumo:open-page', onOpenPage);
     };
-  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint, groupTabsWithAI]);
+  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint, groupTabsWithAI, toggleBookmark]);
 
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
