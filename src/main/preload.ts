@@ -26,13 +26,23 @@ function reportSecurityEvent(
   });
 }
 
-// ── Phase 1 Hook: Browser API Proxy (Clipboard) ──────────────────────────────
+// ── Phase 3 Hook: Browser API Proxy (Clipboard Mitigation) ───────────────────
 
 function hookBrowserAPIs(): void {
   // Only hook if navigator.clipboard exists (secure contexts)
   if (typeof navigator !== 'undefined' && navigator.clipboard) {
     const originalReadText = navigator.clipboard.readText.bind(navigator.clipboard);
     const originalWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
+
+    // Crypto wallet address patterns for clipboard hijack detection
+    const CRYPTO_WALLET_PATTERNS = [
+      /^0x[0-9a-fA-F]{40}$/,                      // Ethereum
+      /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/,        // Bitcoin legacy
+      /^bc1[a-zA-HJ-NP-Z0-9]{39,59}$/,            // Bitcoin bech32
+      /^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/,       // Litecoin
+      /^4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}$/,       // Monero
+      /^T[A-Za-z1-9]{33}$/,                       // Tron
+    ];
 
     navigator.clipboard.readText = async function (): Promise<string> {
       reportSecurityEvent(
@@ -46,6 +56,33 @@ function hookBrowserAPIs(): void {
 
     navigator.clipboard.writeText = async function (data: string): Promise<void> {
       const preview = data.length > 60 ? data.substring(0, 60) + '...' : data;
+      
+      // Phase 3 Mitigation: Check if data is a crypto wallet address
+      const isWalletAddress = CRYPTO_WALLET_PATTERNS.some(pattern => pattern.test(data.trim()));
+      
+      if (isWalletAddress) {
+        console.warn('[Lumo Security] Blocked clipboard overwrite with crypto wallet address.');
+        
+        ipcRenderer.send('lumo:security-event-from-preload', {
+          type: 'browser_api',
+          details: `Clipboard writeText() blocked — script tried to replace clipboard with crypto wallet address: "${preview}"`,
+          timestamp: new Date().toISOString(),
+          source: window.location?.href || 'preload',
+          suspicious: true,
+          mitigated: true,
+          detection: {
+            safe: false,
+            threat: 'Clipboard hijack detected — crypto wallet address replacement',
+            confidence: 95,
+            category: 'data_theft',
+            action: 'block'
+          }
+        });
+        
+        // Silently drop the write to prevent the hijack
+        return Promise.resolve();
+      }
+
       reportSecurityEvent(
         'browser_api',
         `Clipboard writeText() called — content: "${preview}"`,
@@ -57,7 +94,7 @@ function hookBrowserAPIs(): void {
   }
 }
 
-// ── Phase 1 Hook: WebAssembly Execution Monitor ──────────────────────────────
+// ── Phase 3 Hook: WebAssembly Execution Mitigation ─────────────────────────────
 
 function monitorWasmExecution(): void {
   if (typeof WebAssembly !== 'undefined') {
@@ -68,12 +105,38 @@ function monitorWasmExecution(): void {
       bufferSource: BufferSource | WebAssembly.Module,
       importObject?: WebAssembly.Imports
     ): Promise<WebAssembly.WebAssemblyInstantiatedSource | WebAssembly.Instance> {
-      const size = bufferSource instanceof ArrayBuffer
-        ? `${(bufferSource.byteLength / 1024).toFixed(1)}KB`
+      const byteLength = bufferSource instanceof ArrayBuffer ? bufferSource.byteLength : 0;
+      const sizeKB = byteLength / 1024;
+      const sizeStr = bufferSource instanceof ArrayBuffer
+        ? `${sizeKB.toFixed(1)}KB`
         : 'Module';
+
+      // Phase 3 Mitigation: Block WASM > 1MB
+      if (sizeKB > 1024) {
+        console.warn(`[Lumo Security] Blocked large WebAssembly instantiation (${sizeStr}).`);
+        
+        ipcRenderer.send('lumo:security-event-from-preload', {
+          type: 'wasm_exec',
+          details: `WebAssembly instantiation blocked — oversized binary (${sizeStr}) likely crypto miner.`,
+          timestamp: new Date().toISOString(),
+          source: window.location?.href || 'preload',
+          suspicious: true,
+          mitigated: true,
+          detection: {
+            safe: false,
+            threat: `Oversized WebAssembly binary (${(sizeKB / 1024).toFixed(1)}MB) — likely crypto miner`,
+            confidence: 85,
+            category: 'cryptominer',
+            action: 'block'
+          }
+        });
+
+        return Promise.reject(new Error('Lumo Security: WebAssembly execution blocked by active mitigation protocol.'));
+      }
+
       reportSecurityEvent(
         'wasm_exec',
-        `WebAssembly.instantiate() called — binary size: ${size}`,
+        `WebAssembly.instantiate() called — binary size: ${sizeStr}`,
         window.location?.href,
         true // wasm instantiation is always worth flagging
       );

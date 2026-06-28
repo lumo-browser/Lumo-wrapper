@@ -23,6 +23,8 @@ export interface SecurityEvent {
   suspicious?: boolean;
   /** Phase 2: Detection result attached by the analysis engine */
   detection?: DetectionResult;
+  /** Phase 3: Whether the threat was actively blocked/mitigated */
+  mitigated?: boolean;
 }
 
 // ── Phase 2: Detection Types ──────────────────────────────────────────────────

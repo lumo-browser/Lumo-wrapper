@@ -140,41 +140,71 @@ function classifyResourceType(url: string): string {
 /**
  * Attach network request monitoring to an Electron session.
  * Logs all outbound requests and emits SecurityEvent payloads.
+ * Phase 3: Actively blocks malicious requests using onBeforeRequest,
+ * while preserving ad-blocker functionality.
  */
 export function monitorNetworkRequests(
   sess: Electron.Session,
   getMainWindow: () => BrowserWindow | null,
-  sessionLabel: string
+  sessionLabel: string,
+  adBlockerCheck?: (url: string) => boolean
 ): void {
-  // Use onBeforeSendHeaders so we can see the final request details
-  // without interfering with the existing adBlocker's onBeforeRequest
-  sess.webRequest.onBeforeSendHeaders(
+  sess.webRequest.onBeforeRequest(
     { urls: ['<all_urls>'] },
     (details, callback) => {
-      if (monitorEnabled) {
-        const resourceType = classifyResourceType(details.url);
+      // 1. Ad Blocker Check (preserve existing functionality)
+      if (adBlockerCheck && adBlockerCheck(details.url)) {
+        return callback({ cancel: true });
+      }
 
-        // Skip noise: don't log every image/font/stylesheet to keep logs useful
+      // 2. Phase 3 Security Mitigation Check
+      if (monitorEnabled) {
+        // Validate URL against Phase 2 detection engine
+        const detection = analyzeEvent({
+          type: 'network_request',
+          details: `GET ${details.url}`, // Temporary event to get URL validated
+          timestamp: new Date().toISOString(),
+          source: sessionLabel,
+        });
+
+        const isMalicious = detection.action === 'block';
+        const resourceType = classifyResourceType(details.url);
         const isNoise = ['Image', 'Font', 'Stylesheet'].includes(resourceType);
 
-        if (!isNoise) {
+        if (isMalicious) {
+          console.log(`[SecurityMonitor] 🛡️ MITIGATED: Blocked malicious network request: ${details.url}`);
+          
+          // Emit a mitigated event
+          const event: SecurityEvent = {
+            type: 'network_request',
+            details: `[${resourceType}] Blocked ${details.method} ${truncateUrl(details.url)}`,
+            timestamp: new Date().toISOString(),
+            source: sessionLabel,
+            suspicious: true,
+            detection: detection,
+            mitigated: true,
+          };
+          emitSecurityEvent(getMainWindow(), event);
+          
+          return callback({ cancel: true });
+        } else if (!isNoise) {
+          // If not blocked and not noise, just log it passively
           const event: SecurityEvent = {
             type: 'network_request',
             details: `[${resourceType}] ${details.method} ${truncateUrl(details.url)}`,
             timestamp: new Date().toISOString(),
             source: sessionLabel,
           };
-
           emitSecurityEvent(getMainWindow(), event);
         }
       }
 
-      // IMPORTANT: Always pass through — we are monitoring, not blocking
-      callback({ requestHeaders: details.requestHeaders });
+      // 3. Allow request if no checks failed
+      callback({ cancel: false });
     }
   );
 
-  console.log(`[SecurityMonitor] Network monitoring attached to session: ${sessionLabel}`);
+  console.log(`[SecurityMonitor] Network monitoring & mitigation attached to session: ${sessionLabel}`);
 }
 
 // ── IPC Handlers for Preload Bridge ───────────────────────────────────────────

@@ -49,31 +49,22 @@ function createWindow(): void {
   const isDev = !app.isPackaged;
   const url = isDev ? 'http://127.0.0.1:5173' : `file://${path.join(__dirname, '../index.html')}`;
 
-  // ── Ad Blocker — attach to ALL sessions used by the app ──────────────────
-  // The <webview> tags use partition="persist:lumo-main" which is a SEPARATE
-  // session from defaultSession. We must hook BOTH or webview traffic bypasses
-  // the blocker entirely.
-  const attachAdBlocker = (sess: Electron.Session) => {
-    sess.webRequest.onBeforeRequest(
-      { urls: ['<all_urls>'] },
-      (details, callback) => {
-        const blocked = shouldBlock(details.url, adBlockerConfig);
-        adBlockerStats.record(blocked);
-        if (blocked) {
-          console.log(`[AdBlock] Blocked: ${details.url}`);
-        }
-        callback({ cancel: blocked });
-      }
-    );
+  // ── Network Security & Ad Blocker Pipeline ──────────────────────────────────
+  // Both systems now share the onBeforeRequest hook in monitorNetworkRequests.
+  const adBlockerCheck = (url: string) => {
+    const blocked = shouldBlock(url, adBlockerConfig);
+    adBlockerStats.record(blocked);
+    if (blocked) {
+      console.log(`[AdBlock] Blocked: ${url}`);
+    }
+    return blocked;
   };
 
-  attachAdBlocker(session.defaultSession);              // renderer
-  attachAdBlocker(session.fromPartition('persist:lumo-main')); // all <webview> tabs
-
-  // ── Security Monitor — Phase 1: passive network telemetry ──────────────────
   const getMainWindow = () => mainWindow;
-  monitorNetworkRequests(session.defaultSession, getMainWindow, 'default');
-  monitorNetworkRequests(session.fromPartition('persist:lumo-main'), getMainWindow, 'persist:lumo-main');
+  
+  // Attach to default session (renderer) and webviews session
+  monitorNetworkRequests(session.defaultSession, getMainWindow, 'default', adBlockerCheck);
+  monitorNetworkRequests(session.fromPartition('persist:lumo-main'), getMainWindow, 'persist:lumo-main', adBlockerCheck);
 
   mainWindow.loadURL(url);
 
