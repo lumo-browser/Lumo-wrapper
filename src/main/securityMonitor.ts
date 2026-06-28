@@ -1,26 +1,48 @@
 /**
- * Security Monitor — Phase 1: The Monitor Stage
- * 
- * Attaches real-time interception hooks to Electron sessions and relays
+ * Security Monitor — Phase 1 + Phase 2 Pipeline
+ *
+ * Phase 1: Attaches real-time interception hooks to Electron sessions and relays
  * structured SecurityEvent payloads to the renderer process over IPC.
- * 
+ *
+ * Phase 2: Runs every event through the detection engine before sending it to
+ * the renderer. High-confidence threats trigger additional security alerts.
+ *
  * This module is passive — it observes and reports, but does NOT block.
  * Blocking is handled separately in Phase 3 (Mitigate).
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
+import { analyzeEvent } from './securityDetector';
 
 // ── Types (mirrored from src/types/electron.d.ts) ─────────────────────────────
+interface DetectionResult {
+  safe: boolean;
+  threat?: string;
+  confidence: number;
+  category: 'phishing' | 'malware' | 'cryptominer' | 'data_theft' | 'injection' | 'safe';
+  action?: 'allow' | 'warn' | 'block';
+}
+
 interface SecurityEvent {
   type: 'network_request' | 'dom_mutation' | 'browser_api' | 'wasm_exec' | 'file_io' | 'permission_request' | 'user_event';
   details: string;
   timestamp: string;
   source?: string;
   suspicious?: boolean;
+  detection?: DetectionResult;
+}
+
+interface SecurityAlert {
+  id: string;
+  event: SecurityEvent;
+  detection: DetectionResult;
+  timestamp: string;
+  acknowledged: boolean;
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let monitorEnabled = true;
+let alertCounter = 0;
 
 // Rate-limit: don't flood the renderer with events faster than it can process
 const THROTTLE_INTERVAL_MS = 100;
@@ -28,14 +50,44 @@ let lastSendTimestamp = 0;
 const eventQueue: SecurityEvent[] = [];
 let flushTimer: NodeJS.Timeout | null = null;
 
+// Alert threshold — only fire lumo:security-alert for high-confidence threats
+const ALERT_CONFIDENCE_THRESHOLD = 70;
+
 /**
  * Send a security event to the active renderer window.
+ * Phase 2: Events are analyzed by the detection engine before being sent.
  * Events are batched and rate-limited to avoid IPC flooding.
  */
 function emitSecurityEvent(win: BrowserWindow | null, event: SecurityEvent): void {
   if (!monitorEnabled || !win || win.isDestroyed()) return;
 
+  // ── Phase 2: Run detection analysis ────────────────────────────────────────
+  const detection = analyzeEvent(event);
+  event.detection = detection;
+
+  // Update the suspicious flag based on detection
+  if (!detection.safe) {
+    event.suspicious = true;
+  }
+
+  // Queue the enriched event for batched delivery
   eventQueue.push(event);
+
+  // If the threat confidence exceeds the threshold, send an immediate alert
+  if (!detection.safe && detection.confidence >= ALERT_CONFIDENCE_THRESHOLD) {
+    const alert: SecurityAlert = {
+      id: `alert-${Date.now()}-${++alertCounter}`,
+      event,
+      detection,
+      timestamp: new Date().toISOString(),
+      acknowledged: false,
+    };
+
+    win.webContents.send('lumo:security-alert', alert);
+    console.log(
+      `[SecurityDetector] ⚠ ALERT #${alertCounter}: ${detection.category.toUpperCase()} — ${detection.threat} (confidence: ${detection.confidence}%)`
+    );
+  }
 
   const now = Date.now();
   if (now - lastSendTimestamp >= THROTTLE_INTERVAL_MS) {
@@ -151,8 +203,9 @@ export function registerSecurityIPC(getMainWindow: () => BrowserWindow | null): 
 
   // Provide current monitor state to the frontend
   ipcMain.handle('lumo:get-security-monitor-state', () => {
-    return { enabled: monitorEnabled };
+    return { enabled: monitorEnabled, alertCount: alertCounter };
   });
 
-  console.log('[SecurityMonitor] IPC handlers registered');
+  console.log('[SecurityMonitor] IPC handlers registered (Phase 1 + Phase 2)');
 }
+

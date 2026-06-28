@@ -21,6 +21,45 @@ export interface SecurityEvent {
   source?: string;
   /** Whether the event was flagged as suspicious by heuristics */
   suspicious?: boolean;
+  /** Phase 2: Detection result attached by the analysis engine */
+  detection?: DetectionResult;
+}
+
+// ── Phase 2: Detection Types ──────────────────────────────────────────────────
+export type DetectionCategory =
+  | 'phishing'
+  | 'malware'
+  | 'cryptominer'
+  | 'data_theft'
+  | 'injection'
+  | 'safe';
+
+export type DetectionAction = 'allow' | 'warn' | 'block';
+
+export interface DetectionResult {
+  /** Whether the event is considered safe */
+  safe: boolean;
+  /** Human-readable threat description (undefined if safe) */
+  threat?: string;
+  /** Confidence level 0-100 */
+  confidence: number;
+  /** Threat classification category */
+  category: DetectionCategory;
+  /** Recommended action for Phase 3 Mitigate stage */
+  action?: DetectionAction;
+}
+
+export interface SecurityAlert {
+  /** Unique alert identifier */
+  id: string;
+  /** The original security event that triggered this alert */
+  event: SecurityEvent;
+  /** The detection engine's analysis result */
+  detection: DetectionResult;
+  /** ISO timestamp of when the alert was created */
+  timestamp: string;
+  /** Whether the user has acknowledged/dismissed this alert */
+  acknowledged: boolean;
 }
 
 declare global {

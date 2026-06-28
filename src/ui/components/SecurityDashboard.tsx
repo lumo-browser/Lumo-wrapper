@@ -124,18 +124,30 @@ export function SecurityDashboard({
   const [simulating, setSimulating] = useState(false);
   const simConsoleEndRef = useRef<HTMLDivElement>(null);
 
+  // ── Phase 2: Detection State ──────────────────────────────────────────────
+  const [detectThreatCount, setDetectThreatCount] = useState(0);
+  const [securityAlerts, setSecurityAlerts] = useState<Array<{
+    id: string;
+    threat: string;
+    category: string;
+    confidence: number;
+    action: string;
+    timestamp: string;
+    acknowledged: boolean;
+  }>>([]);
+
   useEffect(() => {
     if (simConsoleEndRef.current) {
       simConsoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [archSimLogs]);
 
-  // ── Real-time Security Event Listener (Phase 1 Backend Integration) ────────
+  // ── Real-time Security Event Listener (Phase 1 + Phase 2 Integration) ─────
   useEffect(() => {
     if (!window.electron?.onSecurityEvent) return;
 
-    const unsubscribe = window.electron.onSecurityEvent((event) => {
-      // Increment the correct monitor counter based on event type
+    const unsubscribe = window.electron.onSecurityEvent((event: any) => {
+      // Phase 1: Increment the correct monitor counter based on event type
       setMonitorStats((prev) => {
         switch (event.type) {
           case 'network_request':
@@ -157,18 +169,37 @@ export function SecurityDashboard({
         }
       });
 
+      // Phase 2: Check if detection result is attached and not safe
+      if (event.detection && !event.detection.safe) {
+        setDetectThreatCount((prev) => prev + 1);
+      }
+
       // Only append real-time logs when on the architecture tab to avoid memory buildup
       if (activeTab === 'architecture') {
+        // Phase 1 monitor log
         setArchSimLogs((prev) => {
-          const newLog = {
+          const logs = [...prev];
+
+          logs.push({
             time: new Date(event.timestamp).toLocaleTimeString(),
             level: (event.suspicious ? 'warn' : 'info') as 'info' | 'warn' | 'success' | 'danger',
             stage: 'MONITOR',
             message: event.details,
-          };
+          });
+
+          // Phase 2: If detection flagged a threat, add a DETECT stage log entry
+          if (event.detection && !event.detection.safe) {
+            const det = event.detection;
+            logs.push({
+              time: new Date(event.timestamp).toLocaleTimeString(),
+              level: (det.action === 'block' ? 'danger' : 'warn') as 'info' | 'warn' | 'success' | 'danger',
+              stage: 'DETECT',
+              message: `[${det.category.toUpperCase()}] ${det.threat} (confidence: ${det.confidence}%, action: ${det.action})`,
+            });
+          }
+
           // Keep only the last 200 log entries to prevent memory bloat
-          const updated = [...prev, newLog];
-          return updated.length > 200 ? updated.slice(-200) : updated;
+          return logs.length > 200 ? logs.slice(-200) : logs;
         });
       }
     });
@@ -177,6 +208,38 @@ export function SecurityDashboard({
       unsubscribe();
     };
   }, [activeTab]);
+
+  // ── Phase 2: Security Alert Listener (High-confidence threats) ────────────
+  useEffect(() => {
+    if (!window.electron?.on) return;
+
+    const unsubscribe = window.electron.on('lumo:security-alert', (_ipcEvent: any, alert: any) => {
+      // Add to alerts list
+      setSecurityAlerts((prev) => {
+        const newAlert = {
+          id: alert.id,
+          threat: alert.detection?.threat || 'Unknown threat',
+          category: alert.detection?.category || 'malware',
+          confidence: alert.detection?.confidence || 0,
+          action: alert.detection?.action || 'warn',
+          timestamp: alert.timestamp,
+          acknowledged: false,
+        };
+        const updated = [newAlert, ...prev];
+        return updated.length > 50 ? updated.slice(0, 50) : updated;
+      });
+
+      // Briefly flash the detect stage to draw attention
+      if (!simulating) {
+        setActiveSimStage('detect');
+        setTimeout(() => setActiveSimStage(null), 2000);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [simulating]);
 
   const runArchSimulation = async (type: 'dom_mutation' | 'file_download' | 'clipboard_theft' | 'wasm_crypto') => {
     if (simulating) return;
@@ -1373,9 +1436,16 @@ export function SecurityDashboard({
                         <span className="text-sm font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">2. DETECT</span>
                         <span className="text-[10px] text-zinc-500 font-semibold">(Web Attacks)</span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-zinc-400">AI Threat Engine:</span>
-                        <span className="text-[10px] text-green-500 font-bold">Enabled</span>
+                      <div className="flex items-center gap-2">
+                        {detectThreatCount > 0 && (
+                          <span className="text-[10px] bg-red-500/15 text-red-600 dark:text-red-400 px-2 py-0.5 rounded font-mono font-bold animate-pulse">
+                            {detectThreatCount} Threat{detectThreatCount !== 1 ? 's' : ''} Found
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-zinc-400">AI Engine:</span>
+                          <span className="text-[10px] text-green-500 font-bold">Active</span>
+                        </div>
                       </div>
                     </div>
 
@@ -1435,6 +1505,54 @@ export function SecurityDashboard({
                         <span className="text-[9px] text-zinc-500 block leading-tight text-center">Threat Evaluator</span>
                       </div>
                     </div>
+
+                    {/* Phase 2: Active Alerts Panel */}
+                    {securityAlerts.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-purple-200/50 dark:border-purple-900/30 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">
+                            Recent Alerts ({securityAlerts.filter(a => !a.acknowledged).length} active)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSecurityAlerts(prev => prev.map(a => ({ ...a, acknowledged: true })))}
+                            className="text-[9px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                          >
+                            Dismiss All
+                          </button>
+                        </div>
+                        <div className="max-h-24 overflow-y-auto space-y-1">
+                          {securityAlerts.filter(a => !a.acknowledged).slice(0, 5).map((alert) => {
+                            const catColors: Record<string, string> = {
+                              phishing: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
+                              malware: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+                              cryptominer: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+                              data_theft: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20',
+                              injection: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+                            };
+                            const colorClass = catColors[alert.category] || catColors.malware;
+                            return (
+                              <div
+                                key={alert.id}
+                                className={`flex items-center justify-between p-1.5 rounded border text-[9px] ${colorClass}`}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-bold uppercase shrink-0">{alert.category}</span>
+                                  <span className="truncate">{alert.threat}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setSecurityAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, acknowledged: true } : a))}
+                                  className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shrink-0 ml-1"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Stage 3: MITIGATE */}
