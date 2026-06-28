@@ -237,12 +237,12 @@ app.on('ready', () => {
     });
 
     ipcMain.on('lumo:window-minimize', (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
+      const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
       if (win) win.minimize();
     });
 
     ipcMain.on('lumo:window-maximize', (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
+      const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
       if (win) {
         if (win.isMaximized()) win.restore();
         else win.maximize();
@@ -250,7 +250,7 @@ app.on('ready', () => {
     });
 
     ipcMain.on('lumo:window-close', (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
+      const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
       if (win) win.close();
     });
 
