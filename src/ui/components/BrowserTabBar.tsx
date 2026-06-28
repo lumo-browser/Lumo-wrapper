@@ -186,25 +186,22 @@ export function BrowserTabBar({
             </div>
           );
         })}
+
+        {/* New Tab Button */}
+        <button
+          onClick={onTabAdd}
+          className="flex-shrink-0 ml-1 mb-1.5 w-7 h-7 rounded-full flex items-center justify-center
+            text-gray-500 dark:text-gray-400
+            hover:bg-[#cbcdd2] dark:hover:bg-[#3a3a3a]
+            active:bg-[#b8babe] dark:active:bg-[#444]
+            transition-colors duration-100"
+          title="New tab (Ctrl+T)"
+          aria-label="New tab"
+          style={{ WebkitAppRegion: 'no-drag' } as any}
+        >
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
-
-      {/* New Tab Button */}
-      <button
-        onClick={onTabAdd}
-        className="flex-shrink-0 ml-1 mb-1.5 w-7 h-7 rounded-full flex items-center justify-center
-          text-gray-500 dark:text-gray-400
-          hover:bg-[#cbcdd2] dark:hover:bg-[#3a3a3a]
-          active:bg-[#b8babe] dark:active:bg-[#444]
-          transition-colors duration-100"
-        title="New tab (Ctrl+T)"
-        aria-label="New tab"
-        style={{ WebkitAppRegion: 'no-drag' } as any}
-      >
-        <Plus className="w-4 h-4" />
-      </button>
-
-      {/* Spacer for drag region */}
-      <div className="flex-1" />
 
       {/* Window Controls (Mac-style or Windows-style) */}
       <div className="flex items-center h-full mb-1.5 ml-2 gap-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
