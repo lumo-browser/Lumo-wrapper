@@ -116,8 +116,8 @@ export function BrowserTabBar({
 
   // ── Horizontal layout (default) ────────────────────────────────────────────
   return (
-    <div className="flex items-end h-[50px] bg-[#dee1e6] dark:bg-[#1e1e1e] px-2 select-none flex-shrink-0 w-full" style={{ WebkitAppRegion: 'drag' } as any}>
-      <div className="flex items-end h-full gap-px flex-1 overflow-x-auto scrollbar-none" style={{ WebkitAppRegion: 'no-drag' } as any}>
+    <div className="flex items-end h-[50px] bg-[#dee1e6] dark:bg-[#1e1e1e] px-2 select-none flex-shrink-0 w-full" style={{ WebkitAppRegion: 'drag', pointerEvents: 'none' } as any}>
+      <div className="flex items-end h-full gap-px flex-1 overflow-x-auto scrollbar-none">
         {tabs.map((tab, index) => {
           const isFirst = index === 0;
           const isLast = index === tabs.length - 1;
@@ -140,6 +140,8 @@ export function BrowserTabBar({
               style={{
                 marginLeft: tab.isActive && !isFirst ? '-1px' : undefined,
                 marginRight: tab.isActive && !isLast ? '-1px' : undefined,
+                WebkitAppRegion: 'no-drag',
+                pointerEvents: 'auto' as any,
               }}
             >
               {/* Group color strip — shown at bottom of tab when grouped */}
@@ -197,14 +199,14 @@ export function BrowserTabBar({
             transition-colors duration-100"
           title="New tab (Ctrl+T)"
           aria-label="New tab"
-          style={{ WebkitAppRegion: 'no-drag' } as any}
+          style={{ WebkitAppRegion: 'no-drag', pointerEvents: 'auto' } as any}
         >
           <Plus className="w-4 h-4" />
         </button>
       </div>
 
       {/* Window Controls (Mac-style or Windows-style) */}
-      <div className="flex items-center h-full mb-1.5 ml-2 gap-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+      <div className="flex items-center h-full mb-1.5 ml-2 gap-1" style={{ WebkitAppRegion: 'no-drag', pointerEvents: 'auto' } as any}>
         <button
           onClick={() => window.electron?.send?.('lumo:window-minimize')}
           className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
