@@ -2,8 +2,20 @@
  * HomeService Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { HomeService } from '../home.service';
+
+vi.mock('@services/api/api.service', () => ({
+  apiService: {
+    getTaskList: vi.fn().mockRejectedValue(new Error('API unavailable')),
+    getProviders: vi.fn().mockRejectedValue(new Error('API unavailable')),
+    healthCheck: vi.fn().mockRejectedValue(new Error('API unavailable')),
+    executeAction: vi.fn().mockResolvedValue(undefined),
+    client: {
+      get: vi.fn().mockRejectedValue(new Error('API unavailable')),
+    },
+  },
+}));
 
 describe('HomeService', () => {
   describe('getRecentTasks', () => {

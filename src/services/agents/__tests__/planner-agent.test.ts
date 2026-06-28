@@ -333,7 +333,7 @@ describe('PlannerAgent', () => {
       planner.initialize({
         conversationId: 'conv-123',
         sessionId: 'session-456',
-        variables: { goal: 'Test' }
+        variables: { goal: 'Test goal here' }
       });
 
       const output = (await planner.execute()) as PlannerOutput;
@@ -401,7 +401,7 @@ describe('PlannerAgent', () => {
       planner.initialize({
         conversationId: 'conv-123',
         sessionId: 'session-456',
-        variables: { goal: 'Test' }
+        variables: { goal: 'Test goal' }
       });
 
       await planner.execute();

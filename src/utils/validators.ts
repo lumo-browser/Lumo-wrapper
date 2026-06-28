@@ -7,8 +7,8 @@ import { ValidationError } from '@core/errors';
 export class Validator {
   static isValidURL(url: string): boolean {
     try {
-      new URL(url);
-      return true;
+      const parsed = new URL(url);
+      return ['http:', 'https:'].includes(parsed.protocol);
     } catch {
       return false;
     }
@@ -176,9 +176,11 @@ export class Sanitizer {
     // Remove excessive whitespace
     sanitized = sanitized.replace(/\s+/g, ' ');
 
-    // Remove shell-like commands
+    // Remove shell-like commands and arguments
     sanitized = sanitized
       .replace(/[`$(){}[\]|&;]/g, '')
+      // Remove dangerous command patterns (e.g. rm -rf, sudo, chmod)
+      .replace(/\b(rm\s+-[rf]+|sudo\s+|chmod\s+\d+|mkfs|dd\s+if=|:\(\)\s*\{)\s*/gi, '')
       .trim();
 
     // Limit length

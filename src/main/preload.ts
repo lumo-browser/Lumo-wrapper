@@ -67,6 +67,22 @@ contextBridge.exposeInMainWorld('electron', {
    */
   webviewPreloadPath: `file://${path.join(__dirname, 'webview-preload.js')}`,
 
+  // Zero-trust mode toggle
+  setZeroTrustMode: (enabled: boolean): void => {
+    ipcRenderer.send('lumo:set-zero-trust-mode', enabled);
+  },
+  getZeroTrustMode: (): Promise<boolean> => {
+    return ipcRenderer.invoke('lumo:get-zero-trust-mode') as Promise<boolean>;
+  },
+  onZeroTrustModeChanged: (callback: (enabled: boolean) => void): (() => void) => {
+    const handler = (_event: unknown, enabled: boolean) => callback(enabled);
+    ipcRenderer.on('lumo:zero-trust-mode-changed', handler);
+    return () => { ipcRenderer.removeListener('lumo:zero-trust-mode-changed', handler); };
+  },
+  monitorTabPartition: (partitionId: string): void => {
+    ipcRenderer.send('lumo:monitor-tab-partition', partitionId);
+  },
+
   // App info
   appVersion: (): string => '0.2.0',
 

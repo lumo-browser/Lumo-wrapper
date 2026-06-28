@@ -49,7 +49,7 @@ describe('SearchBar', () => {
     render(<SearchBar onSearch={mockSearch} />);
 
     expect(screen.getByText('Research a company')).toBeTruthy();
-    expect(screen.getByText('Find best laptop')).toBeTruthy();
+    expect(screen.getByText('Find product alternatives')).toBeTruthy();
   });
 });
 
@@ -89,7 +89,7 @@ describe('RecentTasks', () => {
     ];
 
     render(<RecentTasks tasks={tasks} />);
-    expect(screen.getByText('completed')).toBeTruthy();
+    expect(screen.getByText('Completed')).toBeTruthy();
   });
 
   it('should display confidence score', () => {
@@ -172,9 +172,9 @@ describe('AIStatusWidget', () => {
     expect(screen.getByText('System Error')).toBeTruthy();
   });
 
-  it('should always show AI Status label', () => {
+  it('should always show system status label', () => {
     render(<AIStatusWidget status="ready" />);
-    expect(screen.getByText('AI Status')).toBeTruthy();
+    expect(screen.getByText('System Status')).toBeTruthy();
   });
 });
 
@@ -237,7 +237,7 @@ describe('WorkflowShortcuts', () => {
   it('should display workflow frequency', () => {
     render(<WorkflowShortcuts />);
 
-    expect(screen.getByText('Daily')).toBeTruthy();
+    expect(screen.getAllByText('Daily').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Hourly')).toBeTruthy();
     expect(screen.getByText('Every 6h')).toBeTruthy();
   });

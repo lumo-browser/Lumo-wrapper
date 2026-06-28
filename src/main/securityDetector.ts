@@ -32,6 +32,73 @@ interface SecurityEvent {
   detection?: DetectionResult;
 }
 
+// ── Allow-List for Zero-Trust Mode ────────────────────────────────────────────
+// Known-safe domains that are always allowed in zero-trust mode.
+// This list ships as the default; users can extend it via the permission dialog.
+
+const ALLOW_LIST_DOMAINS: string[] = [
+  'google.com', 'www.google.com', 'accounts.google.com', 'apis.google.com',
+  'fonts.googleapis.com', 'fonts.gstatic.com', 'www.gstatic.com', 'gstatic.com',
+  'recaptcha.net', 'www.recaptcha.net',
+  'github.com', 'www.github.com', 'api.github.com', 'raw.githubusercontent.com',
+  'openrouter.ai', 'api.openrouter.ai',
+  'bing.com', 'www.bing.com', 'api.bing.com',
+  'duckduckgo.com', 'www.duckduckgo.com',
+  'brave.com', 'www.brave.com', 'api.brave.com',
+  'chatgpt.com', 'www.chatgpt.com', 'api.openai.com',
+  'claude.ai', 'www.claude.ai',
+  'gemini.google.com',
+  'perplexity.ai', 'www.perplexity.ai',
+  'deepseek.com', 'www.deepseek.com', 'api.deepseek.com',
+  'grok.com', 'x.ai',
+  'facebook.com', 'www.facebook.com', 'connect.facebook.net',
+  'twitter.com', 'www.twitter.com', 'x.com', 'www.x.com',
+  'instagram.com', 'www.instagram.com',
+  'linkedin.com', 'www.linkedin.com',
+  'youtube.com', 'www.youtube.com', 'ytimg.com',
+  'reddit.com', 'www.reddit.com',
+  'amazon.com', 'www.amazon.com', 'amazon.in', 'www.amazon.in',
+  'flipkart.com', 'www.flipkart.com',
+  'croma.com', 'www.croma.com',
+  'cloudflare.com', 'cdnjs.cloudflare.com', 'ajax.cloudflare.com',
+  'jsdelivr.net', 'cdn.jsdelivr.net',
+  'unpkg.com',
+  'fontawesome.com', 'use.fontawesome.com',
+  'stripe.com', 'js.stripe.com',
+  'paypal.com', 'www.paypal.com',
+  'datadoghq.com', 'www.datadoghq.com',
+  'sentry.io',
+  'hotjar.com',
+  'hubspot.com',
+];
+
+const USER_ALLOW_LIST: string[] = [];
+
+function isDomainAllowListed(host: string): boolean {
+  const lower = host.toLowerCase();
+  for (const allowed of ALLOW_LIST_DOMAINS) {
+    if (lower === allowed || lower.endsWith('.' + allowed)) {
+      return true;
+    }
+  }
+  for (const allowed of USER_ALLOW_LIST) {
+    const a = allowed.toLowerCase();
+    if (lower === a || lower.endsWith('.' + a)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function addUserAllowListDomain(domain: string): void {
+  const d = domain.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+  if (d && !USER_ALLOW_LIST.includes(d)) {
+    USER_ALLOW_LIST.push(d);
+  }
+}
+
+import { isZeroTrustMode } from './ipc-guard';
+
 // ── Malicious Domain Blocklist ────────────────────────────────────────────────
 // Patterns for known malicious TLDs, phishing domains, and suspicious hosts.
 
@@ -128,7 +195,7 @@ const CRYPTO_WALLET_PATTERNS: RegExp[] = [
 ];
 
 // ── Helper: Extract hostname from URL ─────────────────────────────────────────
-function extractHost(url: string): string {
+export function extractHost(url: string): string {
   try {
     const parsed = new URL(url);
     return parsed.hostname.toLowerCase();
@@ -246,6 +313,22 @@ export function validateUrl(url: string): DetectionResult {
       threat: 'Base64-encoded data URI detected — potential script injection vector',
       confidence: 70,
       category: 'injection',
+      action: 'warn',
+    };
+  }
+
+  // 8. Zero-trust mode: check allow-list before defaulting
+  if (isZeroTrustMode()) {
+    if (isDomainAllowListed(host)) {
+      return { safe: true, confidence: 90, category: 'safe', action: 'allow' };
+    }
+    // In ZT mode, unrecognized domains get a warning (block decision
+    // is made by the monitor after checking for user permission)
+    return {
+      safe: false,
+      threat: `Unrecognized domain in zero-trust mode: ${host}`,
+      confidence: 40,
+      category: 'safe',
       action: 'warn',
     };
   }
@@ -452,6 +535,54 @@ export function evaluateWasmExecution(event: SecurityEvent): DetectionResult {
     category: 'safe',
     action: 'allow',
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LEGACY COMPATIBILITY WRAPPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Legacy wrapper around analyzeScriptHeuristics.
+ * Accepts raw HTML string; also detects hidden iframes via inline style attributes
+ * (without requiring the preload-added [hidden] prefix).
+ */
+export function checkDomMutation(html: string): DetectionResult {
+  const lower = html.toLowerCase();
+  if (lower.includes('<iframe') && (lower.includes('[hidden]') || lower.includes('display:none') || lower.includes('display: none') || lower.includes('hidden=""'))) {
+    return {
+      safe: false,
+      threat: 'Hidden iframe injection — potential clickjacking or tracking pixel',
+      confidence: 75,
+      category: 'injection',
+      action: 'block',
+    };
+  }
+  return analyzeScriptHeuristics(html);
+}
+
+/**
+ * Legacy wrapper around evaluateClipboardAccess.
+ * Accepts raw clipboard content string.
+ */
+export function checkClipboardWrite(content: string): DetectionResult {
+  return evaluateClipboardAccess({
+    type: 'browser_api',
+    details: `clipboard writeText content: "${content}"`,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * Legacy wrapper around evaluateWasmExecution.
+ * Accepts raw byte count.
+ */
+export function checkWasmExecution(sizeBytes: number): DetectionResult {
+  const sizeKB = sizeBytes / 1024;
+  return evaluateWasmExecution({
+    type: 'wasm_exec',
+    details: `WebAssembly binary loaded (binary size: ${sizeKB.toFixed(1)}KB)`,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

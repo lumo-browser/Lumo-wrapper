@@ -6,9 +6,12 @@
 import { app, BrowserWindow, Menu, MenuItem, session, ipcMain, nativeTheme, safeStorage, shell, globalShortcut } from 'electron';
 import https from 'https';
 import path from 'path';
+import fs from 'fs';
 import axios from 'axios';
 import { shouldBlock, AdBlockerStats, AdBlockerConfig, DEFAULT_CONFIG } from './adBlocker';
 import { monitorNetworkRequests, registerSecurityIPC } from './securityMonitor';
+import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
+import { validateScript, checkScriptInjectionRate } from './agent-guard';
 
 // ── Ad Blocker State ──────────────────────────────────────────────────────────
 let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
@@ -48,7 +51,20 @@ function createWindow(): void {
   });
 
   const isDev = !app.isPackaged;
-  const url = isDev ? 'http://127.0.0.1:5173' : `file://${path.join(__dirname, '../index.html')}`;
+  const devUrl = 'http://127.0.0.1:5173';
+  const prodUrl = `file://${path.join(__dirname, '../index.html')}`;
+  let url = isDev ? devUrl : prodUrl;
+
+  // If dev server unavailable, fall back to built files
+  if (isDev) {
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+      if (url === devUrl) {
+        console.log(`[Lumo] Dev server unavailable (${errorDescription}), falling back to built files`);
+        url = prodUrl;
+        mainWindow!.loadURL(prodUrl);
+      }
+    });
+  }
 
   // ── Network Security & Ad Blocker Pipeline ──────────────────────────────────
   // Both systems now share the onBeforeRequest hook in monitorNetworkRequests.
@@ -66,6 +82,12 @@ function createWindow(): void {
   // Attach to default session (renderer) and webviews session
   monitorNetworkRequests(session.defaultSession, getMainWindow, 'default', adBlockerCheck);
   monitorNetworkRequests(session.fromPartition('persist:lumo-main'), getMainWindow, 'persist:lumo-main', adBlockerCheck);
+
+  // Also monitor AI provider partitions (they use persist:ai-{id})
+  const AI_PARTITIONS = ['ai-chatgpt', 'ai-claude', 'ai-gemini', 'ai-perplexity', 'ai-deepseek', 'ai-grok', 'ai-custom'];
+  for (const id of AI_PARTITIONS) {
+    monitorNetworkRequests(session.fromPartition(`persist:${id}`), getMainWindow, `persist:${id}`, adBlockerCheck);
+  }
 
   mainWindow.loadURL(url);
 
@@ -138,7 +160,8 @@ function createDisposableWindow(): void {
   // Using a random partition to ensure it's completely ephemeral per window
   const ephemeralSession = session.fromPartition(partitionId);
   ephemeralSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
-  attachAdBlocker(ephemeralSession); 
+  attachAdBlocker(ephemeralSession);
+  monitorNetworkRequests(ephemeralSession, getMainWindow, `disposable:${partitionId}`, adBlockerCheck);
 
   disposableWindow.loadURL(url);
 
@@ -148,6 +171,59 @@ function createDisposableWindow(): void {
       console.error('[Lumo] Failed to clear disposable storage data:', err);
     });
   });
+}
+
+// ── ZT Isolated Download Viewer ───────────────────────────────────────────────
+// Track temp directories for ZT isolated downloads so they can be cleaned up
+const ztDownloadDirs = new Set<string>();
+const VIEWABLE_EXTS = ['.html', '.htm', '.txt', '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.mp3', '.mp4', '.webm', '.ogg', '.wav'];
+
+function viewDownloadIsolated(filePath: string, mimeType: string): void {
+  const ext = path.extname(filePath).toLowerCase();
+  const filename = path.basename(filePath);
+
+  if (VIEWABLE_EXTS.includes(ext)) {
+    // Open in a sandboxed viewer window
+    const viewer = new BrowserWindow({
+      width: 900,
+      height: 700,
+      title: `ZT Viewer - ${filename}`,
+      webPreferences: {
+        contextIsolation: true,
+        sandbox: true,
+        nodeIntegration: false,
+        webviewTag: false,
+      },
+    });
+
+    viewer.loadURL(`file://${filePath}`);
+
+    viewer.on('closed', () => {
+      // Clean up temp file and dir
+      try { fs.unlinkSync(filePath); } catch { /* ignore */ }
+      const dir = path.dirname(filePath);
+      try {
+        if (fs.readdirSync(dir).length === 0) {
+          fs.rmdirSync(dir);
+          ztDownloadDirs.delete(dir);
+        }
+      } catch { /* ignore */ }
+    });
+  } else {
+    // Non-viewable: save to temp, notify user, auto-cleanup after 30 min
+    console.log(`[ZT] Downloaded non-viewable file to temp: ${filePath} (${mimeType})`);
+    mainWindow?.webContents.send('lumo:zt-download-ready', { path: filePath, filename, mimeType });
+    setTimeout(() => {
+      try { fs.unlinkSync(filePath); } catch { /* ignore */ }
+      const dir = path.dirname(filePath);
+      try {
+        if (fs.readdirSync(dir).length === 0) {
+          fs.rmdirSync(dir);
+          ztDownloadDirs.delete(dir);
+        }
+      } catch { /* ignore */ }
+    }, 30 * 60 * 1000);
+  }
 }
 
 function createMenu(): void {
@@ -202,46 +278,87 @@ app.on('ready', () => {
   registerSecurityIPC(() => mainWindow);
 
   // Handle ad blocker toggle + config from renderer
-    ipcMain.on('lumo:set-ad-blocker', (event, enabled: boolean) => {
+    guardedOn('lumo:set-ad-blocker', (event, enabled: boolean) => {
       console.log(`[Lumo] Ad blocker ${enabled ? 'enabled' : 'disabled'}`);
       adBlockerConfig = { ...adBlockerConfig, enabled };
     });
 
-    ipcMain.on('lumo:set-ad-blocker-config', (event, config: Partial<AdBlockerConfig>) => {
+    guardedOn('lumo:set-ad-blocker-config', (event, config: Partial<AdBlockerConfig>) => {
       adBlockerConfig = { ...adBlockerConfig, ...config };
       console.log('[Lumo] Ad blocker config updated:', adBlockerConfig);
     });
 
-    ipcMain.handle('lumo:get-ad-blocker-stats', () => {
+    guardedHandle('lumo:get-ad-blocker-stats', () => {
       return adBlockerStats.toJSON();
     });
 
-    ipcMain.on('lumo:reset-ad-blocker-stats', () => {
+    guardedOn('lumo:reset-ad-blocker-stats', () => {
       adBlockerStats.reset();
     });
 
     // Handle global theme changes from the renderer
-    ipcMain.on('lumo:set-theme', (event, theme: 'dark' | 'light' | 'system') => {
+    guardedOn('lumo:set-theme', (event, theme: 'dark' | 'light' | 'system') => {
       console.log(`[Lumo] Global theme set to ${theme}`);
       nativeTheme.themeSource = theme;
     });
 
     // Default zoom — apply to the persist:lumo-main session
-    ipcMain.on('lumo:set-default-zoom', (event, factor: number) => {
+    guardedOn('lumo:set-default-zoom', (event, factor: number) => {
       console.log(`[Lumo] Default zoom set to ${factor}`);
       // Zoom is applied per-webContents by the renderer; stored for new tabs
     });
 
-    ipcMain.on('lumo:new-disposable-window', () => {
+    guardedOn('lumo:new-disposable-window', () => {
       createDisposableWindow();
     });
 
-    ipcMain.on('lumo:window-minimize', (event) => {
+    // Zero-trust mode toggle — also broadcast to all windows so UI stays in sync
+    guardedOn('lumo:set-zero-trust-mode', (_event, enabled: boolean) => {
+      setZeroTrustMode(enabled);
+      BrowserWindow.getAllWindows().forEach((w) => {
+        if (!w.isDestroyed()) w.webContents.send('lumo:zero-trust-mode-changed', enabled);
+      });
+    });
+
+    guardedHandle('lumo:get-zero-trust-mode', () => {
+      return isZeroTrustMode();
+    });
+
+    // Monitor ephemeral tab partitions created for ZT isolation
+    guardedOn('lumo:monitor-tab-partition', (_event, partitionId: string) => {
+      try {
+        const sess = session.fromPartition(partitionId);
+        monitorNetworkRequests(sess, () => mainWindow, `tab:${partitionId}`, adBlockerCheck);
+        // Isolate downloads from ZT tabs — save to temp, open in sandboxed viewer
+        sess.on('will-download', (_downloadEvent, item) => {
+          const filename = item.getFilename();
+          const tempDir = path.join(app.getPath('temp'), `lumo-zt-dl-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+          fs.mkdirSync(tempDir, { recursive: true });
+          ztDownloadDirs.add(tempDir);
+          const savePath = path.join(tempDir, filename.replace(/[\/\\?%*:|"<>]/g, '-'));
+          item.setSavePath(savePath);
+          console.log(`[ZT] Isolated download: ${filename} → ${savePath}`);
+          item.once('done', (_e, state) => {
+            if (state === 'completed') {
+              viewDownloadIsolated(savePath, item.getMimeType());
+            } else {
+              try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch { /* ignore */ }
+              ztDownloadDirs.delete(tempDir);
+            }
+          });
+        });
+        console.log(`[Lumo] Monitoring ZT-isolated partition: ${partitionId}`);
+      } catch (err) {
+        console.error(`[Lumo] Failed to monitor partition ${partitionId}:`, err);
+      }
+    });
+
+    guardedOn('lumo:window-minimize', (event) => {
       const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
       if (win) win.minimize();
     });
 
-    ipcMain.on('lumo:window-maximize', (event) => {
+    guardedOn('lumo:window-maximize', (event) => {
       const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
       if (win) {
         if (win.isMaximized()) win.restore();
@@ -249,13 +366,13 @@ app.on('ready', () => {
       }
     });
 
-    ipcMain.on('lumo:window-close', (event) => {
+    guardedOn('lumo:window-close', (event) => {
       const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
       if (win) win.close();
     });
 
     // Spell check
-    ipcMain.on('lumo:set-spell-check', (event, enabled: boolean) => {
+    guardedOn('lumo:set-spell-check', (event, enabled: boolean) => {
       if (session.defaultSession) {
         session.defaultSession.setSpellCheckerEnabled(enabled);
       }
@@ -263,20 +380,20 @@ app.on('ready', () => {
       console.log(`[Lumo] Spell check ${enabled ? 'enabled' : 'disabled'}`);
     });
 
-    ipcMain.on('lumo:set-hardware-acceleration', (event, enabled: boolean) => {
+    guardedOn('lumo:set-hardware-acceleration', (event, enabled: boolean) => {
       // Note: Hardware acceleration can typically only be disabled before app is ready.
       // A full implementation would persist this preference and read it on next boot.
       console.log('Hardware acceleration set to', enabled, '(requires restart)');
     });
 
-    ipcMain.on('lumo:set-memory-saver', (event, enabled: boolean) => {
+    guardedOn('lumo:set-memory-saver', (event, enabled: boolean) => {
       // Memory saver implementation placeholder. A full implementation would
       // suspend background WebContents using webContents.backgroundThrottling
       console.log('Memory saver set to', enabled);
     });
 
     // Toggle main window DevTools (used by home/internal pages)
-    ipcMain.on('lumo:toggle-devtools', () => {
+    guardedOn('lumo:toggle-devtools', () => {
       if (!mainWindow) return;
       const wc = mainWindow.webContents;
       if (wc.isDevToolsOpened()) {
@@ -287,13 +404,13 @@ app.on('ready', () => {
     });
 
     // Inspect element at coordinates in the main renderer (internal pages)
-    ipcMain.on('lumo:inspect-element', (_event, x: number, y: number) => {
+    guardedOn('lumo:inspect-element', (_event, x: number, y: number) => {
       if (!mainWindow) return;
       const wc = mainWindow.webContents;
       wc.inspectElement(x, y);
     });
 
-    ipcMain.on('lumo:save-screenshot', async (_event, webContentsId: number) => {
+    guardedOn('lumo:save-screenshot', async (_event, webContentsId: number) => {
       try {
         const wc = require('electron').webContents.fromId(webContentsId);
         if (!wc) return;
@@ -309,7 +426,7 @@ app.on('ready', () => {
       }
     });
 
-    ipcMain.on('lumo:print-page', (_event, webContentsId: number) => {
+    guardedOn('lumo:print-page', (_event, webContentsId: number) => {
       try {
         const wc = require('electron').webContents.fromId(webContentsId);
         if (wc) wc.print();
@@ -319,7 +436,7 @@ app.on('ready', () => {
     });
 
     // Download path + alwaysAsk
-    ipcMain.on('lumo:set-download-path', (event, { path: dlPath, alwaysAsk }: { path: string; alwaysAsk: boolean }) => {
+    guardedOn('lumo:set-download-path', (event, { path: dlPath, alwaysAsk }: { path: string; alwaysAsk: boolean }) => {
       const handleDownload = (_event: Electron.Event, item: Electron.DownloadItem) => {
         if (alwaysAsk) {
           // Let Electron show the save dialog (default behavior)
@@ -339,7 +456,7 @@ app.on('ready', () => {
     });
 
     // Folder picker dialog
-    ipcMain.handle('lumo:pick-download-folder', async () => {
+    guardedHandle('lumo:pick-download-folder', async () => {
       const { dialog } = require('electron');
       const result = await dialog.showOpenDialog(mainWindow!, {
         properties: ['openDirectory', 'createDirectory'],
@@ -404,7 +521,7 @@ app.on('ready', () => {
     session.fromPartition('persist:lumo-main').on('will-download', handleDownloadItem);
 
     // Open file with default OS app or locally in Lumo Browser if it is a web-renderable format
-    ipcMain.on('lumo:open-file', (_event, filePath: string) => {
+    guardedOn('lumo:open-file', (_event, filePath: string) => {
       const ext = path.extname(filePath).toLowerCase();
       const webExtensions = ['.html', '.htm', '.txt', '.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.mp3', '.mp4', '.webm', '.ogg', '.wav'];
       
@@ -416,17 +533,17 @@ app.on('ready', () => {
     });
 
     // Reveal file in OS file manager
-    ipcMain.on('lumo:show-item-in-folder', (_event, filePath: string) => {
+    guardedOn('lumo:show-item-in-folder', (_event, filePath: string) => {
       shell.showItemInFolder(filePath);
     });
 
     // Navigate to downloads page (triggered by toolbar download button)
-    ipcMain.on('lumo:open-downloads', () => {
+    guardedOn('lumo:open-downloads', () => {
       mainWindow?.webContents.send('lumo:navigate', 'lumo://downloads');
     });
 
     // Proxy settings
-    ipcMain.on('lumo:set-proxy', (event, { type, host, port }: { type: string; host: string; port: string }) => {
+    guardedOn('lumo:set-proxy', (event, { type, host, port }: { type: string; host: string; port: string }) => {
       let proxyRules = '';
       if (type === 'none') {
         proxyRules = 'direct://';
@@ -441,7 +558,7 @@ app.on('ready', () => {
     });
 
     // Private session proxy settings
-    ipcMain.on('lumo:set-private-proxy', (event, { enabled, partitionId, type, host, port }: { enabled: boolean; partitionId: string; type?: string; host?: string; port?: string }) => {
+    guardedOn('lumo:set-private-proxy', (event, { enabled, partitionId, type, host, port }: { enabled: boolean; partitionId: string; type?: string; host?: string; port?: string }) => {
       if (!partitionId) return;
       const sess = session.fromPartition(partitionId);
       if (!enabled) {
@@ -462,7 +579,7 @@ app.on('ready', () => {
     });
 
     // Test proxy connectivity
-    ipcMain.handle('lumo:test-proxy', async (event, { type, host, port }: { type: string; host: string; port: string }) => {
+    guardedHandle('lumo:test-proxy', async (event, { type, host, port }: { type: string; host: string; port: string }) => {
       if (type === 'none') return true;
       if (!host || !port) throw new Error('No host/port configured');
       // Quick TCP check using Node net
@@ -478,7 +595,7 @@ app.on('ready', () => {
     });
 
     // Resolve DNS records for domain
-    ipcMain.handle('lumo:resolve-dns', async (event, { domain }: { domain: string }) => {
+    guardedHandle('lumo:resolve-dns', async (event, { domain }: { domain: string }) => {
       const dns = require('dns').promises;
       const results: Record<string, any> = {};
       try {
@@ -533,7 +650,7 @@ app.on('ready', () => {
     };
 
     // Resolve WHOIS info for domain
-    ipcMain.handle('lumo:resolve-whois', async (event, { domain }: { domain: string }) => {
+    guardedHandle('lumo:resolve-whois', async (event, { domain }: { domain: string }) => {
       const apexDomain = getApexDomain(domain);
       return new Promise<string>((resolve) => {
         const net = require('net');
@@ -574,7 +691,7 @@ app.on('ready', () => {
     });
 
     // Fetch site security headers
-    ipcMain.handle('lumo:resolve-headers', async (event, { url }: { url: string }) => {
+    guardedHandle('lumo:resolve-headers', async (event, { url }: { url: string }) => {
       try {
         const response = await fetch(url, { method: 'HEAD', redirect: 'follow' });
         const headers: Record<string, string> = {};
@@ -588,7 +705,7 @@ app.on('ready', () => {
     });
 
     // Resolve SSL certificate details using tls socket connection
-    ipcMain.handle('lumo:resolve-certificates', async (event, { host }: { host: string }) => {
+    guardedHandle('lumo:resolve-certificates', async (event, { host }: { host: string }) => {
       return new Promise((resolve) => {
         const tls = require('tls');
         let completed = false;
@@ -629,7 +746,7 @@ app.on('ready', () => {
     });
 
     // Detect technologies used on target site
-    ipcMain.handle('lumo:detect-tech', async (event, { url }: { url: string }) => {
+    guardedHandle('lumo:detect-tech', async (event, { url }: { url: string }) => {
       try {
         if (!url || url.toLowerCase().startsWith('lumo://')) {
           return {
@@ -767,7 +884,7 @@ app.on('ready', () => {
     });
 
     // Check Reputation and threat intelligence
-    ipcMain.handle('lumo:threat-intel', async (event, { domain }: { domain: string }) => {
+    guardedHandle('lumo:threat-intel', async (event, { domain }: { domain: string }) => {
       const isSuspiciousTLD = ['.zip', '.mov', '.ru', '.su', '.click', '.gq'].some(tld => domain.endsWith(tld));
       const reputationScore = isSuspiciousTLD ? 65 : 98;
       const threats = isSuspiciousTLD ? ['High Risk TLD Policy Violation'] : [];
@@ -779,7 +896,7 @@ app.on('ready', () => {
     });
 
     // Import browser data (stub — opens a file dialog for HTML bookmarks)
-    ipcMain.on('lumo:import-browser-data', async () => {
+    guardedOn('lumo:import-browser-data', async () => {
       const { dialog } = require('electron');
       const result = await dialog.showOpenDialog(mainWindow!, {
         title: 'Import Browser Data',
@@ -793,7 +910,7 @@ app.on('ready', () => {
     });
 
   // Securely save/load API keys
-    ipcMain.handle('lumo:save-key', (event, key: string) => {
+    guardedHandle('lumo:save-key', (event, key: string) => {
       try {
         if (!key) return '';
         if (safeStorage.isEncryptionAvailable()) {
@@ -807,7 +924,7 @@ app.on('ready', () => {
       }
     });
 
-    ipcMain.handle('lumo:load-key', (event, base64Key: string) => {
+    guardedHandle('lumo:load-key', (event, base64Key: string) => {
       try {
         if (!base64Key) return '';
         const buffer = Buffer.from(base64Key, 'base64');
@@ -820,7 +937,7 @@ app.on('ready', () => {
     }
   });
 
-  ipcMain.handle('lumo:openrouter-chat', async (_event, payload: {
+  guardedHandle('lumo:openrouter-chat', async (_event, payload: {
     apiKey: string;
     model: string;
     messages: Array<{ role: string; content: string }>;
@@ -912,6 +1029,11 @@ app.on('ready', () => {
   });
 
 
+  // Validate agent scripts before injection (defense-in-depth)
+  guardedHandle('lumo:validate-agent-script', async (_event, { script, webviewLabel }: { script: string; webviewLabel?: string }) => {
+    return validateScript(script, webviewLabel);
+  });
+
   // ── Vision Agent IPC Handlers ────────────────────────────────────────────
 
   /**
@@ -919,7 +1041,7 @@ app.on('ready', () => {
    * Captures a JPEG screenshot of the focused webview's webContents.
    * Returns { base64: string } with the image data for the VLM.
    */
-  ipcMain.handle('lumo:capture-webview', async () => {
+  guardedHandle('lumo:capture-webview', async () => {
     if (!mainWindow) return { base64: '' };
     try {
       // capturePage captures the entire renderer, including the webview
@@ -937,7 +1059,7 @@ app.on('ready', () => {
    * Sends real mouse down/up events at pixel (x, y) to the focused webview.
    * These are native OS-level events that bypass JS .click() detection.
    */
-  ipcMain.handle('lumo:native-click', async (_event, { x, y }: { x: number; y: number }) => {
+  guardedHandle('lumo:native-click', async (_event, { x, y }: { x: number; y: number }) => {
     if (!mainWindow) return;
     try {
       const wc = mainWindow.webContents;
@@ -954,7 +1076,7 @@ app.on('ready', () => {
    * lumo:native-key
    * Sends a native keyboard keyDown/keyUp event to the focused webview.
    */
-  ipcMain.handle('lumo:native-key', async (_event, { key }: { key: string }) => {
+  guardedHandle('lumo:native-key', async (_event, { key }: { key: string }) => {
     if (!mainWindow) return;
     try {
       const wc = mainWindow.webContents;

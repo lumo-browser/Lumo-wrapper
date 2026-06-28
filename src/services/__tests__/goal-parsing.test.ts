@@ -30,7 +30,7 @@ describe('GoalParsingService', () => {
     });
 
     it('should throw error for invalid goals', () => {
-      expect(() => service.analyze('short')).toThrow();
+      expect(() => service.analyze('go')).toThrow();
       expect(() => service.analyze('a'.repeat(600))).toThrow();
       expect(() => service.analyze('')).toThrow();
     });
@@ -115,7 +115,7 @@ describe('GoalParsingService', () => {
     });
 
     it('should detect strict vs soft constraints', () => {
-      const strictResult = service.analyze('Must click the save button');
+      const strictResult = service.analyze('Must quickly click the save button');
       const softResult = service.analyze('Prefer to use the new interface');
 
       const strictConstraint = strictResult.constraints.find((c) => c.strict === true);

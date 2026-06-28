@@ -1,5 +1,5 @@
 /**
- * Security Monitor — Phase 1 + Phase 2 Pipeline
+ * Security Monitor — Phase 1 + Phase 2 + Phase 3 Pipeline
  *
  * Phase 1: Attaches real-time interception hooks to Electron sessions and relays
  * structured SecurityEvent payloads to the renderer process over IPC.
@@ -7,12 +7,13 @@
  * Phase 2: Runs every event through the detection engine before sending it to
  * the renderer. High-confidence threats trigger additional security alerts.
  *
- * This module is passive — it observes and reports, but does NOT block.
- * Blocking is handled separately in Phase 3 (Mitigate).
+ * Phase 3: In zero-trust mode, actively blocks unrecognized network requests
+ * and requests user permission before allowing them.
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import { analyzeEvent } from './securityDetector';
+import { guardedOn, guardedHandle } from './ipc-guard';
 
 // ── Types (mirrored from src/types/electron.d.ts) ─────────────────────────────
 interface DetectionResult {
@@ -53,6 +54,37 @@ let flushTimer: NodeJS.Timeout | null = null;
 // Alert threshold — only fire lumo:security-alert for high-confidence threats
 const ALERT_CONFIDENCE_THRESHOLD = 70;
 
+// Zero-trust permission cache: maps hostname → 'allow' | 'block'
+const permissionCache = new Map<string, 'allow' | 'block'>();
+
+import { isZeroTrustMode } from './ipc-guard';
+import { addUserAllowListDomain } from './securityDetector';
+import { extractHost } from './securityDetector';
+
+export function isZeroTrustSession(): boolean {
+  return isZeroTrustMode();
+}
+
+function getPermissionCacheKey(host: string): string {
+  return host.toLowerCase();
+}
+
+function checkCachedPermission(host: string): 'allow' | 'block' | null {
+  const cached = permissionCache.get(getPermissionCacheKey(host));
+  return cached || null;
+}
+
+function cachePermission(host: string, decision: 'allow' | 'allow-once' | 'block'): void {
+  if (decision === 'allow-once') {
+    permissionCache.delete(getPermissionCacheKey(host));
+    return;
+  }
+  permissionCache.set(getPermissionCacheKey(host), decision);
+  if (decision === 'allow') {
+    addUserAllowListDomain(host);
+  }
+}
+
 /**
  * Send a security event to the active renderer window.
  * Phase 2: Events are analyzed by the detection engine before being sent.
@@ -75,6 +107,19 @@ function emitSecurityEvent(win: BrowserWindow | null, event: SecurityEvent): voi
 
   // If the threat confidence exceeds the threshold, send an immediate alert
   if (!detection.safe && detection.confidence >= ALERT_CONFIDENCE_THRESHOLD) {
+    // Auto-isolate in ZT mode for very high-confidence threats
+    if (isZeroTrustMode() && detection.confidence >= 90 && detection.action === 'block') {
+      win.webContents.send('lumo:isolate-tab', {
+        threat: detection.threat,
+        confidence: detection.confidence,
+        category: detection.category,
+        source: event.source,
+        timestamp: new Date().toISOString(),
+      });
+      console.log(
+        `[SecurityMonitor] 🔒 Auto-isolating tab: ${detection.category.toUpperCase()} — ${detection.threat}`
+      );
+    }
     const alert: SecurityAlert = {
       id: `alert-${Date.now()}-${++alertCounter}`,
       event,
@@ -162,19 +207,19 @@ export function monitorNetworkRequests(
         // Validate URL against Phase 2 detection engine
         const detection = analyzeEvent({
           type: 'network_request',
-          details: `GET ${details.url}`, // Temporary event to get URL validated
+          details: `GET ${details.url}`,
           timestamp: new Date().toISOString(),
           source: sessionLabel,
         });
 
         const isMalicious = detection.action === 'block';
+        const isWarn = detection.action === 'warn';
         const resourceType = classifyResourceType(details.url);
         const isNoise = ['Image', 'Font', 'Stylesheet'].includes(resourceType);
 
         if (isMalicious) {
           console.log(`[SecurityMonitor] 🛡️ MITIGATED: Blocked malicious network request: ${details.url}`);
-          
-          // Emit a mitigated event
+
           const event: SecurityEvent = {
             type: 'network_request',
             details: `[${resourceType}] Blocked ${details.method} ${truncateUrl(details.url)}`,
@@ -185,10 +230,53 @@ export function monitorNetworkRequests(
             mitigated: true,
           };
           emitSecurityEvent(getMainWindow(), event);
-          
+
           return callback({ cancel: true });
-        } else if (!isNoise) {
-          // If not blocked and not noise, just log it passively
+        }
+
+        // Zero-trust mode: handle unrecognized domains via permission cache
+        if (isZeroTrustMode() && isWarn) {
+          const host = extractHost(details.url);
+          const cached = checkCachedPermission(host);
+
+          if (cached === 'allow') {
+            // User previously allowed this domain — let it through
+            return callback({ cancel: false });
+          }
+
+          if (cached !== 'block') {
+            // First time seeing this domain in ZT mode — block and ask
+            console.log(`[SecurityMonitor] 🔒 ZT mode: blocking unrecognized ${host}, requesting permission`);
+            cachePermission(host, 'block'); // default to block until user responds
+
+            const event: SecurityEvent = {
+              type: 'network_request',
+              details: `[${resourceType}] ZT-Blocked ${details.method} ${truncateUrl(details.url)} — awaiting permission`,
+              timestamp: new Date().toISOString(),
+              source: sessionLabel,
+              suspicious: true,
+              detection: detection,
+              mitigated: true,
+            };
+            emitSecurityEvent(getMainWindow(), event);
+
+            // Notify the renderer to show a permission dialog
+            const win = getMainWindow();
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('lumo:permission-request', {
+                url: details.url,
+                host,
+                resourceType,
+                sessionLabel,
+                timestamp: new Date().toISOString(),
+              });
+            }
+          }
+
+          return callback({ cancel: true });
+        }
+
+        if (!isNoise) {
           const event: SecurityEvent = {
             type: 'network_request',
             details: `[${resourceType}] ${details.method} ${truncateUrl(details.url)}`,
@@ -215,7 +303,7 @@ export function monitorNetworkRequests(
  */
 export function registerSecurityIPC(getMainWindow: () => BrowserWindow | null): void {
   // Receive security events from the preload script (runs inside webview/renderer)
-  ipcMain.on('lumo:security-event-from-preload', (_ipcEvent, payload: SecurityEvent) => {
+  guardedOn('lumo:security-event-from-preload', (_ipcEvent, payload: SecurityEvent) => {
     const win = getMainWindow();
     if (win && !win.isDestroyed()) {
       emitSecurityEvent(win, {
@@ -226,16 +314,22 @@ export function registerSecurityIPC(getMainWindow: () => BrowserWindow | null): 
   });
 
   // Toggle monitoring on/off from the frontend
-  ipcMain.on('lumo:set-security-monitor', (_event, enabled: boolean) => {
+  guardedOn('lumo:set-security-monitor', (_event, enabled: boolean) => {
     monitorEnabled = enabled;
     console.log(`[SecurityMonitor] Monitoring ${enabled ? 'enabled' : 'disabled'}`);
   });
 
   // Provide current monitor state to the frontend
-  ipcMain.handle('lumo:get-security-monitor-state', () => {
+  guardedHandle('lumo:get-security-monitor-state', () => {
     return { enabled: monitorEnabled, alertCount: alertCounter };
   });
 
-  console.log('[SecurityMonitor] IPC handlers registered (Phase 1 + Phase 2)');
+  // Handle user permission decisions for zero-trust mode
+  guardedOn('lumo:permission-decision', (_event, { host, decision }: { host: string; decision: 'allow' | 'allow-once' | 'block' }) => {
+    cachePermission(host, decision);
+    console.log(`[SecurityMonitor] 🔒 ZT permission decision: ${decision} for ${host}`);
+  });
+
+  console.log('[SecurityMonitor] IPC handlers registered (Phase 1 + Phase 2 + ZT)');
 }
 

@@ -74,6 +74,14 @@ declare global {
       onSecurityEvent: (callback: (event: SecurityEvent) => void) => () => void;
       /** Absolute file:// URL to the webview preload script for security hooks */
       webviewPreloadPath?: string;
+      /** Toggle zero-trust security mode on/off */
+      setZeroTrustMode: (enabled: boolean) => void;
+      /** Check current zero-trust mode state */
+      getZeroTrustMode: () => Promise<boolean>;
+      /** Listen for zero-trust mode changes from main process */
+      onZeroTrustModeChanged: (callback: (enabled: boolean) => void) => () => void;
+      /** Request main process to monitor a tab partition */
+      monitorTabPartition: (partitionId: string) => void;
     };
     _lumoDisposablePartition?: string;
   }

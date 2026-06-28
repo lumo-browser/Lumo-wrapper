@@ -51,6 +51,19 @@ export function SecurityDashboard({
   const [isResizing, setIsResizing] = useState(false);
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
 
+  // Zero-trust mode state
+  const [zeroTrustMode, setZeroTrustMode] = useState(false);
+
+  useEffect(() => {
+    window.electron?.getZeroTrustMode().then(setZeroTrustMode).catch(() => {});
+  }, []);
+
+  const toggleZeroTrust = () => {
+    const next = !zeroTrustMode;
+    setZeroTrustMode(next);
+    window.electron?.setZeroTrustMode(next);
+  };
+
   // Extension Architecture State
   const [monitorStats, setMonitorStats] = useState({
     domMutations: 0,
@@ -841,6 +854,18 @@ export function SecurityDashboard({
                     <div className="flex justify-between">
                       <span className="text-gray-500">Session Isolation</span>
                       <span>{isIncognito ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-gray-100 dark:border-zinc-900 mt-1">
+                      <span className="text-gray-500 font-semibold">Zero-Trust Mode</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={zeroTrustMode}
+                          onChange={toggleZeroTrust}
+                        />
+                        <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                      </label>
                     </div>
                   </div>
                 </div>

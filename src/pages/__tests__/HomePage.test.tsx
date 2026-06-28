@@ -82,7 +82,7 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('AI Status')).toBeTruthy();
+      expect(screen.getByText('System Status')).toBeTruthy();
     });
   });
 
@@ -106,7 +106,7 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Your Workflows')).toBeTruthy();
+      expect(screen.getByText('Workflows')).toBeTruthy();
     });
   });
 
@@ -150,7 +150,7 @@ describe('HomePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Research a company')).toBeTruthy();
-      expect(screen.getByText('Find best laptop')).toBeTruthy();
+      expect(screen.getByText('Find product alternatives')).toBeTruthy();
     });
   });
 

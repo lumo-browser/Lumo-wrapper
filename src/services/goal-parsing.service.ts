@@ -113,11 +113,9 @@ const CONSTRAINT_KEYWORDS = {
  */
 export class GoalParsingService {
   private logger: Logger;
-  private validator: Validator;
 
   constructor() {
     this.logger = Logger.getInstance();
-    this.validator = new Validator();
   }
 
   /**
@@ -127,7 +125,9 @@ export class GoalParsingService {
     this.logger.debug('Analyzing goal', { scope: 'GoalParsingService', goal });
 
     // Validate input
-    if (!this.validator.validateString(goal, 5, 500)) {
+    try {
+      Validator.validateString(goal, 'goal', 5, 500);
+    } catch {
       throw new Error('Goal must be between 5 and 500 characters');
     }
 
@@ -152,8 +152,7 @@ export class GoalParsingService {
     return goal
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, ' ')
-      .replace(/[^\w\s\-\.,:]/g, '');
+      .replace(/\s+/g, ' ');
   }
 
   /**
@@ -306,6 +305,10 @@ export class GoalParsingService {
     // Length factor
     score += Math.min(goal.length / 50, 2);
 
+    // Structural complexity (commas, clauses)
+    const commaClauses = (goal.match(/,/g) || []).length;
+    score += Math.min(commaClauses * 1.5, 3);
+
     // Keyword factor
     const complexKeywords = [
       'and',
@@ -355,7 +358,7 @@ export class GoalParsingService {
    * Calculate overall confidence in the analysis
    */
   private calculateConfidence(goal: string): number {
-    let confidence = 50; // Base confidence
+    let confidence = 40; // Base confidence
 
     // Clarity factors
     if (goal.length > 20) confidence += 10;

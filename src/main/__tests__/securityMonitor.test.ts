@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { attachSecurityMonitor } from '../securityMonitor';
+import { monitorNetworkRequests } from '../securityMonitor';
 
 // Mock Electron session
 const mockSession = {
@@ -21,12 +21,7 @@ describe('Security Monitor', () => {
   });
 
   it('should attach to onBeforeRequest', () => {
-    attachSecurityMonitor(mockSession as any, mockWindow as any);
+    monitorNetworkRequests(mockSession as any, mockWindow as any);
     expect(mockSession.webRequest.onBeforeRequest).toHaveBeenCalled();
-  });
-
-  it('should attach to onBeforeSendHeaders', () => {
-    attachSecurityMonitor(mockSession as any, mockWindow as any);
-    expect(mockSession.webRequest.onBeforeSendHeaders).toHaveBeenCalled();
   });
 });

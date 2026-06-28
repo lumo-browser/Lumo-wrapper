@@ -59,6 +59,14 @@ const CRYPTO_WALLET_PATTERNS = [
 
 // ── Hook: Browser API Proxy (Clipboard Mitigation) ─────────────────────────────
 
+export function isBrowserAPIsHooked(): boolean {
+  return !!(typeof window !== 'undefined' && (window as any).__lumoClipboardHooked);
+}
+
+export function isNetworkAPIsHooked(): boolean {
+  return !!(typeof window !== 'undefined' && (window as any).__lumoNetworkHooked);
+}
+
 export function hookBrowserAPIs(reportEvent: ReportSecurityEvent): void {
   if (typeof navigator !== 'undefined' && navigator.clipboard) {
     const originalReadText = navigator.clipboard.readText.bind(navigator.clipboard);
@@ -111,6 +119,7 @@ export function hookBrowserAPIs(reportEvent: ReportSecurityEvent): void {
       return originalWriteText(data);
     };
   }
+  (window as any).__lumoClipboardHooked = true;
 }
 
 // ── Hook: WebAssembly Execution Mitigation ─────────────────────────────────────
@@ -249,4 +258,80 @@ export function observeDOMMutations(reportEvent: ReportSecurityEvent): void {
   } else {
     attach();
   }
+}
+
+// ── Hook: Network API interception (fetch, XHR, WebSocket, sendBeacon) ─────────
+
+export function hookNetworkAPIs(reportEvent: ReportSecurityEvent): void {
+  // 1. Hook window.fetch()
+  if (typeof fetch !== 'undefined') {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const method = (init?.method || 'GET').toUpperCase();
+      const bodySize = init?.body ? (typeof init.body === 'string' ? init.body.length : 0) : 0;
+
+      reportEvent({
+        type: 'network_request',
+        details: `fetch ${method} ${url}${bodySize > 0 ? ` (${bodySize} bytes body)` : ''}`,
+        source: window.location?.href,
+        timestamp: new Date().toISOString(),
+      });
+
+      return originalFetch(input, init);
+    };
+  }
+
+  // 2. Hook XMLHttpRequest
+  if (typeof XMLHttpRequest !== 'undefined') {
+    const originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (
+      method: string,
+      url: string | URL,
+      async?: boolean,
+      user?: string | null,
+      password?: string | null,
+    ): void {
+      const urlStr = typeof url === 'string' ? url : url.href;
+      reportEvent({
+        type: 'network_request',
+        details: `XHR ${(method || 'GET').toUpperCase()} ${urlStr}`,
+        source: window.location?.href,
+        timestamp: new Date().toISOString(),
+      });
+      return originalOpen.call(this, method, url, async ?? true, user ?? null, password ?? null);
+    };
+  }
+
+  // 3. Hook WebSocket.send()
+  if (typeof WebSocket !== 'undefined') {
+    const originalSend = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data: unknown): void {
+      const size = typeof data === 'string' ? data.length : data instanceof Blob ? data.size : data instanceof ArrayBuffer ? data.byteLength : 0;
+      reportEvent({
+        type: 'network_request',
+        details: `WebSocket.send (${size} bytes) to ${this.url}`,
+        source: window.location?.href,
+        timestamp: new Date().toISOString(),
+      });
+      return originalSend.call(this, data);
+    };
+  }
+
+  // 4. Hook navigator.sendBeacon
+  if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+    const originalSendBeacon = navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon = (url: string | URL, data?: BodyInit | null): boolean => {
+      const urlStr = typeof url === 'string' ? url : url.href;
+      const size = data ? (typeof data === 'string' ? data.length : data instanceof Blob ? data.size : data instanceof ArrayBuffer ? data.byteLength : 0) : 0;
+      reportEvent({
+        type: 'network_request',
+        details: `navigator.sendBeacon to ${urlStr}${size > 0 ? ` (${size} bytes)` : ''}`,
+        source: window.location?.href,
+        timestamp: new Date().toISOString(),
+      });
+      return originalSendBeacon(url, data);
+    };
+  }
+  (window as any).__lumoNetworkHooked = true;
 }

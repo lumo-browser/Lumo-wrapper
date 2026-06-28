@@ -39,6 +39,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ExtensionsPage } from './pages/ExtensionsPage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { SecurityDashboard } from './ui/components/SecurityDashboard';
+import { PermissionRequest } from './ui/components/PermissionRequest';
 
 // ── Internal Pages ─────────────────────────────────────────────────────────
 const getCleanTitle = (url: string): string => {
@@ -60,15 +61,18 @@ interface WebviewTabProps {
   tabId: string;
   url: string;
   isDark: boolean;
+  zeroTrustMode: boolean;
   onTitleChange: (title: string) => void;
   onLoadingChange: (loading: boolean) => void;
   onUrlChange: (url: string) => void;
   onNavStateChange: (canGoBack: boolean, canGoForward: boolean) => void;
 }
 
-function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
+function WebviewTab({ tabId, url, isDark, zeroTrustMode, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
+  const ztRef = useRef(zeroTrustMode);
+  ztRef.current = zeroTrustMode;
 
   // Wire up webview events once on mount
   useEffect(() => {
@@ -289,6 +293,19 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
     wv.addEventListener('dom-ready', onDomReady);
     wv.addEventListener('context-menu', onContextMenu);
 
+    // ZT-mode: monitor partition and block popup windows
+    if (zeroTrustMode) {
+      window.electron?.monitorTabPartition(`tab-${tabId}`);
+      const onNewWindow = (e: any) => {
+        e.preventDefault();
+        console.log(`[ZT] Blocked new window from isolated tab ${tabId}`);
+      };
+      wv.addEventListener('new-window', onNewWindow);
+      wv.addEventListener('destroyed', () => {
+        wv.removeEventListener('new-window', onNewWindow);
+      });
+    }
+
     return () => {
       wv.removeEventListener('did-start-loading', onStartLoad);
       wv.removeEventListener('did-stop-loading',  onStopLoad);
@@ -298,7 +315,7 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
       wv.removeEventListener('dom-ready',         onDomReady);
       wv.removeEventListener('context-menu',      onContextMenu);
     };
-  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange]);
+  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, zeroTrustMode]);
 
   return (
     <webview
@@ -308,7 +325,8 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
       className="w-full h-full border-none bg-white"
       preload={window.electron?.webviewPreloadPath}
       useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-      partition={window.location.search.includes('disposable=true') ? window._lumoDisposablePartition : "persist:lumo-main"}
+      partition={zeroTrustMode ? `tab-${tabId}` : (window.location.search.includes('disposable=true') ? window._lumoDisposablePartition : "persist:lumo-main")}
+      webpreferences={zeroTrustMode ? "sandbox=true" : undefined}
     />
   );
 }
@@ -352,6 +370,13 @@ export default function App(): React.ReactElement {
   // Theme
   const [isDark, setIsDark] = useState(true);
   const [internalZoom, setInternalZoom] = useState(1);
+  const [zeroTrustMode, setZeroTrustMode] = useState(false);
+
+  useEffect(() => {
+    window.electron?.getZeroTrustMode().then(setZeroTrustMode).catch(() => {});
+    const unsub = window.electron?.onZeroTrustModeChanged(setZeroTrustMode);
+    return () => unsub?.();
+  }, []);
 
   const handleOnboardingComplete = (prefs: OnboardingPrefs) => {
     setSettings(s => ({ ...s, searchEngine: prefs.searchEngine as any, blockAds: prefs.adBlockEnabled }));
@@ -1454,10 +1479,11 @@ Example response format:
                 )}
                 {!isInternal && (
                   <WebviewTab
-                    key={tab.id}
+                    key={`${tab.id}-${zeroTrustMode ? 'zt' : 'std'}`}
                     tabId={tab.id}
                     url={tab.url}
                     isDark={isDark}
+                    zeroTrustMode={zeroTrustMode}
                     onTitleChange={(title) =>
                       setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, title } : t))
                     }
@@ -1621,6 +1647,9 @@ Example response format:
           onClose={() => setTabGrouping(s => ({ ...s, isOpen: false }))}
         />
       )}
+
+      {/* Zero-Trust Permission Request Overlay */}
+      <PermissionRequest />
 
     </div>
   );

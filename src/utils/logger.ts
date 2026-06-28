@@ -5,6 +5,8 @@
 
 import { LogLevel, LOG_LEVEL } from '../core/constants';
 
+export { LogLevel };
+
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
