@@ -72,6 +72,8 @@ declare global {
       on: (channel: string, listener: (event: any, ...args: any[]) => void) => () => void;
       /** Subscribe to real-time security monitor events from the backend */
       onSecurityEvent: (callback: (event: SecurityEvent) => void) => () => void;
+      /** Absolute file:// URL to the webview preload script for security hooks */
+      webviewPreloadPath?: string;
     };
     _lumoDisposablePartition?: string;
   }
@@ -80,6 +82,7 @@ declare global {
     interface IntrinsicElements {
       webview: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         src?: string;
+        preload?: string;
         allowpopups?: string;
         partition?: string;
         useragent?: string;

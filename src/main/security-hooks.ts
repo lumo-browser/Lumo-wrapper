@@ -1,0 +1,252 @@
+/**
+ * Shared security monitoring hooks
+ *
+ * Used by both the main renderer preload and webview preload scripts.
+ * Each hook accepts a `reportEvent` callback so the caller controls
+ * how events are dispatched (IPC, console, etc.).
+ */
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+type SecurityEventType =
+  | 'dom_mutation'
+  | 'browser_api'
+  | 'wasm_exec'
+  | 'file_io'
+  | 'permission_request'
+  | 'user_event';
+
+type DetectionCategory =
+  | 'phishing'
+  | 'malware'
+  | 'cryptominer'
+  | 'data_theft'
+  | 'injection'
+  | 'safe';
+
+type DetectionAction = 'allow' | 'warn' | 'block';
+
+interface DetectionResult {
+  safe: boolean;
+  threat?: string;
+  confidence: number;
+  category: DetectionCategory;
+  action?: DetectionAction;
+}
+
+interface SecurityEventPayload {
+  type: SecurityEventType;
+  details: string;
+  timestamp: string;
+  source?: string;
+  suspicious?: boolean;
+  mitigated?: boolean;
+  detection?: DetectionResult;
+}
+
+export type ReportSecurityEvent = (payload: SecurityEventPayload) => void;
+
+// ── Crypto Wallet Patterns ─────────────────────────────────────────────────────
+
+const CRYPTO_WALLET_PATTERNS = [
+  /^0x[0-9a-fA-F]{40}$/,                      // Ethereum
+  /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/,        // Bitcoin legacy
+  /^bc1[a-zA-HJ-NP-Z0-9]{39,59}$/,            // Bitcoin bech32
+  /^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/,       // Litecoin
+  /^4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}$/,       // Monero
+  /^T[A-Za-z1-9]{33}$/,                       // Tron
+];
+
+// ── Hook: Browser API Proxy (Clipboard Mitigation) ─────────────────────────────
+
+export function hookBrowserAPIs(reportEvent: ReportSecurityEvent): void {
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    const originalReadText = navigator.clipboard.readText.bind(navigator.clipboard);
+    const originalWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
+
+    navigator.clipboard.readText = async function (): Promise<string> {
+      reportEvent({
+        type: 'browser_api',
+        details: 'Clipboard readText() accessed by page script',
+        source: window.location?.href,
+        suspicious: true,
+        timestamp: new Date().toISOString(),
+      });
+      return originalReadText();
+    };
+
+    navigator.clipboard.writeText = async function (data: string): Promise<void> {
+      const preview = data.length > 60 ? data.substring(0, 60) + '...' : data;
+      const isWalletAddress = CRYPTO_WALLET_PATTERNS.some((pattern) =>
+        pattern.test(data.trim()),
+      );
+
+      if (isWalletAddress) {
+        console.warn('[Lumo Security] Blocked clipboard overwrite with crypto wallet address.');
+        reportEvent({
+          type: 'browser_api',
+          details: `Clipboard writeText() blocked — script tried to replace clipboard with crypto wallet address: "${preview}"`,
+          source: window.location?.href || 'preload',
+          suspicious: true,
+          mitigated: true,
+          timestamp: new Date().toISOString(),
+          detection: {
+            safe: false,
+            threat: 'Clipboard hijack detected — crypto wallet address replacement',
+            confidence: 95,
+            category: 'data_theft',
+            action: 'block',
+          },
+        });
+        return Promise.resolve();
+      }
+
+      reportEvent({
+        type: 'browser_api',
+        details: `Clipboard writeText() called — content: "${preview}"`,
+        source: window.location?.href,
+        suspicious: false,
+        timestamp: new Date().toISOString(),
+      });
+      return originalWriteText(data);
+    };
+  }
+}
+
+// ── Hook: WebAssembly Execution Mitigation ─────────────────────────────────────
+
+export function monitorWasmExecution(reportEvent: ReportSecurityEvent): void {
+  if (typeof WebAssembly !== 'undefined') {
+    const originalInstantiate = WebAssembly.instantiate.bind(WebAssembly);
+    const originalInstantiateStreaming =
+      WebAssembly.instantiateStreaming?.bind(WebAssembly);
+
+    WebAssembly.instantiate = async function (
+      bufferSource: BufferSource | WebAssembly.Module,
+      importObject?: WebAssembly.Imports,
+    ): Promise<WebAssembly.WebAssemblyInstantiatedSource | WebAssembly.Instance> {
+      const byteLength =
+        bufferSource instanceof ArrayBuffer ? bufferSource.byteLength : 0;
+      const sizeKB = byteLength / 1024;
+      const sizeStr =
+        bufferSource instanceof ArrayBuffer
+          ? `${sizeKB.toFixed(1)}KB`
+          : 'Module';
+
+      if (sizeKB > 1024) {
+        console.warn(`[Lumo Security] Blocked large WebAssembly instantiation (${sizeStr}).`);
+        reportEvent({
+          type: 'wasm_exec',
+          details: `WebAssembly instantiation blocked — oversized binary (${sizeStr}) likely crypto miner.`,
+          source: window.location?.href || 'preload',
+          suspicious: true,
+          mitigated: true,
+          timestamp: new Date().toISOString(),
+          detection: {
+            safe: false,
+            threat: `Oversized WebAssembly binary (${(sizeKB / 1024).toFixed(1)}MB) — likely crypto miner`,
+            confidence: 85,
+            category: 'cryptominer',
+            action: 'block',
+          },
+        });
+        return Promise.reject(
+          new Error('Lumo Security: WebAssembly execution blocked by active mitigation protocol.'),
+        );
+      }
+
+      reportEvent({
+        type: 'wasm_exec',
+        details: `WebAssembly.instantiate() called — binary size: ${sizeStr}`,
+        source: window.location?.href,
+        suspicious: true,
+        timestamp: new Date().toISOString(),
+      });
+      return originalInstantiate(bufferSource, importObject);
+    } as typeof WebAssembly.instantiate;
+
+    if (originalInstantiateStreaming) {
+      WebAssembly.instantiateStreaming = async function (
+        source: Response | PromiseLike<Response>,
+        importObject?: WebAssembly.Imports,
+      ): Promise<WebAssembly.WebAssemblyInstantiatedSource> {
+        reportEvent({
+          type: 'wasm_exec',
+          details: 'WebAssembly.instantiateStreaming() called — streaming binary compilation',
+          source: window.location?.href,
+          suspicious: true,
+          timestamp: new Date().toISOString(),
+        });
+        return originalInstantiateStreaming(source, importObject);
+      };
+    }
+  }
+}
+
+// ── Hook: DOM Mutation Observer ────────────────────────────────────────────────
+
+export function observeDOMMutations(reportEvent: ReportSecurityEvent): void {
+  const attach = (): void => {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of Array.from(mutation.addedNodes)) {
+          if (!(node instanceof HTMLElement)) continue;
+
+          const tag = node.tagName?.toLowerCase();
+
+          if (tag === 'script') {
+            const src = (node as HTMLScriptElement).src;
+            reportEvent({
+              type: 'dom_mutation',
+              details: src
+                ? `Dynamic <script> injected: ${src}`
+                : `Inline <script> injected (${(node.textContent || '').length} chars)`,
+              source: window.location?.href,
+              suspicious: true,
+              timestamp: new Date().toISOString(),
+            });
+          }
+
+          if (tag === 'iframe') {
+            const src = (node as HTMLIFrameElement).src;
+            const isHidden =
+              node.style.display === 'none' ||
+              node.style.visibility === 'hidden' ||
+              node.style.opacity === '0' ||
+              (node.offsetWidth === 0 && node.offsetHeight === 0);
+
+            reportEvent({
+              type: 'dom_mutation',
+              details: `Dynamic <iframe> injected: ${src || '(no src)'}${isHidden ? ' [HIDDEN]' : ''}`,
+              source: window.location?.href,
+              suspicious: isHidden,
+              timestamp: new Date().toISOString(),
+            });
+          }
+
+          const innerScripts = node.querySelectorAll?.('script, iframe');
+          if (innerScripts && innerScripts.length > 0) {
+            reportEvent({
+              type: 'dom_mutation',
+              details: `Container element <${tag}> injected with ${innerScripts.length} nested script/iframe element(s)`,
+              source: window.location?.href,
+              suspicious: true,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attach, { once: true });
+  } else {
+    attach();
+  }
+}

@@ -297,6 +297,7 @@ function WebviewTab({ tabId, url, isDark, onTitleChange, onLoadingChange, onUrlC
       id={`webview-${tabId}`}
       src={initialUrl.current || 'about:blank'}
       className="w-full h-full border-none bg-white"
+      preload={window.electron?.webviewPreloadPath}
       useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
       partition={window.location.search.includes('disposable=true') ? window._lumoDisposablePartition : "persist:lumo-main"}
     />

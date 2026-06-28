@@ -294,6 +294,7 @@ function ProviderWebview({ provider }: { provider?: typeof AI_PROVIDERS[0] }) {
           src={provider.url}
           className="w-full h-full relative z-10 border-none bg-transparent"
           title={provider.name}
+          preload={window.electron?.webviewPreloadPath}
           allowpopups="true"
           partition={`persist:ai-${provider.id}`}
           useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
