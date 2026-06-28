@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { X, Plus, Globe } from 'lucide-react';
+import { X, Plus, Globe, Minus, Square } from 'lucide-react';
 
 export interface BrowserTab {
   id: string;
@@ -116,8 +116,8 @@ export function BrowserTabBar({
 
   // ── Horizontal layout (default) ────────────────────────────────────────────
   return (
-    <div className="flex items-end h-[50px] bg-[#dee1e6] dark:bg-[#1e1e1e] px-2 overflow-x-auto scrollbar-none select-none flex-shrink-0">
-      <div className="flex items-end h-full gap-px">
+    <div className="flex items-end h-[50px] bg-[#dee1e6] dark:bg-[#1e1e1e] px-2 select-none flex-shrink-0 w-full" style={{ WebkitAppRegion: 'drag' } as any}>
+      <div className="flex items-end h-full gap-px flex-1 overflow-x-auto scrollbar-none" style={{ WebkitAppRegion: 'no-drag' } as any}>
         {tabs.map((tab, index) => {
           const isFirst = index === 0;
           const isLast = index === tabs.length - 1;
@@ -198,9 +198,38 @@ export function BrowserTabBar({
           transition-colors duration-100"
         title="New tab (Ctrl+T)"
         aria-label="New tab"
+        style={{ WebkitAppRegion: 'no-drag' } as any}
       >
         <Plus className="w-4 h-4" />
       </button>
+
+      {/* Spacer for drag region */}
+      <div className="flex-1" />
+
+      {/* Window Controls (Mac-style or Windows-style) */}
+      <div className="flex items-center h-full mb-1.5 ml-2 gap-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+        <button
+          onClick={() => window.electron?.send?.('lumo:window-minimize')}
+          className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+          title="Minimize"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => window.electron?.send?.('lumo:window-maximize')}
+          className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+          title="Maximize"
+        >
+          <Square className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => window.electron?.send?.('lumo:window-close')}
+          className="w-8 h-8 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-red-500 hover:text-white rounded transition-colors"
+          title="Close"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -38,6 +38,7 @@ function createWindow(): void {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -107,6 +108,7 @@ function createDisposableWindow(): void {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -232,6 +234,24 @@ app.on('ready', () => {
 
     ipcMain.on('lumo:new-disposable-window', () => {
       createDisposableWindow();
+    });
+
+    ipcMain.on('lumo:window-minimize', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) win.minimize();
+    });
+
+    ipcMain.on('lumo:window-maximize', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) {
+        if (win.isMaximized()) win.restore();
+        else win.maximize();
+      }
+    });
+
+    ipcMain.on('lumo:window-close', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) win.close();
     });
 
     // Spell check
