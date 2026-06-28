@@ -351,6 +351,7 @@ export default function App(): React.ReactElement {
 
   // Theme
   const [isDark, setIsDark] = useState(true);
+  const [internalZoom, setInternalZoom] = useState(1);
 
   const handleOnboardingComplete = (prefs: OnboardingPrefs) => {
     setSettings(s => ({ ...s, searchEngine: prefs.searchEngine as any, blockAds: prefs.adBlockEnabled }));
@@ -982,7 +983,7 @@ export default function App(): React.ReactElement {
         console.warn('Zoom not supported in this environment', e);
       }
     } else {
-      console.warn('Zoom not supported in this environment');
+      setInternalZoom(prev => Math.min(prev + 0.1, 3));
     }
   }, [activeTab]);
 
@@ -1001,7 +1002,7 @@ export default function App(): React.ReactElement {
         console.warn('Zoom not supported in this environment', e);
       }
     } else {
-      console.warn('Zoom not supported in this environment');
+      setInternalZoom(prev => Math.max(prev - 0.1, 0.5));
     }
   }, [activeTab]);
 
@@ -1380,8 +1381,10 @@ Example response format:
                 key={tab.id}
                 className={`absolute inset-0 flex flex-col transition-opacity duration-0 ${tab.isActive ? 'z-10 opacity-100 visible' : 'z-[-1] opacity-0 invisible pointer-events-none'}`}
               >
-                <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
-                  {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
+                {isInternal && (
+                  <div style={{ zoom: internalZoom, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
+                      {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
                   {isNtp && !isWelcome && !isDisposable && <NewTabPage onNavigate={navigate} isDark={isDark} />}
                   {isNtp && !isWelcome && isDisposable && (
                     <PrivateNewTabPage
@@ -1445,6 +1448,8 @@ Example response format:
                       An AI-native, privacy-first browser built with Chromium and Electron.<br/>
                       No cloud accounts. No API keys. Your data stays local.
                     </p>
+                  </div>
+                )}
                   </div>
                 )}
                 {!isInternal && (
