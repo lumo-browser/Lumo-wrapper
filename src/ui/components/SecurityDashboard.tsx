@@ -14,10 +14,8 @@ import {
   Activity,
   Layers,
   Settings,
-  Play,
   Network,
   FileDown,
-  Clipboard,
 } from 'lucide-react';
 
 interface SecurityDashboardProps {
@@ -120,9 +118,12 @@ export function SecurityDashboard({
   ]);
 
   const [activeSimStage, setActiveSimStage] = useState<'monitor' | 'detect' | 'mitigate' | 'threathunt' | null>(null);
-  const [simTargetNode, setSimTargetNode] = useState<string | null>(null);
-  const [simulating, setSimulating] = useState(false);
+  const [simTargetNode] = useState<string | null>(null);
+  const [simulating] = useState(false);
   const simConsoleEndRef = useRef<HTMLDivElement>(null);
+
+  // ── Phase 3: Mitigation State ─────────────────────────────────────────────
+  const [mitigatedThreatCount, setMitigatedThreatCount] = useState(0);
 
   // ── Phase 2: Detection State ──────────────────────────────────────────────
   const [detectThreatCount, setDetectThreatCount] = useState(0);
@@ -174,6 +175,13 @@ export function SecurityDashboard({
         setDetectThreatCount((prev) => prev + 1);
       }
 
+      // Phase 3: Check if threat was mitigated
+      if (event.mitigated) {
+        setMitigatedThreatCount((prev) => prev + 1);
+        setActiveSimStage('mitigate');
+        setTimeout(() => setActiveSimStage(null), 2000);
+      }
+
       // Only append real-time logs when on the architecture tab to avoid memory buildup
       if (activeTab === 'architecture') {
         // Phase 1 monitor log
@@ -195,6 +203,16 @@ export function SecurityDashboard({
               level: (det.action === 'block' ? 'danger' : 'warn') as 'info' | 'warn' | 'success' | 'danger',
               stage: 'DETECT',
               message: `[${det.category.toUpperCase()}] ${det.threat} (confidence: ${det.confidence}%, action: ${det.action})`,
+            });
+          }
+
+          // Phase 3: If threat was mitigated, add MITIGATE stage log entry
+          if (event.mitigated) {
+            logs.push({
+              time: new Date(event.timestamp).toLocaleTimeString(),
+              level: 'success',
+              stage: 'MITIGATE',
+              message: `[MITIGATED] Threat actively blocked by security engine.`,
             });
           }
 
@@ -241,93 +259,7 @@ export function SecurityDashboard({
     };
   }, [simulating]);
 
-  const runArchSimulation = async (type: 'dom_mutation' | 'file_download' | 'clipboard_theft' | 'wasm_crypto') => {
-    if (simulating) return;
-    setSimulating(true);
 
-    const formatTime = () => new Date().toLocaleTimeString();
-
-    // Reset logs before simulation to keep it focused
-    setArchSimLogs([
-      {
-        time: formatTime(),
-        level: 'info',
-        stage: 'SIMULATION',
-        message: `Starting simulation: ${type.replace('_', ' ').toUpperCase()}`
-      }
-    ]);
-
-    // 1. MONITOR STAGE
-    setActiveSimStage('monitor');
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    let monitorMsg = '';
-    let detectMsg = '';
-    let mitigateMsg = '';
-    let threatMsg = '';
-
-    if (type === 'dom_mutation') {
-      setMonitorStats(prev => ({ ...prev, domMutations: prev.domMutations + 1, networkRequests: prev.networkRequests + 2 }));
-      setSimTargetNode('dom');
-      monitorMsg = 'MONITOR: Intercepted dynamic DOM insertion of hidden iframe pointing to unknown domain.';
-      detectMsg = 'DETECT: Script scanner checked iframe contents and flagged matching signature: Trojan.Clickjack.Gen.';
-      mitigateMsg = mitigateSettings.disarmCDR 
-        ? 'MITIGATE: Action (Disarm) applied. Content Disarmament & Reconstruction removed iframe element.' 
-        : 'MITIGATE: Block policy triggered. Blocked DOM modification request.';
-      threatMsg = 'THREAT HUNT: Telemetry uploaded. DOM injection attack vector cataloged on managed device.';
-    } else if (type === 'file_download') {
-      setMonitorStats(prev => ({ ...prev, fileIO: prev.fileIO + 1, userEvents: prev.userEvents + 1 }));
-      setSimTargetNode('download');
-      monitorMsg = 'MONITOR: Detected user-initiated file download request: payment_receipt.pdf.exe.';
-      detectMsg = 'DETECT: Link validator / File Downloads engine scanned download content. Executable file masquerading as PDF detected.';
-      mitigateMsg = mitigateSettings.isolateFile
-        ? 'MITIGATE: Action (Isolate) applied. Intercepted file download and routed to isolated local container.'
-        : 'MITIGATE: Block policy triggered. Terminated download execution.';
-      threatMsg = 'THREAT HUNT: Event recorded. Phishing link file download payload isolated.';
-    } else if (type === 'clipboard_theft') {
-      setMonitorStats(prev => ({ ...prev, browserApis: prev.browserApis + 1, userEvents: prev.userEvents + 1 }));
-      setSimTargetNode('clipboard');
-      monitorMsg = 'MONITOR: Intercepted script query attempting to access navigator.clipboard read API.';
-      detectMsg = 'DETECT: Identity/Clipboard guardian evaluated query. Script has no user interaction context.';
-      mitigateMsg = mitigateSettings.block
-        ? 'MITIGATE: Action (Block) applied. Aborted Clipboard API execution context and returned dummy value.'
-        : 'MITIGATE: Blocked clipboard API read request.';
-      threatMsg = 'THREAT HUNT: Alert dispatched. Unauthorized background clipboard inspection attempt blocked.';
-    } else if (type === 'wasm_crypto') {
-      setMonitorStats(prev => ({ ...prev, wasmExec: prev.wasmExec + 1, networkRequests: prev.networkRequests + 10 }));
-      setSimTargetNode('wasm');
-      monitorMsg = 'MONITOR: Detected WebAssembly.instantiate() call compiling a 4MB binary module.';
-      detectMsg = 'DETECT: WebAssembly heuristic scanner flagged cryptojacking loops (XMRig miner bytecode).';
-      mitigateMsg = mitigateSettings.isolateBrowser
-        ? 'MITIGATE: Action (Isolate) applied. Isolated current browser tab execution sandbox.'
-        : 'MITIGATE: Block policy triggered. Refused to run WebAssembly binary.';
-      threatMsg = 'THREAT HUNT: Report synced. Cryptomining script blocked in isolated container. Alerting sysadmin.';
-    }
-
-    setArchSimLogs(prev => [...prev, { time: formatTime(), level: 'info', stage: 'MONITOR', message: monitorMsg }]);
-
-    // 2. DETECT STAGE
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setActiveSimStage('detect');
-    setArchSimLogs(prev => [...prev, { time: formatTime(), level: 'warn', stage: 'DETECT', message: detectMsg }]);
-
-    // 3. MITIGATE STAGE
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setActiveSimStage('mitigate');
-    setArchSimLogs(prev => [...prev, { time: formatTime(), level: 'danger', stage: 'MITIGATE', message: mitigateMsg }]);
-
-    // 4. THREAT HUNT STAGE
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setActiveSimStage('threathunt');
-    setThreatHuntState(prev => ({ ...prev, alertCount: prev.alertCount + 1 }));
-    setArchSimLogs(prev => [...prev, { time: formatTime(), level: 'success', stage: 'THREAT HUNT', message: threatMsg }]);
-
-    // Finalize
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setActiveSimStage(null);
-    setSimTargetNode(null);
-    setSimulating(false);
-  };
 
   // Domain parsing
   const getDomain = (rawUrl: string): string => {
@@ -1282,59 +1214,14 @@ export function SecurityDashboard({
                   <span className="text-[10px] bg-teal-500 text-white px-2 py-0.5 rounded-full font-bold">Shield Active</span>
                 </div>
 
-                {/* Simulation Control Room */}
+                {/* Real-time System Logs */}
                 <div className="bg-gray-50 dark:bg-zinc-900/40 border border-gray-200 dark:border-zinc-800/80 rounded-lg p-4">
+                  <h4 className="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                    <Activity className="w-3.5 h-3.5 text-blue-500" />
+                    Live Security Telemetry Console
+                  </h4>
                   <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 space-y-3">
-                      <h4 className="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wide flex items-center gap-1.5">
-                        <Play className="w-3.5 h-3.5 text-blue-500" />
-                        Threat Simulation Console
-                      </h4>
-                      <p className="text-[11px] text-gray-500 leading-relaxed">
-                        Trigger security simulations to watch the extension inspect, identify, and mitigate vectors in real-time.
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          disabled={simulating}
-                          onClick={() => runArchSimulation('dom_mutation')}
-                          className="px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/30 rounded font-semibold text-left flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                        >
-                          <Layers className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">DOM Injection</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={simulating}
-                          onClick={() => runArchSimulation('file_download')}
-                          className="px-3 py-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/30 rounded font-semibold text-left flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                        >
-                          <FileDown className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">Malicious File</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={simulating}
-                          onClick={() => runArchSimulation('clipboard_theft')}
-                          className="px-3 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/30 rounded font-semibold text-left flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                        >
-                          <Clipboard className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">Clipboard Hijack</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={simulating}
-                          onClick={() => runArchSimulation('wasm_crypto')}
-                          className="px-3 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200/50 dark:border-red-800/30 rounded font-semibold text-left flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                        >
-                          <Cpu className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">Wasm Cryptojack</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Simulation Logs */}
-                    <div className="flex-1 flex flex-col h-40 border border-gray-200 dark:border-zinc-800 rounded bg-zinc-950 text-zinc-300 font-mono text-[10px] select-text">
+                    <div className="w-full flex flex-col h-40 border border-gray-200 dark:border-zinc-800 rounded bg-zinc-950 text-zinc-300 font-mono text-[10px] select-text">
                       <div className="flex-1 p-2.5 overflow-y-auto space-y-1">
                         {archSimLogs.map((log, idx) => {
                           const levelColors = {
@@ -1558,16 +1445,28 @@ export function SecurityDashboard({
                   {/* Stage 3: MITIGATE */}
                   <div className={`p-4 border rounded-lg transition-all duration-300 ${
                     activeSimStage === 'mitigate'
-                      ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-500/[0.03]'
-                      : 'border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/10'
+                      ? 'border-green-500 ring-2 ring-green-500/20 bg-green-500/[0.03]'
+                      : mitigatedThreatCount > 0 
+                        ? 'border-amber-500 ring-1 ring-amber-500/10 bg-amber-500/[0.02]'
+                        : 'border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/10'
                   }`}>
                     <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-zinc-800/80">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2.5 h-2.5 rounded-full bg-amber-500 ${activeSimStage === 'mitigate' ? 'animate-ping' : ''}`} />
-                        <span className="text-sm font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">3. MITIGATE</span>
-                        <span className="text-[10px] text-zinc-500 font-semibold">(Isolate & Disarm)</span>
+                        <div className={`w-2.5 h-2.5 rounded-full ${activeSimStage === 'mitigate' ? 'bg-green-500 animate-ping' : 'bg-amber-500'}`} />
+                        <span className={`text-sm font-bold uppercase tracking-wider ${activeSimStage === 'mitigate' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>3. MITIGATE</span>
+                        <span className="text-[10px] text-zinc-500 font-semibold">(Prevention)</span>
                       </div>
-                      <span className="text-[10px] text-zinc-400 font-semibold">Active Defenses</span>
+                      <div className="flex items-center gap-2">
+                        {mitigatedThreatCount > 0 && (
+                          <span className="text-[10px] bg-green-500/15 text-green-600 dark:text-green-400 px-2 py-0.5 rounded font-mono font-bold animate-pulse">
+                            {mitigatedThreatCount} Threat{mitigatedThreatCount !== 1 ? 's' : ''} Blocked
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-zinc-400">Action Rules:</span>
+                          <span className="text-[10px] text-green-500 font-bold">Enforcing</span>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="h-6 w-full rounded-md overflow-hidden flex text-[10px] font-bold text-white mb-4 shadow-sm border border-zinc-200 dark:border-zinc-800">
