@@ -948,8 +948,8 @@ app.on('ready', () => {
   });
 
   createWindow();
-  // Disable native menu bar — Lumo uses custom menu in UI
-  // createMenu();
+  // Disable native menu bar completely
+  Menu.setApplicationMenu(null);
 
   // ── Global keyboard shortcuts ─────────────────────────────────────────────
   // Register AFTER window creation. These fire at OS level, preventing
