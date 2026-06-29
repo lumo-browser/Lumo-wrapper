@@ -15,6 +15,7 @@ const THEMES = [
   { id: 'crimson-red', label: 'Crimson Red', color: '#ef4444', preview: 'linear-gradient(135deg, #450a0a, #7f1d1d)' },
   { id: 'pink-heart', label: 'Pink Heart', color: '#ec4899', preview: 'linear-gradient(135deg, #500724, #9d174d)' },
   { id: 'japan-cherry-blossom', label: 'Cherry Blossom', color: '#fca5a5', preview: 'url(https://raw.githubusercontent.com/BlackStar1991/Pictures-for-sharing-/master/Japan/bg.png)' },
+  { id: 'brain-network', label: 'Social Network', color: '#3b82f6', preview: 'linear-gradient(135deg, #2a2a2a, #1a1a1a)' },
 ];
 
 export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDark }: DashboardSettingsOverlayProps) {

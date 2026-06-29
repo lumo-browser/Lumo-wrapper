@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { DashboardSettingsOverlay } from '../ui/components/DashboardSettingsOverlay';
 import { JapanCherryBlossomTheme } from '../ui/components/JapanCherryBlossomTheme';
+import { BrainNetworkTheme } from '../ui/components/BrainNetworkTheme';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ShortcutItem { id: string; label: string; url: string; icon: string; color: string; }
@@ -402,8 +403,8 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
   const bgGradient = isDark ? BACKGROUNDS_DARK[bgIdx] : BACKGROUNDS_LIGHT[bgIdx];
   const config = useDashboardConfig();
   
-  // Force light mode text (dark text) when the bright Japan theme is active
-  const themeIsDark = config.theme === 'japan-cherry-blossom' ? false : isDark;
+  // Force light mode text (dark text) when bright themes are active
+  const themeIsDark = (config.theme === 'japan-cherry-blossom' || config.theme === 'brain-network') ? false : isDark;
 
   const accentHex = config.accentColor || '#8b5cf6';
   const bgImage = config.bgImage || '';
@@ -450,6 +451,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
 
       {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={themeIsDark} />}
       {config.theme === 'japan-cherry-blossom' && <JapanCherryBlossomTheme />}
+      {config.theme === 'brain-network' && <BrainNetworkTheme />}
       
       {(() => {
         const isSavedTheme = config.theme?.startsWith('saved-');
