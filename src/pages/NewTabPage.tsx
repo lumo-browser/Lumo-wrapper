@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, Globe, Plus, X,
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag,
-  Layers, Sparkles, Command,
+  Layers, Sparkles, Command, Settings
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -363,7 +363,7 @@ function hexToRgb(hex) {
 }
 
 function useDashboardConfig() {
-  const [config, setConfig] = useState({ accentColor: '#8b5cf6' });
+  const [config, setConfig] = useState({ accentColor: '#8b5cf6', bgImage: '' });
   useEffect(() => {
     const update = () => {
       try {
@@ -384,23 +384,97 @@ function useDashboardConfig() {
   return config;
 }
 
+function DashboardSettingsWidget({ isDark, config }: { isDark: boolean, config: any }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const handleSave = (newConfig: any) => {
+    const updated = { ...config, ...newConfig };
+    localStorage.setItem('Lumo-dashboard-config', JSON.stringify(updated));
+    window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
+  };
+
+  return (
+    <>
+      <button 
+        onClick={() => setIsOpen(true)}
+        className={`absolute top-6 right-6 z-50 p-2 rounded-full transition-all ${isDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
+      >
+        <Settings className="w-5 h-5" />
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
+          <div className={`w-80 rounded-2xl shadow-2xl p-6 ${isDark ? 'bg-[#14141e]' : 'bg-white'}`}
+            style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>Dashboard Settings</h3>
+              <button onClick={() => setIsOpen(false)} className={isDark ? 'text-white/50 hover:text-white' : 'text-gray-500 hover:text-gray-800'}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-xs mb-1.5 font-semibold tracking-wide ${isDark ? 'text-white/70' : 'text-gray-600'}`}>Accent Color</label>
+                <div className="flex gap-2">
+                  {['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#64748b'].map(c => (
+                    <button key={c} onClick={() => handleSave({ accentColor: c })}
+                      className={`w-6 h-6 rounded-full transition-transform ${config.accentColor === c ? 'scale-125 ring-2 ring-white/50' : 'hover:scale-110'}`}
+                      style={{ backgroundColor: c }} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-xs mb-1.5 font-semibold tracking-wide ${isDark ? 'text-white/70' : 'text-gray-600'}`}>Background Image URL</label>
+                <input type="text" value={config.bgImage || ''} 
+                  onChange={e => handleSave({ bgImage: e.target.value })}
+                  placeholder="https://..."
+                  className={`w-full px-3 py-2.5 text-xs rounded-xl outline-none ${isDark ? 'text-white bg-white/5 border-white/10 placeholder-white/30' : 'text-gray-800 bg-gray-50 border-gray-200 placeholder-gray-400'}`}
+                  style={{ border: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
+              </div>
+              
+              <div className="pt-2 border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                <button onClick={() => handleSave({ bgImage: '', accentColor: '#8b5cf6' })}
+                  className={`text-[10px] uppercase tracking-wider font-bold ${isDark ? 'text-white/30 hover:text-white/70' : 'text-gray-400 hover:text-gray-800'}`}>
+                  Reset to Default
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): React.ReactElement {
   const [bgIdx] = useState(() => Math.floor(Math.random() * BACKGROUNDS_DARK.length));
 
   const bgGradient = isDark ? BACKGROUNDS_DARK[bgIdx] : BACKGROUNDS_LIGHT[bgIdx];
   const config = useDashboardConfig();
   const accentHex = config.accentColor || '#8b5cf6';
+  const bgImage = config.bgImage || '';
   const accentRgb = hexToRgb(accentHex);
   const cssVars = {
     '--lumo-accent': accentHex,
     '--lumo-accent-rgb': accentRgb,
   } as React.CSSProperties;
 
+  const backgroundStyle = bgImage 
+    ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: bgGradient };
+
   return (
     <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto transition-colors duration-500"
-      style={{ background: bgGradient, ...cssVars }}>
+      style={{ ...backgroundStyle, ...cssVars }}>
 
-      <AmbientOrbs isDark={isDark} />
+      {bgImage && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-none z-0" />}
+
+      <DashboardSettingsWidget isDark={isDark} config={config} />
+
+      {!bgImage && <AmbientOrbs isDark={isDark} />}
 
       {/* Subtle grid overlay */}
       <div className={`pointer-events-none absolute inset-0 ${isDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}
