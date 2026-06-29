@@ -16,7 +16,7 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
         <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${s.label}" style="width: 32px; height: 32px; border-radius: 6px; object-fit: contain;">
       </div>
     `;
-  }).join('\\n');
+  }).join('');
 
   const html = `
 <div class="graphic-container">
@@ -187,7 +187,7 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
           </body>
         </html>
       `}
-      className="absolute inset-0 w-full h-full border-none z-0 pointer-events-none"
+      className="absolute inset-0 w-full h-full border-none z-0"
       sandbox="allow-scripts allow-same-origin"
       style={{ backgroundColor: '#f0f4f8' }}
     />
