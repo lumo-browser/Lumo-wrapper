@@ -7,6 +7,7 @@ interface DashboardSettingsOverlayProps {
   config: any;
   onSave: (newConfig: any) => void;
   isDark: boolean;
+  initialTab?: 'themes' | 'layout' | 'shortcuts' | 'code';
 }
 
 const DEFAULT_SHORTCUTS = [
@@ -27,8 +28,14 @@ const THEMES = [
   { id: 'brain-network', label: 'Social Network', color: '#3b82f6', preview: 'linear-gradient(135deg, #2a2a2a, #1a1a1a)' },
 ];
 
-export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDark }: DashboardSettingsOverlayProps) {
-  const [activeTab, setActiveTab] = useState<'themes' | 'layout' | 'shortcuts' | 'code'>('themes');
+export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDark, initialTab = 'themes' }: DashboardSettingsOverlayProps) {
+  const [activeTab, setActiveTab] = useState<'themes' | 'layout' | 'shortcuts' | 'code'>(initialTab);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [localConfig, setLocalConfig] = useState(config);
   const [isSaving, setIsSaving] = useState(false);
   const [themeName, setThemeName] = useState('');

@@ -12,8 +12,8 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
   const nodesHtml = displayShortcuts.map((s, i) => {
     const domain = new URL(s.url).hostname;
     return `
-      <div class="icon-node ${nodeClasses[i]}" style="color: ${s.color}; cursor: pointer;" data-url="${s.url}" title="${s.label}">
-        <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${s.label}" style="width: 32px; height: 32px; border-radius: 6px; object-fit: contain;">
+      <div class="icon-node ${nodeClasses[i]}" style="color: ${s.color}; cursor: pointer;" title="${s.label}" onclick="window.parent.postMessage({ type: 'lumo-navigate', url: '${s.url}' }, '*')">
+        <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${s.label}" style="width: 32px; height: 32px; border-radius: 6px; object-fit: contain; pointer-events: none;">
       </div>
     `;
   }).join('');
@@ -40,8 +40,8 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
   ${nodesHtml}
   
   <!-- Add Node -->
-  <div class="icon-node n-add float-anim" style="color: #10b981; cursor: pointer;" data-action="add" title="Add Shortcut">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  <div class="icon-node n-add float-anim" style="color: #10b981; cursor: pointer;" title="Add Shortcut" onclick="window.parent.postMessage({ type: 'lumo-open-settings' }, '*')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </div>
 </div>
   `;
@@ -155,19 +155,6 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
       });
 
       gsap.to(".float-slow", { y: "-=5", duration: 2, repeat: -1, yoyo: true, ease: "sine.inOut" });
-
-      // Click handling
-      document.querySelectorAll('.icon-node').forEach(node => {
-        node.addEventListener('click', (e) => {
-          const url = e.currentTarget.getAttribute('data-url');
-          const action = e.currentTarget.getAttribute('data-action');
-          if (url) {
-            window.parent.postMessage({ type: 'lumo-navigate', url }, '*');
-          } else if (action === 'add') {
-            window.parent.postMessage({ type: 'lumo-open-settings' }, '*');
-          }
-        });
-      });
     });
   `;
 

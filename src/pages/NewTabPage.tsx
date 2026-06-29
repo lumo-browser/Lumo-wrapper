@@ -399,6 +399,7 @@ function useDashboardConfig() {
 export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): React.ReactElement {
   const [bgIdx] = useState(() => Math.floor(Math.random() * BACKGROUNDS_DARK.length));
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'themes' | 'layout' | 'shortcuts' | 'code'>('themes');
 
   const bgGradient = isDark ? BACKGROUNDS_DARK[bgIdx] : BACKGROUNDS_LIGHT[bgIdx];
   const config = useDashboardConfig();
@@ -446,6 +447,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
           window.location.href = e.data.url;
         }
       } else if (e.data?.type === 'lumo-open-settings') {
+        setSettingsTab('shortcuts');
         setShowSettings(true);
       }
     };
@@ -460,7 +462,10 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
       {bgImage && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-none z-0" />}
 
       <button 
-        onClick={() => setShowSettings(true)}
+        onClick={() => {
+          setSettingsTab('themes');
+          setShowSettings(true);
+        }}
         className={`absolute top-6 right-6 z-50 p-2 rounded-full transition-all ${themeIsDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
       >
         <Settings className="w-5 h-5" />
@@ -468,7 +473,11 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
 
       <DashboardSettingsOverlay 
         isOpen={showSettings} 
-        onClose={() => setShowSettings(false)} 
+        onClose={() => {
+          setShowSettings(false);
+          setSettingsTab('themes');
+        }} 
+        initialTab={settingsTab}
         config={config}
         onSave={(newConf) => {
           try {
