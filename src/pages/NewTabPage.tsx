@@ -541,6 +541,11 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
         }} />
 
       {/* Main content */}
+      {config.theme === 'brain-network' && config.showClock !== false && (
+        <div className="absolute top-16 left-0 w-full flex justify-center pointer-events-none z-10">
+          <ClockWidget isDark={configThemeIsDark} />
+        </div>
+      )}
       {config.theme !== 'brain-network' && (
         <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14">
           {config.showClock !== false && <ClockWidget isDark={configThemeIsDark} />}
