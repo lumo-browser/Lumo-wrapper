@@ -160,7 +160,7 @@ function createDisposableWindow(): void {
   attachAdBlocker(disposableWindow.webContents.session);
   // Using a random partition to ensure it's completely ephemeral per window
   const ephemeralSession = session.fromPartition(partitionId);
-  ephemeralSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+  // ephemeralSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
   attachAdBlocker(ephemeralSession);
   monitorNetworkRequests(ephemeralSession, getMainWindow, `disposable:${partitionId}`, adBlockerCheck);
 
