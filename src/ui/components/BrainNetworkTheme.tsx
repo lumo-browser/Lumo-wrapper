@@ -9,13 +9,26 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
   const displayShortcuts = shortcuts.slice(0, 6);
   const nodeClasses = ['n-l1 float-anim', 'n-l2 float-anim-alt', 'n-l3 float-anim', 'n-r1 float-anim-alt', 'n-r2 float-anim', 'n-r3 float-anim-alt'];
   
+  const linePaths = [
+    'M 400 250 C 250 250, 200 120, 160 120',
+    'M 400 250 C 250 250, 180 250, 120 250',
+    'M 400 250 C 250 250, 200 380, 160 380',
+    'M 400 250 C 550 250, 600 120, 640 120',
+    'M 400 250 C 550 250, 620 250, 680 250',
+    'M 400 250 C 550 250, 600 380, 640 380',
+  ];
+
   const nodesHtml = displayShortcuts.map((s, i) => {
     const domain = new URL(s.url).hostname;
     return `
-      <div class="icon-node ${nodeClasses[i]}" style="color: ${s.color}; cursor: pointer;" title="${s.label}" onclick="window.parent.postMessage({ type: 'lumo-navigate', url: '${s.url}' }, '*')">
+      <div class="icon-node ${nodeClasses[i]}" style="color: ${s.color}; cursor: pointer;" data-url="${s.url}" title="${s.label}">
         <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${s.label}" style="width: 32px; height: 32px; border-radius: 6px; object-fit: contain; pointer-events: none;">
       </div>
     `;
+  }).join('');
+
+  const linesHtml = displayShortcuts.map((_, i) => {
+    return `<path class="line-path" d="${linePaths[i]}" />`;
   }).join('');
 
   const html = `
@@ -23,14 +36,8 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
   <div class="circles gsap-scale"></div>
 
   <svg class="lines-svg" viewBox="0 0 800 500">
-    <path class="line-path" d="M 400 250 C 250 250, 200 120, 160 120" />
-    <path class="line-path" d="M 400 250 C 250 250, 180 250, 120 250" />
-    <path class="line-path" d="M 400 250 C 250 250, 200 380, 160 380" />
-
-    <path class="line-path" d="M 400 250 C 550 250, 600 120, 640 120" />
-    <path class="line-path" d="M 400 250 C 550 250, 620 250, 680 250" />
-    <path class="line-path" d="M 400 250 C 550 250, 600 380, 640 380" />
-    
+    ${linesHtml}
+    <!-- Line for Add Node -->
     <path class="line-path" d="M 400 250 C 400 350, 400 450, 400 450" />
   </svg>
 
@@ -40,7 +47,7 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
   ${nodesHtml}
   
   <!-- Add Node -->
-  <div class="icon-node n-add float-anim" style="color: #10b981; cursor: pointer;" title="Add Shortcut" onclick="window.parent.postMessage({ type: 'lumo-open-settings' }, '*')">
+  <div class="icon-node n-add float-anim" style="color: #10b981; cursor: pointer;" data-action="add" title="Add Shortcut">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </div>
 </div>
@@ -155,6 +162,20 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
       });
 
       gsap.to(".float-slow", { y: "-=5", duration: 2, repeat: -1, yoyo: true, ease: "sine.inOut" });
+      
+      // Global event delegation for clicks (bypasses CSP inline script restrictions)
+      document.addEventListener("click", (e) => {
+        const node = e.target.closest('.icon-node');
+        if (node) {
+          const url = node.getAttribute('data-url');
+          const action = node.getAttribute('data-action');
+          if (url) {
+            window.parent.postMessage({ type: 'lumo-navigate', url }, '*');
+          } else if (action === 'add') {
+            window.parent.postMessage({ type: 'lumo-open-settings' }, '*');
+          }
+        }
+      });
     });
   `;
 
