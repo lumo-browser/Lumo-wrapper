@@ -89,6 +89,17 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.send('lumo:clear-profile-partition', profileId);
   },
 
+  // Password Vault
+  vaultGetAll: (profileId: string): Promise<any[]> => {
+    return ipcRenderer.invoke('lumo:vault-get-all', profileId) as Promise<any[]>;
+  },
+  vaultSave: (profileId: string, entry: any): Promise<any[]> => {
+    return ipcRenderer.invoke('lumo:vault-save', { profileId, entry }) as Promise<any[]>;
+  },
+  vaultDelete: (profileId: string, id: string): Promise<any[]> => {
+    return ipcRenderer.invoke('lumo:vault-delete', { profileId, id }) as Promise<any[]>;
+  },
+
   // App info
   appVersion: (): string => '0.2.0',
 

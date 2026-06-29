@@ -82,6 +82,16 @@ declare global {
       onZeroTrustModeChanged: (callback: (enabled: boolean) => void) => () => void;
       /** Request main process to monitor a tab partition */
       monitorTabPartition: (partitionId: string) => void;
+      /** Monitor a profile partition */
+      monitorProfilePartition: (profileId: string) => void;
+      /** Clear a profile partition */
+      clearProfilePartition: (profileId: string) => void;
+      /** Get all password entries from the vault */
+      vaultGetAll: (profileId: string) => Promise<any[]>;
+      /** Save a password entry to the vault */
+      vaultSave: (profileId: string, entry: any) => Promise<any[]>;
+      /** Delete a password entry from the vault */
+      vaultDelete: (profileId: string, id: string) => Promise<any[]>;
     };
     _lumoDisposablePartition?: string;
   }

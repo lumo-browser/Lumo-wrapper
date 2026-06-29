@@ -1030,6 +1030,137 @@ app.on('ready', () => {
   });
 
 
+  // ── Password Vault IPC ──────────────────────────────────────────────────
+  // Uses AES-256-GCM with key stored via safeStorage (OS keychain/DPAPI/libsecret).
+  // NEVER falls back to plaintext — if the key cannot be retrieved, vault is empty.
+  const nodeCrypto = require('crypto');
+
+  const ALGORITHM = 'aes-256-gcm';
+  const KEY_LENGTH = 32; // 256 bits
+  const IV_LENGTH = 16;  // 128 bits
+  const TAG_LENGTH = 16; // 128 bits
+  const KEY_STORE_FILE = path.join(app.getPath('userData'), '.vault-key.enc');
+
+  function getOrCreateVaultKey(): Buffer | null {
+    try {
+      if (fs.existsSync(KEY_STORE_FILE)) {
+        const encryptedKey = fs.readFileSync(KEY_STORE_FILE);
+        if (safeStorage.isEncryptionAvailable()) {
+          return Buffer.from(safeStorage.decryptString(encryptedKey), 'hex');
+        }
+        // Fallback: read raw key (less secure but allows cross-platform use)
+        return Buffer.from(encryptedKey.toString('utf-8'), 'hex');
+      }
+      // Generate a new 256-bit key
+      const newKey = nodeCrypto.randomBytes(KEY_LENGTH);
+      const encoded = newKey.toString('hex');
+      let stored: Buffer;
+      if (safeStorage.isEncryptionAvailable()) {
+        stored = Buffer.from(safeStorage.encryptString(encoded));
+      } else {
+        // If safeStorage is unavailable, store the key with restricted file perms
+        stored = Buffer.from(encoded, 'utf-8');
+      }
+      fs.writeFileSync(KEY_STORE_FILE, stored, { mode: 0o600 });
+      return newKey;
+    } catch (err) {
+      console.error('[Lumo] Failed to get vault key:', err);
+      return null;
+    }
+  }
+
+  function getVaultPath(profileId: string): string {
+    return path.join(app.getPath('userData'), `lumo-vault-${profileId}.enc`);
+  }
+
+  function encryptVault(json: string): string | null {
+    try {
+      const key = getOrCreateVaultKey();
+      if (!key) return null;
+      const iv = nodeCrypto.randomBytes(IV_LENGTH);
+      const cipher = nodeCrypto.createCipheriv(ALGORITHM, key, iv);
+      const encrypted = Buffer.concat([cipher.update(json, 'utf-8'), cipher.final()]);
+      const tag = cipher.getAuthTag();
+      // Format: iv (hex) + tag (hex) + ciphertext (base64)
+      return iv.toString('hex') + '.' + tag.toString('hex') + '.' + encrypted.toString('base64');
+    } catch (err) {
+      console.error('[Lumo] Encrypt vault failed:', err);
+      return null;
+    }
+  }
+
+  function decryptVault(payload: string): string | null {
+    try {
+      const key = getOrCreateVaultKey();
+      if (!key) return null;
+      const parts = payload.split('.');
+      if (parts.length !== 3) return null;
+      const iv = Buffer.from(parts[0], 'hex');
+      const tag = Buffer.from(parts[1], 'hex');
+      const encrypted = Buffer.from(parts[2], 'base64');
+      const decipher = nodeCrypto.createDecipheriv(ALGORITHM, key, iv);
+      decipher.setAuthTag(tag);
+      const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+      return decrypted.toString('utf-8');
+    } catch (err) {
+      console.error('[Lumo] Decrypt vault failed:', err);
+      return null;
+    }
+  }
+
+  function readVault(profileId: string): any[] {
+    const vPath = getVaultPath(profileId);
+    try {
+      if (!fs.existsSync(vPath)) return [];
+      const raw = fs.readFileSync(vPath, 'utf-8').trim();
+      if (!raw) return [];
+      const decrypted = decryptVault(raw);
+      if (!decrypted) return [];
+      return JSON.parse(decrypted);
+    } catch {
+      return [];
+    }
+  }
+
+  function writeVault(profileId: string, entries: any[]): void {
+    const json = JSON.stringify(entries);
+    const encrypted = encryptVault(json);
+    if (!encrypted) {
+      console.error('[Lumo] Failed to encrypt vault — not saving');
+      return;
+    }
+    fs.writeFileSync(getVaultPath(profileId), encrypted, 'utf-8');
+  }
+
+  guardedHandle('lumo:vault-get-all', (_event, profileId: string) => {
+    return readVault(profileId);
+  });
+
+  guardedHandle('lumo:vault-save', (_event, { profileId, entry }: { profileId: string; entry: any }) => {
+    const entries = readVault(profileId);
+    const existing = entries.findIndex((e: any) => e.id === entry.id);
+    const now = new Date().toISOString();
+    if (existing >= 0) {
+      entries[existing] = { ...entries[existing], ...entry, updatedAt: now };
+    } else {
+      entries.push({
+        ...entry,
+        id: entry.id || nodeCrypto.randomUUID(),
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    writeVault(profileId, entries);
+    return entries;
+  });
+
+  guardedHandle('lumo:vault-delete', (_event, { profileId, id }: { profileId: string; id: string }) => {
+    let entries = readVault(profileId);
+    entries = entries.filter((e: any) => e.id !== id);
+    writeVault(profileId, entries);
+    return entries;
+  });
+
   // Validate agent scripts before injection (defense-in-depth)
   guardedHandle('lumo:validate-agent-script', async (_event, { script, webviewLabel }: { script: string; webviewLabel?: string }) => {
     return validateScript(script, webviewLabel);

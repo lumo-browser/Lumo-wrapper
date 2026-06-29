@@ -155,6 +155,18 @@ export interface Conversation {
   updatedAt: Date;
 }
 
+// Password Manager
+export interface PasswordEntry {
+  id: string;
+  url: string;
+  domain: string;
+  username: string;
+  password: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // User Preferences
 export interface UserPreferences {
   theme: 'light' | 'dark' | 'system';

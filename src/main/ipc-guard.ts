@@ -58,6 +58,9 @@ const IPC_PERMISSIONS: Record<string, IpcPermission> = {
   'lumo:permission-request': 'PUBLIC',
   'lumo:permission-decision': 'SESSION',
   'lumo:validate-agent-script': 'SESSION',
+  'lumo:vault-get-all': 'SESSION',
+  'lumo:vault-save': 'SESSION',
+  'lumo:vault-delete': 'SESSION',
 };
 
 let zeroTrustMode = false;

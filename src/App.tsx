@@ -37,6 +37,7 @@ import { HistoryPage } from './pages/HistoryPage';
 import { BookmarksPage } from './pages/BookmarksPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ExtensionsPage } from './pages/ExtensionsPage';
+import { PasswordManagerPage } from './pages/PasswordManagerPage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { SecurityDashboard } from './ui/components/SecurityDashboard';
 import { PermissionRequest } from './ui/components/PermissionRequest';
@@ -66,19 +67,28 @@ interface WebviewTabProps {
   activeProfileId: string;
   blockPopups: boolean;
   permissions: { camera: boolean; microphone: boolean; location: boolean; notifications: boolean };
+  askSavePasswords: boolean;
+  autofillPasswords: boolean;
   onTitleChange: (title: string) => void;
   onLoadingChange: (loading: boolean) => void;
   onUrlChange: (url: string) => void;
   onNavStateChange: (canGoBack: boolean, canGoForward: boolean) => void;
+  onPasswordCaptured: (entry: { url: string; username: string; password: string }) => void;
 }
 
-function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
+function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, askSavePasswords, autofillPasswords, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured }: WebviewTabProps) {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
   const ztRef = useRef(zeroTrustMode);
   const profileRef = useRef(activeProfileId);
+  const askSaveRef = useRef(askSavePasswords);
+  const autofillRef = useRef(autofillPasswords);
+  const urlRef = useRef(url);
   profileRef.current = activeProfileId;
   ztRef.current = zeroTrustMode;
+  askSaveRef.current = askSavePasswords;
+  autofillRef.current = autofillPasswords;
+  urlRef.current = url;
 
   // Wire up webview events once on mount
   useEffect(() => {
@@ -287,7 +297,87 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
           console.warn('Could not set zoom level', e);
         }
       }
+
+      // ── Password capture script ──────────────────────────────────────────
+      if (askSaveRef.current) {
+        const pwdScript = `
+          (function() {
+            try {
+              if (window._lumoPwdCapture) return;
+              window._lumoPwdCapture = true;
+
+              function captureForm(form) {
+                var pwdField = form.querySelector('input[type="password"]');
+                if (!pwdField || !pwdField.value) return;
+                var usernameField = form.querySelector('input[type="text"],input[type="email"],input[name="username"],input[name="email"],input[name="login"],input[name="user"]');
+                var username = usernameField ? usernameField.value : '';
+                var data = JSON.stringify({
+                  url: location.href,
+                  username: username,
+                  password: pwdField.value
+                });
+                console.log('[LumoPassword]' + data);
+              }
+
+              document.addEventListener('submit', function(e) {
+                try { captureForm(e.target); } catch(ex) {}
+              }, true);
+
+              document.querySelectorAll('form').forEach(function(f) {
+                var submitBtns = f.querySelectorAll('button[type="submit"],input[type="submit"]');
+                for (var i = 0; i < submitBtns.length; i++) {
+                  submitBtns[i].addEventListener('click', function() {
+                    try { captureForm(f); } catch(ex) {}
+                  });
+                }
+              });
+            } catch(e) {}
+          })();
+        `;
+        wv.executeJavaScript(pwdScript).catch(() => {});
+      }
+
+      // ── Password autofill ────────────────────────────────────────────────
+      if (autofillRef.current) {
+        const currentUrl = urlRef.current;
+        try {
+          const u = new URL(currentUrl);
+          const domain = u.hostname.replace(/^www\./, '');
+          (window as any).electron?.vaultGetAll(profileRef.current).then((entries: any[]) => {
+            const match = entries.find((e: any) => {
+              try { return new URL(e.url).hostname.replace(/^www\./, '') === domain; } catch { return false; }
+            });
+            if (match) {
+              const fillScript = `
+                (function() {
+                  try {
+                    var pwdField = document.querySelector('input[type="password"]');
+                    if (!pwdField) return;
+                    var usernameField = document.querySelector('input[type="text"],input[type="email"],input[name="username"],input[name="email"],input[name="login"],input[name="user"]');
+                    if (usernameField) { usernameField.value = ${JSON.stringify(match.username)}; usernameField.dispatchEvent(new Event('input', { bubbles: true })); }
+                    pwdField.value = ${JSON.stringify(match.password)}; pwdField.dispatchEvent(new Event('input', { bubbles: true }));
+                  } catch(e) {}
+                })();
+              `;
+              wv.executeJavaScript(fillScript).catch(() => {});
+            }
+          }).catch(() => {});
+        } catch {}
+      }
     };
+
+    // ── Password capture from console-message ──────────────────────────────
+    const onConsoleMessage = (e: any) => {
+      if (typeof e.message === 'string' && e.message.startsWith('[LumoPassword]')) {
+        try {
+          const data = JSON.parse(e.message.slice('[LumoPassword]'.length));
+          if (data.password && askSaveRef.current) {
+            onPasswordCaptured({ url: data.url, username: data.username, password: data.password });
+          }
+        } catch {}
+      }
+    };
+    wv.addEventListener('console-message', onConsoleMessage);
 
     const onContextMenu = (e: any) => {
       e.preventDefault();
@@ -342,8 +432,9 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
       wv.removeEventListener('dom-ready',         onDomReady);
       wv.removeEventListener('context-menu',      onContextMenu);
       wv.removeEventListener('permission-request', onPermissionRequest);
+      wv.removeEventListener('console-message', onConsoleMessage);
     };
-  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, zeroTrustMode, blockPopups, permissions]);
+  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, zeroTrustMode, blockPopups, permissions, askSavePasswords, autofillPasswords, onPasswordCaptured]);
 
   return (
     <webview
@@ -1565,7 +1656,8 @@ Example response format:
             const isCompare    = tabUrlLower.startsWith('lumo://compare');
             const isWelcome    = tabUrlLower === 'lumo://welcome';
             const isSecurity   = tabUrlLower === 'lumo://security';
-            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isDownloads || isCompare || isWelcome || isSecurity;
+            const isPasswords  = tabUrlLower === 'lumo://passwords';
+            const isInternal = isNtp || isSettings || isHistory || isBookmarks || isAbout || isExtensions || isDownloads || isCompare || isWelcome || isSecurity || isPasswords;
 
             return (
               <div
@@ -1617,6 +1709,9 @@ Example response format:
                   {isExtensions && (
                     <ExtensionsPage onNavigate={navigate} />
                   )}
+                  {isPasswords && (
+                    <PasswordManagerPage activeProfileId={activeProfileId} onNavigate={navigate} />
+                  )}
                   {isSecurity && (
                     <SecurityDashboard 
                       url="lumo://security" 
@@ -1654,6 +1749,8 @@ Example response format:
                     activeProfileId={activeProfileId}
                     blockPopups={settings.blockPopups}
                     permissions={settings.permissions}
+                    askSavePasswords={settings.askSavePasswords}
+                    autofillPasswords={settings.autofillPasswords}
                     onTitleChange={(title) =>
                       setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, title } : t))
                     }
@@ -1666,6 +1763,22 @@ Example response format:
                     onNavStateChange={(canBack, canForward) =>
                       setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, canGoBack: canBack, canGoForward: canForward } : t))
                     }
+                    onPasswordCaptured={async (cred) => {
+                      if (window.electron?.vaultSave && settings.askSavePasswords) {
+                        try {
+                          const domain = (() => { try { return new URL(cred.url).hostname.replace(/^www\./, ''); } catch { return cred.url; } })();
+                          await window.electron.vaultSave(activeProfileId, {
+                            url: cred.url,
+                            domain,
+                            username: cred.username,
+                            password: cred.password,
+                            title: domain,
+                          });
+                        } catch (err) {
+                          console.error('Failed to auto-save password:', err);
+                        }
+                      }
+                    }}
                   />
                 )}
               </div>

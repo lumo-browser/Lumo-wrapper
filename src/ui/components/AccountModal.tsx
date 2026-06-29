@@ -240,7 +240,7 @@ export function AccountModal({ isOpen, activeProfileId, profiles, onSwitchProfil
                 <Settings className="w-4 h-4" /> Manage Profiles
               </button>
               <button 
-                onClick={() => handleNavigate('lumo://settings?tab=privacy')}
+                onClick={() => handleNavigate('lumo://passwords')}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2d2d2d] transition-colors"
               >
                 <Key className="w-4 h-4" /> Passwords
