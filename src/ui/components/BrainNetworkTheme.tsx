@@ -1,6 +1,23 @@
 import React from 'react';
 
-export function BrainNetworkTheme() {
+interface BrainNetworkThemeProps {
+  shortcuts?: Array<{ id: string; label: string; url: string; color: string }>;
+}
+
+export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
+  // Use up to 6 shortcuts for the network nodes
+  const displayShortcuts = shortcuts.slice(0, 6);
+  const nodeClasses = ['n-l1 float-anim', 'n-l2 float-anim-alt', 'n-l3 float-anim', 'n-r1 float-anim-alt', 'n-r2 float-anim', 'n-r3 float-anim-alt'];
+  
+  const nodesHtml = displayShortcuts.map((s, i) => {
+    const domain = new URL(s.url).hostname;
+    return `
+      <div class="icon-node ${nodeClasses[i]}" style="color: ${s.color}; cursor: pointer;" data-url="${s.url}" title="${s.label}">
+        <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=64" alt="${s.label}" style="width: 32px; height: 32px; border-radius: 6px; object-fit: contain;">
+      </div>
+    `;
+  }).join('\\n');
+
   const html = `
 <div class="graphic-container">
   <div class="circles gsap-scale"></div>
@@ -19,34 +36,11 @@ export function BrainNetworkTheme() {
 
   <img class="brain gsap-pop float-slow" src="https://emojicdn.elk.sh/🧠" alt="Brain">
 
-  <!-- YouTube -->
-  <div class="icon-node n-l1 float-anim" style="color: #ef4444;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.1C2.5 7.1 2.5 5 4.6 4.6 6.3 4.1 12 4.1 12 4.1s5.7 0 7.4.5c2.1.4 2.1 2.5 2.1 2.5s.4 2.2.4 4.9v1c0 2.7-.4 4.9-.4 4.9s0 2.1-2.1 2.5c-1.7.5-7.4.5-7.4.5s-5.7 0-7.4-.5c-2.1-.4-2.1-2.5-2.1-2.5S2 13.8 2 11v-1c0-2.7.4-4.9.4-4.9z"/><polygon points="9.5 15.5 16.5 11 9.5 6.5"/></svg>
-  </div>
-  <!-- Facebook -->
-  <div class="icon-node n-l2 float-anim-alt" style="color: #3b5998;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
-  </div>
-  <!-- Instagram -->
-  <div class="icon-node n-l3 float-anim" style="color: #ec4899;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
-  </div>
-
-  <!-- Twitter -->
-  <div class="icon-node n-r1 float-anim-alt" style="color: #1da1f2;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
-  </div>
-  <!-- Github -->
-  <div class="icon-node n-r2 float-anim" style="color: #ffffff;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-  </div>
-  <!-- LinkedIn -->
-  <div class="icon-node n-r3 float-anim-alt" style="color: #0077b5;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
-  </div>
+  <!-- Dynamic Shortcut Nodes -->
+  ${nodesHtml}
   
   <!-- Add Node -->
-  <div class="icon-node n-add float-anim" style="color: #10b981;">
+  <div class="icon-node n-add float-anim" style="color: #10b981; cursor: pointer;" data-action="add" title="Add Shortcut">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </div>
 </div>
@@ -75,9 +69,9 @@ export function BrainNetworkTheme() {
       width: 100%;
       max-width: 900px;
       height: 500px;
-      bottom: 5vh;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate(-50%, -50%);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -160,6 +154,19 @@ export function BrainNetworkTheme() {
       });
 
       gsap.to(".float-slow", { y: "-=5", duration: 2, repeat: -1, yoyo: true, ease: "sine.inOut" });
+
+      // Click handling
+      document.querySelectorAll('.icon-node').forEach(node => {
+        node.addEventListener('click', (e) => {
+          const url = e.currentTarget.getAttribute('data-url');
+          const action = e.currentTarget.getAttribute('data-action');
+          if (url) {
+            window.parent.postMessage({ type: 'lumo-navigate', url }, '*');
+          } else if (action === 'add') {
+            window.parent.postMessage({ type: 'lumo-open-settings' }, '*');
+          }
+        });
+      });
     });
   `;
 

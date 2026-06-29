@@ -421,6 +421,24 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
                   : config.theme === 'pink-heart' ? (isDark ? 'linear-gradient(135deg, #500724, #9d174d)' : 'linear-gradient(135deg, #fce7f3, #f9a8d4)')
                   : bgGradient };
 
+  // Handle messages from the iframe themes (e.g. BrainNetworkTheme node clicks)
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'lumo-navigate') {
+        const electron = (window as any).electron;
+        if (electron?.send) {
+          electron.send('lumo:navigate', e.data.url);
+        } else {
+          window.location.href = e.data.url;
+        }
+      } else if (e.data?.type === 'lumo-open-settings') {
+        setShowSettings(true);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   return (
     <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto transition-colors duration-500"
       style={{ ...backgroundStyle, ...cssVars }}>
@@ -451,7 +469,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
 
       {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={themeIsDark} />}
       {config.theme === 'japan-cherry-blossom' && <JapanCherryBlossomTheme />}
-      {config.theme === 'brain-network' && <BrainNetworkTheme />}
+      {config.theme === 'brain-network' && <BrainNetworkTheme shortcuts={config.shortcuts || DEFAULT_SHORTCUTS} />}
       
       {(() => {
         const isSavedTheme = config.theme?.startsWith('saved-');
@@ -516,12 +534,11 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
           <span className={`text-xs font-semibold tracking-[0.3em] uppercase ${themeIsDark ? 'text-white/30' : 'text-gray-400'}`}>Lumo Browser</span>
         </div>
 
-        {config.showClock !== false && <ClockWidget isDark={themeIsDark} />}
-        {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={themeIsDark} />}
-        
         {/* Hide these widgets specifically on the brain-network theme as per user request */}
         {config.theme !== 'brain-network' && (
           <>
+            {config.showClock !== false && <ClockWidget isDark={themeIsDark} />}
+            {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={themeIsDark} />}
             {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={themeIsDark} />}
             {config.showAITips !== false && <AITipBanner isDark={themeIsDark} />}
             <ShortcutStrip isDark={themeIsDark} />
