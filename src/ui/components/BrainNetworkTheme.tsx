@@ -5,14 +5,16 @@ export function BrainNetworkTheme() {
 <div class="graphic-container">
   <div class="circles gsap-scale"></div>
 
-  <svg class="lines-svg" viewBox="0 0 800 450">
-    <path class="line-path" d="M 400 225 C 250 225, 200 120, 160 120" />
-    <path class="line-path" d="M 400 225 C 250 225, 180 225, 120 225" />
-    <path class="line-path" d="M 400 225 C 250 225, 200 330, 160 330" />
+  <svg class="lines-svg" viewBox="0 0 800 500">
+    <path class="line-path" d="M 400 250 C 250 250, 200 120, 160 120" />
+    <path class="line-path" d="M 400 250 C 250 250, 180 250, 120 250" />
+    <path class="line-path" d="M 400 250 C 250 250, 200 380, 160 380" />
 
-    <path class="line-path" d="M 400 225 C 550 225, 600 120, 640 120" />
-    <path class="line-path" d="M 400 225 C 550 225, 620 225, 680 225" />
-    <path class="line-path" d="M 400 225 C 550 225, 600 330, 640 330" />
+    <path class="line-path" d="M 400 250 C 550 250, 600 120, 640 120" />
+    <path class="line-path" d="M 400 250 C 550 250, 620 250, 680 250" />
+    <path class="line-path" d="M 400 250 C 550 250, 600 380, 640 380" />
+    
+    <path class="line-path" d="M 400 250 C 400 350, 400 450, 400 450" />
   </svg>
 
   <img class="brain gsap-pop float-slow" src="https://emojicdn.elk.sh/🧠" alt="Brain">
@@ -42,6 +44,11 @@ export function BrainNetworkTheme() {
   <div class="icon-node n-r3 float-anim-alt" style="color: #0077b5;">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
   </div>
+  
+  <!-- Add Node -->
+  <div class="icon-node n-add float-anim" style="color: #10b981;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </div>
 </div>
   `;
 
@@ -66,11 +73,11 @@ export function BrainNetworkTheme() {
     .graphic-container {
       position: absolute;
       width: 100%;
-      max-width: 800px;
-      height: 450px;
-      top: 50%;
+      max-width: 900px;
+      height: 500px;
+      bottom: 5vh;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translateX(-50%);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -121,12 +128,13 @@ export function BrainNetworkTheme() {
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
     .icon-node svg { width: 32px; height: 32px; }
-    .n-l1 { top: 20%; left: 15%; }
-    .n-l2 { top: 50%; left: 10%; transform: translateY(-50%); }
-    .n-l3 { bottom: 20%; left: 15%; }
-    .n-r1 { top: 20%; right: 15%; }
-    .n-r2 { top: 50%; right: 10%; transform: translateY(-50%); }
-    .n-r3 { bottom: 20%; right: 15%; }
+    .n-l1 { top: 88px; left: 15%; }
+    .n-l2 { top: 250px; left: 10%; transform: translateY(-50%); }
+    .n-l3 { top: 348px; left: 15%; }
+    .n-r1 { top: 88px; right: 15%; }
+    .n-r2 { top: 250px; right: 10%; transform: translateY(-50%); }
+    .n-r3 { top: 348px; right: 15%; }
+    .n-add { top: 418px; left: 50%; transform: translateX(-50%); }
   `;
 
   const js = `
