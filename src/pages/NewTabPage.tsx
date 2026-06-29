@@ -9,6 +9,7 @@ import {
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag,
   Layers, Sparkles, Command, Settings
 } from 'lucide-react';
+import { DashboardSettingsOverlay } from '../ui/components/DashboardSettingsOverlay';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ShortcutItem { id: string; label: string; url: string; icon: string; color: string; }
@@ -363,13 +364,22 @@ function hexToRgb(hex) {
 }
 
 function useDashboardConfig() {
-  const [config, setConfig] = useState({ accentColor: '#8b5cf6', bgImage: '' });
+  const [config, setConfig] = useState({
+    theme: 'custom',
+    accentColor: '#8b5cf6',
+    bgImage: '',
+    showClock: true,
+    showSearch: true,
+    showShortcuts: true,
+    showAITips: true
+  });
+  
   useEffect(() => {
     const update = () => {
       try {
         const saved = localStorage.getItem('Lumo-dashboard-config');
         if (saved) {
-          setConfig(JSON.parse(saved));
+          setConfig(prev => ({ ...prev, ...JSON.parse(saved) }));
         }
       } catch {}
     };
@@ -384,76 +394,13 @@ function useDashboardConfig() {
   return config;
 }
 
-function DashboardSettingsWidget({ isDark, config }: { isDark: boolean, config: any }) {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  const handleSave = (newConfig: any) => {
-    const updated = { ...config, ...newConfig };
-    localStorage.setItem('Lumo-dashboard-config', JSON.stringify(updated));
-    window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
-  };
-
-  return (
-    <>
-      <button 
-        onClick={() => setIsOpen(true)}
-        className={`absolute top-6 right-6 z-50 p-2 rounded-full transition-all ${isDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
-      >
-        <Settings className="w-5 h-5" />
-      </button>
-
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
-          <div className={`w-80 rounded-2xl shadow-2xl p-6 ${isDark ? 'bg-[#14141e]' : 'bg-white'}`}
-            style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}
-            onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>Dashboard Settings</h3>
-              <button onClick={() => setIsOpen(false)} className={isDark ? 'text-white/50 hover:text-white' : 'text-gray-500 hover:text-gray-800'}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className={`block text-xs mb-1.5 font-semibold tracking-wide ${isDark ? 'text-white/70' : 'text-gray-600'}`}>Accent Color</label>
-                <div className="flex gap-2">
-                  {['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#64748b'].map(c => (
-                    <button key={c} onClick={() => handleSave({ accentColor: c })}
-                      className={`w-6 h-6 rounded-full transition-transform ${config.accentColor === c ? 'scale-125 ring-2 ring-white/50' : 'hover:scale-110'}`}
-                      style={{ backgroundColor: c }} />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className={`block text-xs mb-1.5 font-semibold tracking-wide ${isDark ? 'text-white/70' : 'text-gray-600'}`}>Background Image URL</label>
-                <input type="text" value={config.bgImage || ''} 
-                  onChange={e => handleSave({ bgImage: e.target.value })}
-                  placeholder="https://..."
-                  className={`w-full px-3 py-2.5 text-xs rounded-xl outline-none ${isDark ? 'text-white bg-white/5 border-white/10 placeholder-white/30' : 'text-gray-800 bg-gray-50 border-gray-200 placeholder-gray-400'}`}
-                  style={{ border: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
-              </div>
-              
-              <div className="pt-2 border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
-                <button onClick={() => handleSave({ bgImage: '', accentColor: '#8b5cf6' })}
-                  className={`text-[10px] uppercase tracking-wider font-bold ${isDark ? 'text-white/30 hover:text-white/70' : 'text-gray-400 hover:text-gray-800'}`}>
-                  Reset to Default
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): React.ReactElement {
   const [bgIdx] = useState(() => Math.floor(Math.random() * BACKGROUNDS_DARK.length));
+  const [showSettings, setShowSettings] = useState(false);
 
   const bgGradient = isDark ? BACKGROUNDS_DARK[bgIdx] : BACKGROUNDS_LIGHT[bgIdx];
   const config = useDashboardConfig();
+  
   const accentHex = config.accentColor || '#8b5cf6';
   const bgImage = config.bgImage || '';
   const accentRgb = hexToRgb(accentHex);
@@ -464,7 +411,10 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
 
   const backgroundStyle = bgImage 
     ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: bgGradient };
+    : { background: config.theme === 'black-and-white' ? (isDark ? 'linear-gradient(135deg, #000, #1a1a1a)' : 'linear-gradient(135deg, #fff, #f0f0f0)') 
+                  : config.theme === 'crimson-red' ? (isDark ? 'linear-gradient(135deg, #450a0a, #7f1d1d)' : 'linear-gradient(135deg, #fee2e2, #fca5a5)')
+                  : config.theme === 'pink-heart' ? (isDark ? 'linear-gradient(135deg, #500724, #9d174d)' : 'linear-gradient(135deg, #fce7f3, #f9a8d4)')
+                  : bgGradient };
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto transition-colors duration-500"
@@ -472,9 +422,25 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
 
       {bgImage && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-none z-0" />}
 
-      <DashboardSettingsWidget isDark={isDark} config={config} />
+      <button 
+        onClick={() => setShowSettings(true)}
+        className={`absolute top-6 right-6 z-50 p-2 rounded-full transition-all ${isDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
+      >
+        <Settings className="w-5 h-5" />
+      </button>
 
-      {!bgImage && <AmbientOrbs isDark={isDark} />}
+      <DashboardSettingsOverlay 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+        config={config}
+        onSave={(newConf) => {
+          localStorage.setItem('Lumo-dashboard-config', JSON.stringify(newConf));
+          window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
+        }}
+        isDark={isDark} 
+      />
+
+      {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={isDark} />}
 
       {/* Subtle grid overlay */}
       <div className={`pointer-events-none absolute inset-0 ${isDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}
@@ -495,19 +461,11 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
           <span className={`text-xs font-semibold tracking-[0.3em] uppercase ${isDark ? 'text-white/30' : 'text-gray-400'}`}>Lumo Browser</span>
         </div>
 
-        {/* Clock */}
-        <ClockWidget isDark={isDark} />
-
-        {/* Search */}
-        <SearchWidget onNavigate={onNavigate} isDark={isDark} />
-
-        {/* Shortcuts */}
-        <ShortcutsWidget onNavigate={onNavigate} isDark={isDark} />
-
-        {/* AI Tip */}
-        <AITipBanner isDark={isDark} />
-
-        {/* Keyboard shortcuts strip */}
+        {config.showClock !== false && <ClockWidget isDark={isDark} />}
+        {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={isDark} />}
+        {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={isDark} />}
+        {config.showAITips !== false && <AITipBanner isDark={isDark} />}
+        
         <ShortcutStrip isDark={isDark} />
       </div>
 
