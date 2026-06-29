@@ -580,16 +580,16 @@ export function BrowserToolbar({
         </div>
 
 
-        {/* Data Sync */}
+        {/* Profile Switching */}
         <div className="hidden lg:block">
           <button
             onClick={onOpenAccount}
             id="btn-account"
-            title="Import Browser Data"
+            title="Switch Profile"
             className="ml-0.5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold
               transition-all duration-150 bg-gray-200 dark:bg-[#3a3a3a] hover:bg-gray-300 dark:hover:bg-[#444] text-gray-600 dark:text-gray-400"
           >
-            <RefreshCcw className="w-3.5 h-3.5" />
+            <User className="w-3.5 h-3.5" />
           </button>
         </div>
 

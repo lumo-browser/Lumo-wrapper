@@ -312,3 +312,177 @@ select:focus {
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2) !important;
   outline: none !important;
 }
+
+/* ── Profile Cards (.our-team) ── */
+.our-team {
+  padding: 40px 0 20px;
+  background-color: var(--card-bg, #ffffff);
+  border-radius: 24px;
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.dark .our-team {
+  background-color: #252525;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.our-team .picture {
+  display: inline-block;
+  height: 130px;
+  width: 130px;
+  margin-bottom: 25px;
+  z-index: 1;
+  position: relative;
+}
+
+.our-team .picture::before {
+  content: "";
+  width: 100%;
+  height: 0;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  position: absolute;
+  bottom: 135%;
+  right: 0;
+  left: 0;
+  opacity: 0.95;
+  transform: scale(3.5);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.our-team:hover .picture::before {
+  height: 100%;
+}
+
+.our-team .picture::after {
+  content: "";
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+.our-team .img-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 50%;
+  transform: scale(1);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.our-team:hover .img-wrapper {
+  box-shadow: 0 0 0 14px var(--card-bg, #ffffff);
+  transform: scale(0.75);
+}
+
+.dark .our-team:hover .img-wrapper {
+  box-shadow: 0 0 0 14px #252525;
+}
+
+.our-team .img-fluid {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.our-team .change-pic-btn {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 44px;
+  height: 44px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.our-team:hover .change-pic-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.our-team .change-pic-btn:hover {
+  background: rgba(59, 130, 246, 0.9);
+  transform: scale(1.1);
+}
+
+.our-team .team-content {
+  margin-bottom: 5px;
+  transition: transform 0.4s ease;
+}
+
+.our-team:hover .team-content {
+  transform: translateY(-5px);
+}
+
+.our-team .name {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.our-team .title {
+  display: block;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.our-team .social {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background-color: #3b82f6;
+  position: absolute;
+  bottom: -100px;
+  left: 0;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 0;
+  list-style: none;
+}
+
+.our-team:hover .social {
+  bottom: 0;
+}
+
+.our-team .social li button {
+  display: flex;
+  padding: 12px;
+  color: rgba(255,255,255,0.8);
+  transition: all 0.2s ease;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+}
+
+.our-team .social li button:hover {
+  color: #3b82f6;
+  background-color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.dark .our-team .social li button:hover {
+  background-color: #252525;
+}

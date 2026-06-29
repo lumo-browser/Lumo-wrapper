@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { BrowserSettings, SettingSection, SettingRow } from './SettingsPage';
-import { User, Plus, X, Check, Trash2 } from 'lucide-react';
+import { User, Plus, X, Trash2, Camera, Tag, Monitor, Cloud, Lock, Shield, MoreHorizontal, UserPlus } from 'lucide-react';
 
 export function ProfileSettingsTab({
   settings,
+  activeProfileId,
   onUpdateSettings,
 }: {
   settings: BrowserSettings;
+  activeProfileId: string;
   onUpdateSettings: (u: Partial<BrowserSettings>) => void;
 }) {
   const [showModal, setShowModal] = useState(false);
@@ -22,10 +24,9 @@ export function ProfileSettingsTab({
   ];
   const [selectedAvatar, setSelectedAvatar] = useState(COMMON_AVATARS[0]);
 
-  const currentProfileId = settings.currentProfileId || 'default';
   const profiles = settings.profiles && settings.profiles.length > 0
     ? settings.profiles
-    : [{ id: 'default', name: 'Default User', avatarUrl: '' }];
+    : [{ id: '1', name: 'Default User', avatarUrl: '' }];
 
   const handleAddProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +42,7 @@ export function ProfileSettingsTab({
   };
 
   const handleSwitch = (id: string) => {
-    onUpdateSettings({ currentProfileId: id });
+    window.dispatchEvent(new CustomEvent('lumo:switch-profile', { detail: id }));
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
@@ -50,8 +51,11 @@ export function ProfileSettingsTab({
     const nextProfiles = profiles.filter(p => p.id !== id);
     onUpdateSettings({
       profiles: nextProfiles,
-      currentProfileId: currentProfileId === id ? nextProfiles[0].id : currentProfileId,
     });
+    // If we delete the active profile, switch to the first available one
+    if (activeProfileId === id) {
+      window.dispatchEvent(new CustomEvent('lumo:switch-profile', { detail: nextProfiles[0].id }));
+    }
   };
 
   return (
@@ -72,54 +76,106 @@ export function ProfileSettingsTab({
           </button>
         </div>
 
-        <div className="divide-y divide-gray-100 dark:divide-[#333]">
-          {profiles.map(p => {
-            const isActive = p.id === currentProfileId;
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4">
+          {/* Existing Profiles */}
+          {profiles.map(profile => {
+            const isActive = profile.id === activeProfileId;
+            const image = profile.avatarUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(profile.name)}&backgroundColor=b6e3f4`;
+            const title = profile.id === '1' || profile.id === 'default' ? 'Primary Workspace' : 'Secondary Profile';
+            const isSecure = true; 
+            const tags = ['User'];
+            const tabs = Math.floor(Math.random() * 20) + 1;
+            const syncStr = 'Synced';
+
             return (
               <div 
-                key={p.id} 
-                onClick={() => !isActive && handleSwitch(p.id)}
-                className={`flex items-center justify-between px-6 py-4 transition-colors ${isActive ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-gray-50 dark:hover:bg-[#2a2a2a] cursor-pointer'}`}
+                key={profile.id} 
+                className={`our-team group cursor-pointer border ${isActive ? 'border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.15)] ring-2 ring-blue-500' : 'border-transparent hover:border-gray-200 dark:hover:border-gray-700'}`}
+                onClick={() => !isActive && handleSwitch(profile.id)}
               >
-                <div className="flex items-center gap-4">
-                  {p.avatarUrl ? (
-                    <img src={p.avatarUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                      {p.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                      {p.name}
-                      {isActive && <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 tracking-wide">Active</span>}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Local browser profile</p>
+                {/* Active Badge */}
+                {isActive && (
+                  <div className="absolute top-4 left-4 z-10 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg uppercase tracking-wider">
+                    Current
+                  </div>
+                )}
+
+                {/* Top Right Controls (Security & Menu) */}
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                  <button 
+                    className="text-gray-400 hover:text-red-500 transition-colors p-1.5 bg-white/50 dark:bg-black/20 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                    onClick={(e) => handleDelete(profile.id, e)}
+                    title={profiles.length > 1 ? "Delete Profile" : "Cannot delete last profile"}
+                    disabled={profiles.length <= 1}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Custom Picture Area */}
+                <div className="picture group/pic">
+                  <div className="img-wrapper">
+                    <img className="img-fluid" src={image} alt={profile.name} />
+                    <button 
+                      className="change-pic-btn"
+                      onClick={(e) => { e.stopPropagation(); }}
+                      title="Upload Custom Picture"
+                    >
+                      <Camera className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  {!isActive && (
-                    <button 
-                      onClick={() => handleSwitch(p.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-[#333] hover:bg-gray-200 dark:hover:bg-[#444] rounded-md transition-colors"
-                    >
-                      Switch to {p.name}
-                    </button>
-                  )}
-                  {profiles.length > 1 && !isActive && (
-                    <button 
-                      onClick={(e) => handleDelete(p.id, e)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-md transition-colors"
-                      title="Delete profile"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                <div className="team-content mt-4">
+                  <div className="flex justify-center gap-1.5 mb-3 opacity-90">
+                    {tags.map(tag => (
+                      <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  <h3 className="name dark:text-white">{profile.name}</h3>
+                  <h4 className="title dark:text-blue-400">{title}</h4>
+                </div>
+                
+                {/* Stats overlay (visible normally) */}
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex justify-center gap-4 transition-opacity duration-300">
+                  <span className="flex items-center gap-1"><Monitor className="w-3 h-3" /> {tabs} tabs</span>
+                  <span className="flex items-center gap-1"><Cloud className="w-3 h-3" /> {syncStr}</span>
                 </div>
               </div>
             );
           })}
+
+          {/* Add New Profile Card */}
+          <div 
+            className="our-team group cursor-pointer border-2 border-dashed border-gray-300 dark:border-[#3a3a3a] hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-300"
+            onClick={() => setShowModal(true)}
+          >
+            <div className="picture group/pic">
+              <div className="img-wrapper flex items-center justify-center mx-auto bg-gray-50 dark:bg-[#1a1a1a] group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition-colors duration-300" style={{ height: '130px', width: '130px' }}>
+                <Plus className="w-12 h-12 text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:scale-125 transition-all duration-300" />
+              </div>
+            </div>
+            <div className="team-content mt-4">
+              <div className="flex justify-center gap-1.5 mb-3 opacity-90">
+                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-sm">
+                  <Plus className="w-2.5 h-2.5" /> New
+                </span>
+              </div>
+              <h3 className="name dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Add Workspace</h3>
+              <h4 className="title dark:text-gray-400">Expand your setup</h4>
+            </div>
+            
+            <ul className="social">
+              <li className="w-full">
+                <button className="flex items-center justify-center hover:text-white w-full gap-2">
+                  <UserPlus className="w-5 h-5" /> Setup Now
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
       </SettingSection>
 

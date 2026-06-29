@@ -40,6 +40,7 @@ import { ExtensionsPage } from './pages/ExtensionsPage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { SecurityDashboard } from './ui/components/SecurityDashboard';
 import { PermissionRequest } from './ui/components/PermissionRequest';
+import { AddProfileModal } from './ui/components/AddProfileModal';
 
 // ── Internal Pages ─────────────────────────────────────────────────────────
 const getCleanTitle = (url: string): string => {
@@ -325,7 +326,7 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, onTitleChange, onLoadin
       className="w-full h-full border-none bg-white"
       preload={window.electron?.webviewPreloadPath}
       useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
-      partition={zeroTrustMode ? `tab-${tabId}` : (window.location.search.includes('disposable=true') ? window._lumoDisposablePartition : "persist:lumo-main")}
+      partition={zeroTrustMode ? `tab-${tabId}` : (window.location.search.includes('disposable=true') ? window._lumoDisposablePartition : (window as any)._lumoActiveProfileId ? `persist:lumo-profile-${(window as any)._lumoActiveProfileId}` : "persist:lumo-main")}
       webpreferences={zeroTrustMode ? "sandbox=true" : undefined}
     />
   );
@@ -366,6 +367,15 @@ export default function App(): React.ReactElement {
     const params = new URLSearchParams(window.location.search);
     (window as any)._lumoDisposablePartition = params.get('partition') || `disposable-session-${Date.now()}`;
   }
+
+  // Profile Management
+  const [activeProfileId, setActiveProfileId] = useState<string>(() => {
+    const pid = localStorage.getItem('lumo-active-profile') || '1';
+    (window as any)._lumoActiveProfileId = pid;
+    return pid;
+  });
+  const [isSwitchingProfile, setIsSwitchingProfile] = useState(false);
+  const [showAddProfileModal, setShowAddProfileModal] = useState(false);
 
   // Theme
   const [isDark, setIsDark] = useState(true);
@@ -420,7 +430,7 @@ export default function App(): React.ReactElement {
   // Bookmark state — rich entries with title and timestamp
   const [bookmarkEntries, setBookmarkEntries] = useState<BookmarkEntry[]>(() => {
     try {
-      const parsed = JSON.parse(localStorage.getItem('lumo-bookmarks') || '[]');
+      const parsed = JSON.parse(localStorage.getItem(`lumo-bookmarks-${activeProfileId}`) || '[]');
       return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
   });
@@ -428,15 +438,15 @@ export default function App(): React.ReactElement {
   // History state
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(() => {
     try {
-      const parsed = JSON.parse(localStorage.getItem('lumo-history') || '[]');
+      const parsed = JSON.parse(localStorage.getItem(`lumo-history-${activeProfileId}`) || '[]');
       return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
   });
 
   // Download items — shared state so toolbar badge can show count
-  const [, setDownloadItems] = useState<any[]>(() => {
+  const [downloadItems, setDownloadItems] = useState<any[]>(() => {
     try {
-      const parsed = JSON.parse(localStorage.getItem('lumo-downloads') || '[]');
+      const parsed = JSON.parse(localStorage.getItem(`lumo-downloads-${activeProfileId}`) || '[]');
       return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
   });
@@ -521,10 +531,23 @@ export default function App(): React.ReactElement {
       },
     };
     try { 
-      const parsed = JSON.parse(localStorage.getItem('lumo-settings') || '{}');
+      const parsed = JSON.parse(localStorage.getItem(`lumo-settings-${activeProfileId}`) || '{}');
       return { ...defaults, ...parsed, openRouterApiKey: '' }; // Keep api key blank initially
     } catch { return defaults; }
   });
+
+  // React to profile switches by reloading all isolated states
+  useEffect(() => {
+    try {
+      setBookmarkEntries(JSON.parse(localStorage.getItem(`lumo-bookmarks-${activeProfileId}`) || '[]'));
+      setHistoryEntries(JSON.parse(localStorage.getItem(`lumo-history-${activeProfileId}`) || '[]'));
+      setDownloadItems(JSON.parse(localStorage.getItem(`lumo-downloads-${activeProfileId}`) || '[]'));
+      const parsedSettings = JSON.parse(localStorage.getItem(`lumo-settings-${activeProfileId}`) || '{}');
+      setSettings(s => ({ ...s, ...parsedSettings }));
+    } catch (e) {
+      console.warn('Failed to load profile state', e);
+    }
+  }, [activeProfileId]);
 
   // Securely load API Key on boot — try encrypted first, fall back to plain
   useEffect(() => {
@@ -640,6 +663,32 @@ export default function App(): React.ReactElement {
   // Account
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
 
+  const handleSwitchProfile = useCallback((id: string) => {
+    if (id === activeProfileId) {
+      setShowAccount(false);
+      return;
+    }
+    setShowAccount(false);
+    setIsSwitchingProfile(true);
+    setTimeout(() => {
+      setActiveProfileId(id);
+      localStorage.setItem('lumo-active-profile', id);
+      (window as any)._lumoActiveProfileId = id;
+      setTimeout(() => {
+        setIsSwitchingProfile(false);
+      }, 1200);
+    }, 300);
+  }, [activeProfileId]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      if (id) handleSwitchProfile(id);
+    };
+    window.addEventListener('lumo:switch-profile', handler);
+    return () => window.removeEventListener('lumo:switch-profile', handler);
+  }, [handleSwitchProfile]);
+
   // Refs for outside-click dismissal
   const menuRef       = useRef<HTMLDivElement>(null);
   const extRef        = useRef<HTMLDivElement>(null);
@@ -677,16 +726,16 @@ export default function App(): React.ReactElement {
   }, []);
 
   // Persist bookmarks/history/settings to localStorage
-  useEffect(() => { localStorage.setItem('lumo-bookmarks', JSON.stringify(bookmarkEntries)); }, [bookmarkEntries]);
+  useEffect(() => { localStorage.setItem(`lumo-bookmarks-${activeProfileId}`, JSON.stringify(bookmarkEntries)); }, [bookmarkEntries, activeProfileId]);
   useEffect(() => {
     if (!isDisposable) {
-      localStorage.setItem('lumo-history', JSON.stringify(historyEntries));
+      localStorage.setItem(`lumo-history-${activeProfileId}`, JSON.stringify(historyEntries));
     }
-  }, [historyEntries, isDisposable]);
+  }, [historyEntries, isDisposable, activeProfileId]);
   
   useEffect(() => { 
     const { openRouterApiKey, ...safeSettings } = settings;
-    localStorage.setItem('lumo-settings', JSON.stringify(safeSettings)); 
+    localStorage.setItem(`lumo-settings-${activeProfileId}`, JSON.stringify(safeSettings)); 
     
     if (openRouterApiKey) {
       // Always store a plain copy so the key loads reliably on boot
@@ -1450,6 +1499,7 @@ Example response format:
                   {isSettings && (
                     <SettingsPage
                       settings={settings}
+                      activeProfileId={activeProfileId}
                       onUpdateSettings={handleUpdateSettings}
                       onClearBrowsingData={() => {
                         setHistoryEntries([]);
@@ -1579,11 +1629,23 @@ Example response format:
       {/* ── Account modal ── */}
       <AccountModal
         isOpen={showAccount}
-        currentUser={currentUser}
+        activeProfileId={activeProfileId}
+        profiles={settings.profiles && settings.profiles.length > 0 ? settings.profiles : [{ id: '1', name: 'Default User', avatarUrl: 'https://api.dicebear.com/7.x/notionists/svg?seed=Default&backgroundColor=b6e3f4' }]}
+        onSwitchProfile={handleSwitchProfile}
+        onAddProfileClick={() => {
+          setShowAccount(false);
+          setShowAddProfileModal(true);
+        }}
         onClose={() => setShowAccount(false)}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
       />
+
+      {showAddProfileModal && (
+        <AddProfileModal
+          settings={settings}
+          onUpdateSettings={handleUpdateSettings}
+          onClose={() => setShowAddProfileModal(false)}
+        />
+      )}
 
       {contextMenu.show && contextMenu.params && (
         <ContextMenu
@@ -1678,6 +1740,25 @@ Example response format:
 
       {/* Zero-Trust Permission Request Overlay */}
       <PermissionRequest />
+
+      {/* Profile Switch Animation Overlay */}
+      <div 
+        className={`fixed inset-0 z-[200] bg-white dark:bg-[#121212] flex flex-col items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          isSwitchingProfile ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className={`transition-all duration-700 delay-100 ${isSwitchingProfile ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}>
+          <div className="w-24 h-24 mb-6 relative mx-auto">
+            <div className="absolute inset-0 rounded-full border-4 border-blue-100 dark:border-blue-900/30"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-blue-500" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">Switching Workspace...</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-center mt-2">Loading your secure session and data</p>
+        </div>
+      </div>
 
     </div>
   );

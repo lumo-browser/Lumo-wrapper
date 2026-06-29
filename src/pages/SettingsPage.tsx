@@ -87,6 +87,7 @@ export interface BrowserSettings {
 
 interface SettingsPageProps {
   settings: BrowserSettings;
+  activeProfileId: string;
   onUpdateSettings: (updates: Partial<BrowserSettings>) => void;
   onClearBrowsingData: () => void;
   historyCount: number;
@@ -170,6 +171,7 @@ export function SidebarButton({ icon, label, active, onClick }: { icon: React.Re
 
 export function SettingsPage({
   settings,
+  activeProfileId,
   onUpdateSettings,
   onClearBrowsingData,
   historyCount,
@@ -217,7 +219,7 @@ export function SettingsPage({
         <div className="max-w-2xl">
 
           {activeTab === 'profiles' && (
-            <ProfileSettingsTab settings={settings} onUpdateSettings={onUpdateSettings} />
+            <ProfileSettingsTab settings={settings} activeProfileId={activeProfileId} onUpdateSettings={onUpdateSettings} />
           )}
 
           {activeTab === 'home' && (
