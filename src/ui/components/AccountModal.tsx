@@ -255,7 +255,11 @@ export function AccountModal({ isOpen, activeProfileId, profiles, onSwitchProfil
             
             <button 
               onClick={() => {
-                onSwitchProfile('guest');
+                const electron = (window as any).electron;
+                if (electron?.send) {
+                  electron.send('lumo:new-disposable-window');
+                }
+                onClose();
               }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-200 dark:border-blue-800"
             >

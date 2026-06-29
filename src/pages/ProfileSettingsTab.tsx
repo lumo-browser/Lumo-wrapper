@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { BrowserSettings, SettingSection, SettingRow } from './SettingsPage';
 import { User, Plus, X, Trash2, Camera, Tag, Monitor, Cloud, Lock, Shield, MoreHorizontal, UserPlus } from 'lucide-react';
 
@@ -13,14 +13,16 @@ export function ProfileSettingsTab({
 }) {
   const [showModal, setShowModal] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
+  const [editingAvatarProfileId, setEditingAvatarProfileId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const COMMON_AVATARS = [
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka',
-    'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack',
-    'https://api.dicebear.com/7.x/bottts/svg?seed=Robo',
-    'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Smile',
-    'https://api.dicebear.com/7.x/micah/svg?seed=Jude',
+    'https://api.dicebear.com/7.x/notionists/svg?seed=Work&backgroundColor=b6e3f4',
+    'https://api.dicebear.com/7.x/notionists/svg?seed=Personal&backgroundColor=c0aede',
+    'https://api.dicebear.com/7.x/notionists/svg?seed=Dev&backgroundColor=ffdfbf',
+    'https://api.dicebear.com/7.x/notionists/svg?seed=School&backgroundColor=d1d4f9',
+    'https://api.dicebear.com/7.x/notionists/svg?seed=Finance&backgroundColor=b6e3f4',
+    'https://api.dicebear.com/7.x/notionists/svg?seed=Games&backgroundColor=ffd5dc',
   ];
   const [selectedAvatar, setSelectedAvatar] = useState(COMMON_AVATARS[0]);
 
@@ -45,18 +47,45 @@ export function ProfileSettingsTab({
     window.dispatchEvent(new CustomEvent('lumo:switch-profile', { detail: id }));
   };
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (profiles.length <= 1) return;
+    setConfirmDeleteId(id);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!confirmDeleteId) return;
+    if (profiles.length <= 1) {
+      setConfirmDeleteId(null);
+      return;
+    }
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
     const nextProfiles = profiles.filter(p => p.id !== id);
     onUpdateSettings({
       profiles: nextProfiles,
     });
+    // Clean up per-profile localStorage data
+    const keysToRemove = [
+      `lumo-bookmarks-${id}`,
+      `lumo-history-${id}`,
+      `lumo-settings-${id}`,
+      `lumo-downloads-${id}`,
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    // Tell main process to clear the persistent session partition
+    if ((window as any).electron?.send) {
+      (window as any).electron.send('lumo:clear-profile-partition', id);
+    }
     // If we delete the active profile, switch to the first available one
     if (activeProfileId === id) {
       window.dispatchEvent(new CustomEvent('lumo:switch-profile', { detail: nextProfiles[0].id }));
     }
   };
+
+  const handleCancelDelete = () => setConfirmDeleteId(null);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
@@ -112,13 +141,17 @@ export function ProfileSettingsTab({
                   </button>
                 </div>
 
-                {/* Custom Picture Area */}
+                  {/* Custom Picture Area */}
                 <div className="picture group/pic">
                   <div className="img-wrapper">
                     <img className="img-fluid" src={image} alt={profile.name} />
                     <button 
                       className="change-pic-btn"
-                      onClick={(e) => { e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingAvatarProfileId(profile.id);
+                        fileInputRef.current?.click();
+                      }}
                       title="Upload Custom Picture"
                     >
                       <Camera className="w-5 h-5" />
@@ -177,6 +210,27 @@ export function ProfileSettingsTab({
             </ul>
           </div>
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file || !editingAvatarProfileId) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const dataUrl = ev.target?.result as string;
+              const updatedProfiles = profiles.map(p =>
+                p.id === editingAvatarProfileId ? { ...p, avatarUrl: dataUrl } : p
+              );
+              onUpdateSettings({ profiles: updatedProfiles });
+              setEditingAvatarProfileId(null);
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+          }}
+        />
       </SettingSection>
 
       {/* Add Profile Modal */}
@@ -244,6 +298,45 @@ export function ProfileSettingsTab({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={handleCancelDelete}>
+          <div 
+            className="w-full max-w-sm bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-white/10 animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white">Delete Profile</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone.</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                All bookmarks, history, passwords, and cookies for this profile will be permanently deleted.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleCancelDelete}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

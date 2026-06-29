@@ -63,16 +63,19 @@ interface WebviewTabProps {
   url: string;
   isDark: boolean;
   zeroTrustMode: boolean;
+  activeProfileId: string;
   onTitleChange: (title: string) => void;
   onLoadingChange: (loading: boolean) => void;
   onUrlChange: (url: string) => void;
   onNavStateChange: (canGoBack: boolean, canGoForward: boolean) => void;
 }
 
-function WebviewTab({ tabId, url, isDark, zeroTrustMode, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
+function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
   const ztRef = useRef(zeroTrustMode);
+  const profileRef = useRef(activeProfileId);
+  profileRef.current = activeProfileId;
   ztRef.current = zeroTrustMode;
 
   // Wire up webview events once on mount
@@ -674,6 +677,10 @@ export default function App(): React.ReactElement {
       setActiveProfileId(id);
       localStorage.setItem('lumo-active-profile', id);
       (window as any)._lumoActiveProfileId = id;
+      // Tell main process to monitor the new profile's partition for ad blocking and downloads
+      if (id !== 'guest' && window.electron?.send) {
+        window.electron.send('lumo:monitor-profile-partition', id);
+      }
       setTimeout(() => {
         setIsSwitchingProfile(false);
       }, 1200);
@@ -1557,11 +1564,12 @@ Example response format:
                 )}
                 {!isInternal && (
                   <WebviewTab
-                    key={`${tab.id}-${zeroTrustMode ? 'zt' : 'std'}`}
+                    key={`${tab.id}-${zeroTrustMode ? 'zt' : 'std'}-${activeProfileId}`}
                     tabId={tab.id}
                     url={tab.url}
                     isDark={isDark}
                     zeroTrustMode={zeroTrustMode}
+                    activeProfileId={activeProfileId}
                     onTitleChange={(title) =>
                       setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, title } : t))
                     }

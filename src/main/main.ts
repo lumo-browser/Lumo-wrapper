@@ -1089,6 +1089,26 @@ app.on('ready', () => {
     }
   });
 
+  // ── Profile Partition Management ──────────────────────────────────────────
+  guardedOn('lumo:monitor-profile-partition', (_event, profileId: string) => {
+    const partitionId = `persist:lumo-profile-${profileId}`;
+    try {
+      const sess = session.fromPartition(partitionId);
+      monitorNetworkRequests(sess, () => mainWindow, partitionId, adBlockerCheck);
+      sess.on('will-download', handleDownloadItem);
+      console.log(`[Lumo] Monitoring profile partition: ${partitionId}`);
+    } catch (err) {
+      console.error(`[Lumo] Failed to monitor profile partition ${partitionId}:`, err);
+    }
+  });
+
+  guardedOn('lumo:clear-profile-partition', (_event, profileId: string) => {
+    const partitionId = `persist:lumo-profile-${profileId}`;
+    session.fromPartition(partitionId).clearStorageData().catch(err => {
+      console.error(`[Lumo] Failed to clear profile partition ${partitionId}:`, err);
+    });
+  });
+
   createWindow();
   // Disable native menu bar completely
   Menu.setApplicationMenu(null);

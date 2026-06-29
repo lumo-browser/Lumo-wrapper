@@ -82,6 +82,12 @@ contextBridge.exposeInMainWorld('electron', {
   monitorTabPartition: (partitionId: string): void => {
     ipcRenderer.send('lumo:monitor-tab-partition', partitionId);
   },
+  monitorProfilePartition: (profileId: string): void => {
+    ipcRenderer.send('lumo:monitor-profile-partition', profileId);
+  },
+  clearProfilePartition: (profileId: string): void => {
+    ipcRenderer.send('lumo:clear-profile-partition', profileId);
+  },
 
   // App info
   appVersion: (): string => '0.2.0',
