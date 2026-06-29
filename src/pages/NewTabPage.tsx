@@ -446,6 +446,31 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
 
       {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={themeIsDark} />}
       {config.theme === 'japan-cherry-blossom' && <JapanCherryBlossomTheme />}
+      
+      {config.theme === 'custom-code' && (
+        <iframe
+          title="Custom Wallpaper"
+          srcDoc={`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <style>
+                  body { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; }
+                  ${config.customCss || ''}
+                </style>
+              </head>
+              <body>
+                ${config.customHtml || ''}
+                <script>
+                  ${config.customJs || ''}
+                </script>
+              </body>
+            </html>
+          `}
+          className="absolute inset-0 w-full h-full border-none z-0 pointer-events-none"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      )}
 
       {/* Subtle grid overlay */}
       <div className={`pointer-events-none absolute inset-0 ${themeIsDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}

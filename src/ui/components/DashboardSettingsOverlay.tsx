@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, Image as ImageIcon, Layout, Zap, Edit2, Plus, Clock, Search, Link2, Sparkles, Move } from 'lucide-react';
+import { X, Check, Image as ImageIcon, Layout, Zap, Edit2, Plus, Clock, Search, Link2, Sparkles, Move, Code2 } from 'lucide-react';
 
 interface DashboardSettingsOverlayProps {
   isOpen: boolean;
@@ -63,6 +63,12 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm
             ${activeTab === 'shortcuts' ? 'bg-violet-600 text-white' : isDark ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-black/5'}`}>
             <Link2 className="w-4 h-4" /> Shortcuts Manager
+          </button>
+
+          <button onClick={() => setActiveTab('code')} 
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm
+            ${activeTab === 'code' ? 'bg-violet-600 text-white' : isDark ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-black/5'}`}>
+            <Code2 className="w-4 h-4" /> Developer Mode
           </button>
 
           <div className="mt-auto">
@@ -171,6 +177,44 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
                 <button onClick={onClose} className="px-6 py-2.5 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-700 transition-colors">
                   Go to Dashboard
                 </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'code' && (
+            <div className="animate-fade-in-up flex flex-col h-full">
+              <div className="mb-6 flex justify-between items-start">
+                <div>
+                  <h3 className={`text-2xl font-bold mb-2 ${text}`}>Custom Code Theme</h3>
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Build your own dynamic wallpaper using HTML, CSS, and JS.
+                  </p>
+                </div>
+                <button onClick={() => update({ theme: 'custom-code' })}
+                  className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${localConfig.theme === 'custom-code' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/50' : 'bg-violet-600 text-white hover:bg-violet-700'}`}>
+                  {localConfig.theme === 'custom-code' ? 'Active' : 'Apply Theme'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 flex-1 min-h-[400px]">
+                <div className="flex flex-col gap-2">
+                  <label className={`text-xs font-bold ${text}`}>HTML</label>
+                  <textarea value={localConfig.customHtml || ''} onChange={e => update({ customHtml: e.target.value })}
+                    className={`flex-1 p-3 rounded-xl text-xs font-mono resize-none outline-none border ${isDark ? 'bg-black/30 border-white/10 text-white focus:border-violet-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-violet-500'}`}
+                    placeholder="<div>Hello World</div>" spellCheck={false} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className={`text-xs font-bold ${text}`}>CSS</label>
+                  <textarea value={localConfig.customCss || ''} onChange={e => update({ customCss: e.target.value })}
+                    className={`flex-1 p-3 rounded-xl text-xs font-mono resize-none outline-none border ${isDark ? 'bg-black/30 border-white/10 text-white focus:border-violet-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-violet-500'}`}
+                    placeholder="body { background: red; }" spellCheck={false} />
+                </div>
+                <div className="col-span-2 flex flex-col gap-2 h-40">
+                  <label className={`text-xs font-bold ${text}`}>JavaScript</label>
+                  <textarea value={localConfig.customJs || ''} onChange={e => update({ customJs: e.target.value })}
+                    className={`flex-1 p-3 rounded-xl text-xs font-mono resize-none outline-none border ${isDark ? 'bg-black/30 border-white/10 text-white focus:border-violet-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-violet-500'}`}
+                    placeholder="console.log('Running custom script...');" spellCheck={false} />
+                </div>
               </div>
             </div>
           )}
