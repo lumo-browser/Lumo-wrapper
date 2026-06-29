@@ -402,6 +402,9 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
   const bgGradient = isDark ? BACKGROUNDS_DARK[bgIdx] : BACKGROUNDS_LIGHT[bgIdx];
   const config = useDashboardConfig();
   
+  // Force light mode text (dark text) when the bright Japan theme is active
+  const themeIsDark = config.theme === 'japan-cherry-blossom' ? false : isDark;
+
   const accentHex = config.accentColor || '#8b5cf6';
   const bgImage = config.bgImage || '';
   const accentRgb = hexToRgb(accentHex);
@@ -425,7 +428,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
 
       <button 
         onClick={() => setShowSettings(true)}
-        className={`absolute top-6 right-6 z-50 p-2 rounded-full transition-all ${isDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
+        className={`absolute top-6 right-6 z-50 p-2 rounded-full transition-all ${themeIsDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
       >
         <Settings className="w-5 h-5" />
       </button>
@@ -438,22 +441,21 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
           localStorage.setItem('Lumo-dashboard-config', JSON.stringify(newConf));
           window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
         }}
-        isDark={isDark} 
+        isDark={themeIsDark} 
       />
 
-      {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={isDark} />}
+      {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={themeIsDark} />}
       {config.theme === 'japan-cherry-blossom' && <JapanCherryBlossomTheme />}
 
       {/* Subtle grid overlay */}
-      <div className={`pointer-events-none absolute inset-0 ${isDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}
+      <div className={`pointer-events-none absolute inset-0 ${themeIsDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}
         style={{
-          backgroundImage: `linear-gradient(${isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'} 1px, transparent 1px), linear-gradient(90deg, ${isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'} 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(${themeIsDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'} 1px, transparent 1px), linear-gradient(90deg, ${themeIsDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'} 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
         }} />
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14"
-        style={{ textShadow: config.theme === 'japan-cherry-blossom' ? '0 2px 10px rgba(0,0,0,0.5)' : 'none' }}>
+      <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14">
 
         {/* Logo mark */}
         <div className="flex items-center gap-2.5">
@@ -461,19 +463,19 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
             style={{ background: 'linear-gradient(135deg, var(--lumo-accent), #2563eb)' }}>
             <Layers className="w-4 h-4 text-white" />
           </div>
-          <span className={`text-xs font-semibold tracking-[0.3em] uppercase ${isDark ? 'text-white/30' : 'text-gray-400'}`}>Lumo Browser</span>
+          <span className={`text-xs font-semibold tracking-[0.3em] uppercase ${themeIsDark ? 'text-white/30' : 'text-gray-400'}`}>Lumo Browser</span>
         </div>
 
-        {config.showClock !== false && <ClockWidget isDark={isDark} />}
-        {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={isDark} />}
-        {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={isDark} />}
-        {config.showAITips !== false && <AITipBanner isDark={isDark} />}
+        {config.showClock !== false && <ClockWidget isDark={themeIsDark} />}
+        {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={themeIsDark} />}
+        {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={themeIsDark} />}
+        {config.showAITips !== false && <AITipBanner isDark={themeIsDark} />}
         
-        <ShortcutStrip isDark={isDark} />
+        <ShortcutStrip isDark={themeIsDark} />
       </div>
 
       {/* Bottom watermark */}
-      <div className={`absolute bottom-4 text-[10px] font-semibold tracking-[0.4em] uppercase select-none ${isDark ? 'text-white/15' : 'text-gray-400'}`}>
+      <div className={`absolute bottom-4 text-[10px] font-semibold tracking-[0.4em] uppercase select-none ${themeIsDark ? 'text-white/15' : 'text-gray-400'}`}>
         Lumo v0.2.0
       </div>
     </div>
