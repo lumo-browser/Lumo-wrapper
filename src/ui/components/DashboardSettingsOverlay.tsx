@@ -18,8 +18,10 @@ const THEMES = [
 ];
 
 export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDark }: DashboardSettingsOverlayProps) {
-  const [activeTab, setActiveTab] = useState<'themes' | 'layout' | 'shortcuts'>('themes');
+  const [activeTab, setActiveTab] = useState<'themes' | 'layout' | 'shortcuts' | 'code'>('themes');
   const [localConfig, setLocalConfig] = useState(config);
+  const [isSaving, setIsSaving] = useState(false);
+  const [themeName, setThemeName] = useState('');
 
   if (!isOpen) return null;
 
@@ -196,20 +198,52 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
                     Build your own dynamic wallpaper using HTML, CSS, and JS.
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => {
-                    const name = prompt("Enter a name for this custom theme:");
-                    if (!name) return;
-                    const newTheme = {
-                      id: `saved-${Date.now()}`, label: name,
-                      customHtml: localConfig.customHtml, customCss: localConfig.customCss, customJs: localConfig.customJs
-                    };
-                    const saved = localConfig.savedThemes || [];
-                    update({ savedThemes: [...saved, newTheme], theme: newTheme.id });
-                  }}
-                    className={`px-4 py-2 rounded-xl font-bold text-xs transition-all border ${isDark ? 'border-white/10 text-white hover:bg-white/5' : 'border-gray-200 text-gray-800 hover:bg-gray-50'}`}>
-                    Save to Gallery
-                  </button>
+                <div className="flex gap-2 items-center">
+                  {isSaving ? (
+                    <div className="flex gap-2 animate-fade-in">
+                      <input 
+                        type="text" 
+                        autoFocus
+                        placeholder="Theme name..." 
+                        value={themeName} 
+                        onChange={e => setThemeName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && themeName.trim()) {
+                            const newTheme = {
+                              id: `saved-${Date.now()}`, label: themeName.trim(),
+                              customHtml: localConfig.customHtml, customCss: localConfig.customCss, customJs: localConfig.customJs
+                            };
+                            const saved = localConfig.savedThemes || [];
+                            update({ savedThemes: [...saved, newTheme], theme: newTheme.id });
+                            setIsSaving(false);
+                            setThemeName('');
+                          } else if (e.key === 'Escape') {
+                            setIsSaving(false);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs outline-none border transition-colors ${isDark ? 'bg-black/30 border-white/20 text-white focus:border-violet-500' : 'bg-white border-gray-300 text-gray-900 focus:border-violet-500'}`}
+                      />
+                      <button onClick={() => {
+                        if (!themeName.trim()) { setIsSaving(false); return; }
+                        const newTheme = {
+                          id: `saved-${Date.now()}`, label: themeName.trim(),
+                          customHtml: localConfig.customHtml, customCss: localConfig.customCss, customJs: localConfig.customJs
+                        };
+                        const saved = localConfig.savedThemes || [];
+                        update({ savedThemes: [...saved, newTheme], theme: newTheme.id });
+                        setIsSaving(false);
+                        setThemeName('');
+                      }}
+                        className="px-3 py-1.5 rounded-xl bg-violet-600 text-white font-bold text-xs hover:bg-violet-700">
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setIsSaving(true)}
+                      className={`px-4 py-2 rounded-xl font-bold text-xs transition-all border ${isDark ? 'border-white/10 text-white hover:bg-white/5' : 'border-gray-200 text-gray-800 hover:bg-gray-50'}`}>
+                      Save to Gallery
+                    </button>
+                  )}
                   <button onClick={() => update({ theme: 'custom-code' })}
                     className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${localConfig.theme === 'custom-code' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/50' : 'bg-violet-600 text-white hover:bg-violet-700'}`}>
                     {localConfig.theme === 'custom-code' ? 'Active' : 'Apply Draft'}
