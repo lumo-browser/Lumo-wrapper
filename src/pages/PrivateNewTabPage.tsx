@@ -1,21 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Shield,
-  EyeOff,
-  Search,
-  Settings,
-  AlertTriangle,
-  Info,
+  Search, Globe, Plus, X,
+  Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag,
+  Layers, Sparkles, EyeOff, Shield
 } from 'lucide-react';
 import { BrowserSettings, SEARCH_ENGINES } from './SettingsPage';
 
-interface PrivateNewTabPageProps {
-  onNavigate: (url: string) => void;
-  settings: BrowserSettings;
-  onUpdateSettings: (updates: Partial<BrowserSettings>) => void;
-}
+// --- Same components as NewTabPage but grayscale ---
+interface ShortcutItem { id: string; label: string; url: string; icon: string; color: string; }
 
-// ── Clock Hook ──
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag, Globe,
+};
+
+const DEFAULT_SHORTCUTS: ShortcutItem[] = [
+  { id: 's1', label: 'YouTube',  url: 'https://youtube.com',       icon: 'Youtube',     color: '#ffffff' },
+  { id: 's2', label: 'GitHub',   url: 'https://github.com',        icon: 'Github',      color: '#ffffff' },
+  { id: 's3', label: 'Trending', url: 'https://trends.google.com', icon: 'TrendingUp',  color: '#ffffff' },
+  { id: 's4', label: 'News',     url: 'https://news.google.com',   icon: 'Newspaper',   color: '#ffffff' },
+  { id: 's5', label: 'Dev.to',   url: 'https://dev.to',            icon: 'Code2',       color: '#ffffff' },
+  { id: 's6', label: 'Amazon',   url: 'https://amazon.in',         icon: 'ShoppingBag', color: '#ffffff' },
+];
+
+const AI_TIPS = [
+  'You are in Guest Mode. No history, cookies, or cache will be saved.',
+  'This is an ephemeral workspace. Everything is deleted on exit.',
+  'Your browsing in this window is completely isolated from other profiles.',
+];
+
 function useTime() {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
@@ -25,430 +37,240 @@ function useTime() {
   return time;
 }
 
-// ── Ambient Glowing Orbs ──
-function AmbientOrbs() {
+function ClockWidget() {
+  const time = useTime();
+  const hh = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const [hr, minPart] = hh.split(':');
+  const min = minPart ? minPart.split(' ')[0] : '00';
+
+  const date = time.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const h = time.getHours();
+  const greeting =
+    h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night';
+
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div
-        className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full"
-        style={{
-          opacity: 0.15,
-          background: 'radial-gradient(circle, #7c3aed, transparent 70%)',
-          filter: 'blur(100px)',
-          animation: 'drift1 22s ease-in-out infinite',
-        }}
-      />
-      <div
-        className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full"
-        style={{
-          opacity: 0.12,
-          background: 'radial-gradient(circle, #db2777, transparent 70%)',
-          filter: 'blur(100px)',
-          animation: 'drift2 28s ease-in-out infinite',
-        }}
-      />
-      <div
-        className="absolute top-[30%] right-[10%] w-[400px] h-[400px] rounded-full"
-        style={{
-          opacity: 0.08,
-          background: 'radial-gradient(circle, #2563eb, transparent 70%)',
-          filter: 'blur(80px)',
-          animation: 'drift1 20s ease-in-out infinite reverse',
-        }}
-      />
-      <style>{`
-        @keyframes drift1 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(50px, -30px) scale(1.1); }
-          66% { transform: translate(-30px, 20px) scale(0.9); }
-        }
-        @keyframes drift2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          50% { transform: translate(-40px, 40px) scale(1.05); }
-        }
-      `}</style>
+    <div className="text-center select-none">
+      <p className="text-sm font-medium tracking-widest uppercase mb-3 text-white/50">{greeting}</p>
+      <div className="flex items-end justify-center gap-3 tabular-nums">
+        <span className="text-[7rem] md:text-[9rem] font-thin text-white leading-none"
+          style={{ textShadow: `0 0 60px rgba(255,255,255,0.2)` }}>{hr}</span>
+        <span className="text-[5rem] md:text-[7rem] font-thin leading-none animate-pulse pb-4 text-white/70">:</span>
+        <span className="text-[7rem] md:text-[9rem] font-thin text-white leading-none"
+          style={{ textShadow: `0 0 60px rgba(255,255,255,0.2)` }}>{min}</span>
+      </div>
+      <p className="text-base mt-3 font-light tracking-wide text-white/40">{date}</p>
     </div>
   );
 }
 
-export function PrivateNewTabPage({
-  onNavigate,
-  settings,
-  onUpdateSettings,
-}: PrivateNewTabPageProps): React.ReactElement {
+function SearchWidget({ onNavigate, settings }: { onNavigate: (url: string) => void, settings: BrowserSettings }) {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Private VPN / Proxy States
-  const [proxyEnabled, setProxyEnabled] = useState(false);
-  const [proxyType, setProxyType] = useState<'free' | 'tor' | 'custom'>('free');
-  const [customHost, setCustomHost] = useState('127.0.0.1');
-  const [customPort, setCustomPort] = useState('8080');
-
-  // Time formatting
-  const time = useTime();
-  const dateStr = time.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-  const timeStr = time.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-
   useEffect(() => {
-    // Focus search on load
-    const t = setTimeout(() => inputRef.current?.focus(), 250);
+    const t = setTimeout(() => inputRef.current?.focus(), 200);
     return () => clearTimeout(t);
   }, []);
-
-  useEffect(() => {
-    const partitionId = (window as any)._lumoDisposablePartition;
-    if (!partitionId || !window.electron?.send) return;
-
-    if (!proxyEnabled) {
-      window.electron.send('lumo:set-private-proxy', { enabled: false, partitionId });
-      return;
-    }
-
-    let host = '';
-    let port = '';
-    let type = 'http';
-
-    if (proxyType === 'free') {
-      host = 'us16.vpnbook.com';
-      port = '80';
-      type = 'http';
-    } else if (proxyType === 'tor') {
-      host = '127.0.0.1';
-      port = '9050';
-      type = 'socks5';
-    } else {
-      host = customHost;
-      port = customPort;
-      type = 'http';
-    }
-
-    window.electron.send('lumo:set-private-proxy', {
-      enabled: true,
-      partitionId,
-      type,
-      host,
-      port,
-    });
-  }, [proxyEnabled, proxyType, customHost, customPort]);
-
-  // Search Engine resolution
-  const activeEngine =
-    SEARCH_ENGINES.find((e) => e.id === settings.searchEngine) ??
-    SEARCH_ENGINES[0];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
-    if (/^https?:\/\//.test(q)) {
-      onNavigate(q);
-      return;
-    }
-    if (q.includes('.') && !q.includes(' ')) {
-      onNavigate(`https://${q}`);
-      return;
-    }
-    onNavigate(`${activeEngine.url}${encodeURIComponent(q)}`);
+    if (/^https?:\/\//.test(q)) { onNavigate(q); return; }
+    if (q.includes('.') && !q.includes(' ')) { onNavigate(`https://${q}`); return; }
+    const engine = SEARCH_ENGINES.find((e) => e.id === settings.searchEngine) ?? SEARCH_ENGINES[0];
+    onNavigate(`${engine.url}${encodeURIComponent(q)}`);
   };
 
-  // Toggle switch helper
-  const ToggleSwitch = ({
-    enabled,
-    onChange,
-  }: {
-    enabled: boolean;
-    onChange: (v: boolean) => void;
-  }) => (
-    <button
-      type="button"
-      onClick={() => onChange(!enabled)}
-      className={`relative w-9 h-5 rounded-full transition-colors duration-200 focus:outline-none ${
-        enabled ? 'bg-violet-600' : 'bg-[#2a2a35] border border-[#3e3e4f]'
-      }`}
-    >
-      <span
-        className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
-          enabled ? 'translate-x-4' : 'translate-x-0'
-        }`}
-      />
-    </button>
+  return (
+    <form onSubmit={handleSearch} className="w-full max-w-2xl mx-auto">
+      <div
+        className="relative flex items-center rounded-2xl transition-all duration-300"
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(20px)',
+          border: `1px solid ${isFocused ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
+          boxShadow: isFocused ? '0 0 0 3px rgba(255,255,255,0.1), 0 20px 60px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.3)',
+        }}
+      >
+        <Search className="absolute left-5 w-5 h-5 pointer-events-none text-white/40" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder="Search privately or enter URL..."
+          className="w-full pl-14 pr-24 py-5 bg-transparent text-base outline-none text-white placeholder-white/30"
+        />
+        {query && (
+          <button type="button" onClick={() => setQuery('')}
+            className="absolute right-16 transition-colors text-white/30 hover:text-white/60">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+        <button type="submit"
+          className="absolute right-3 px-3 py-2 rounded-xl text-black text-xs font-bold transition-all bg-white hover:bg-gray-200">
+          Go
+        </button>
+      </div>
+    </form>
   );
+}
+
+function ShortcutsWidget({ onNavigate }: { onNavigate: (url: string) => void }) {
+  const [shortcuts, setShortcuts] = useState<ShortcutItem[]>(() => {
+    try { const s = sessionStorage.getItem('lumo-guest-shortcuts'); if (s) return JSON.parse(s); } catch { /* ignore */ }
+    return DEFAULT_SHORTCUTS;
+  });
+  const [isAdding, setIsAdding] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newUrl, setNewUrl] = useState('');
+
+  useEffect(() => { sessionStorage.setItem('lumo-guest-shortcuts', JSON.stringify(shortcuts)); }, [shortcuts]);
+
+  const remove = (id: string) => setShortcuts(prev => prev.filter(s => s.id !== id));
+  const add = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLabel.trim() || !newUrl.trim()) return;
+    let url = newUrl.trim();
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    setShortcuts(prev => [...prev, { id: `s-${Date.now()}`, label: newLabel.trim(), url, icon: 'Globe', color: '#ffffff' }]);
+    setIsAdding(false); setNewLabel(''); setNewUrl('');
+  };
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-full w-full bg-[#0a0a0f] text-white overflow-auto select-none px-6 py-12">
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="flex flex-wrap justify-center gap-6">
+        {shortcuts.map(s => {
+          const Icon = ICON_MAP[s.icon] || Globe;
+          return (
+            <div key={s.id} className="group relative flex flex-col items-center gap-2.5 cursor-pointer"
+              onClick={() => onNavigate(s.url)}>
+              <button onClick={e => { e.stopPropagation(); remove(s.id); }}
+                className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 rounded-full bg-white/20 text-white hover:bg-white/40 flex items-center justify-center
+                  opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-md">
+                <X className="w-3 h-3" />
+              </button>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all duration-200"
+                style={{
+                  background: `rgba(255,255,255,0.05)`,
+                  border: `1px solid rgba(255,255,255,0.15)`,
+                  boxShadow: `0 8px 24px rgba(0,0,0,0.4)`,
+                }}>
+                <Icon className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xs font-medium max-w-[64px] truncate text-center text-white/60">{s.label}</span>
+            </div>
+          );
+        })}
+        <button onClick={() => setIsAdding(true)} className="flex flex-col items-center gap-2.5 group">
+          <div className="w-14 h-14 rounded-2xl border border-dashed border-white/20 hover:border-white/40 hover:bg-white/5 flex items-center justify-center transition-all duration-200">
+            <Plus className="w-5 h-5 transition-colors text-white/30 group-hover:text-white/60" />
+          </div>
+          <span className="text-xs text-white/30 group-hover:text-white/50">Add</span>
+        </button>
+      </div>
+
+      {isAdding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md"
+          onClick={() => setIsAdding(false)}>
+          <form onSubmit={add} onClick={e => e.stopPropagation()}
+            className="w-80 rounded-2xl shadow-2xl p-6 bg-[#111]"
+            style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+            <h3 className="text-sm font-bold mb-4 text-white">Add Shortcut</h3>
+            <input autoFocus type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
+              placeholder="Label (e.g. Reddit)" required
+              className="w-full px-3 py-2.5 text-sm rounded-xl mb-3 outline-none text-white bg-white/5 border-white/10 placeholder-white/30"
+              style={{ border: '1px solid rgba(255,255,255,0.1)' }} />
+            <input type="text" value={newUrl} onChange={e => setNewUrl(e.target.value)}
+              placeholder="URL (e.g. reddit.com)" required
+              className="w-full px-3 py-2.5 text-sm rounded-xl mb-5 outline-none text-white bg-white/5 border-white/10 placeholder-white/30"
+              style={{ border: '1px solid rgba(255,255,255,0.1)' }} />
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setIsAdding(false)}
+                className="flex-1 py-2 text-xs rounded-xl transition-all text-white/60 hover:text-white hover:bg-white/10">Cancel</button>
+              <button type="submit"
+                className="flex-1 py-2 text-xs rounded-xl font-bold text-black bg-white transition-all hover:bg-gray-200">Add</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AITipBanner() {
+  const [tip, setTip] = useState(() => AI_TIPS[Math.floor(Math.random() * AI_TIPS.length)]);
+  useEffect(() => {
+    const t = setInterval(() => setTip(AI_TIPS[Math.floor(Math.random() * AI_TIPS.length)]), 8000);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-3 rounded-2xl max-w-2xl mx-auto"
+      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+      <Shield className="w-4 h-4 flex-shrink-0 text-white/70" />
+      <p className="text-xs font-medium text-white/60">{tip}</p>
+    </div>
+  );
+}
+
+function AmbientOrbs() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full"
+        style={{ opacity: 0.05, background: 'radial-gradient(circle, #ffffff, transparent 70%)', filter: 'blur(80px)', animation: 'drift1 20s ease-in-out infinite' }} />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full"
+        style={{ opacity: 0.03, background: 'radial-gradient(circle, #ffffff, transparent 70%)', filter: 'blur(80px)', animation: 'drift2 25s ease-in-out infinite' }} />
+      <style>{`
+        @keyframes drift1 { 0%,100%{ transform:translate(0,0) } 33%{ transform:translate(30px,-20px) } 66%{ transform:translate(-20px,15px) } }
+        @keyframes drift2 { 0%,100%{ transform:translate(0,0) } 33%{ transform:translate(-25px,20px) } 66%{ transform:translate(15px,-25px) } }
+      `}</style>
+    </div>
+  );
+}
+
+export function PrivateNewTabPage({ onNavigate, settings }: { onNavigate: (url: string) => void, settings: BrowserSettings, onUpdateSettings: any }): React.ReactElement {
+  return (
+    <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto transition-colors duration-500 bg-[#000000]">
       <AmbientOrbs />
 
-      {/* Subtle grid pattern overlay */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.02]"
+      {/* Subtle grid overlay */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
         style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
-        }}
-      />
+        }} />
 
-      {/* Main glass panel wrapper */}
-      <div className="relative z-10 w-full max-w-4xl flex flex-col items-center gap-8">
-        
-        {/* Header Indicator */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-semibold tracking-wide">
+      {/* Main content */}
+      <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14">
+
+        {/* Guest Mode Badge */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-[10px] font-bold tracking-[0.2em] uppercase">
           <EyeOff className="w-3.5 h-3.5" />
-          <span>Disposable Workspace Active</span>
+          <span>Guest Mode</span>
         </div>
 
-        {/* Clock & Date */}
-        <div className="text-center mb-1 select-none">
-          <p className="text-4xl font-extralight tracking-widest text-white/90 font-mono">{timeStr}</p>
-          <p className="text-xs text-white/40 tracking-wider mt-1">{dateStr}</p>
-        </div>
+        {/* Clock */}
+        <ClockWidget />
 
-        {/* Title & Greeting */}
-        <div className="text-center">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2 bg-gradient-to-r from-white via-gray-200 to-violet-300 bg-clip-text text-transparent">
-            Browse Privately. Leave No Trace.
-          </h1>
-          <p className="text-sm text-gray-400 max-w-lg mx-auto">
-            Everything you do in this workspace is strictly local and temporary. Once closed, the entire session will be completely expunged.
-          </p>
-        </div>
+        {/* Search */}
+        <SearchWidget onNavigate={onNavigate} settings={settings} />
 
-        {/* Search form */}
-        <form onSubmit={handleSearch} className="w-full max-w-2xl mt-2">
-          <div
-            className={`relative flex items-center rounded-2xl transition-all duration-300 bg-[#121218]/90 border ${
-              isFocused
-                ? 'border-violet-500/60 shadow-[0_0_20px_rgba(124,58,237,0.15)] ring-2 ring-violet-500/20'
-                : 'border-white/5 hover:border-white/10 shadow-xl'
-            }`}
-          >
-            <Search className="absolute left-5 w-5 h-5 text-gray-400" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              placeholder={`Search with ${activeEngine.name} or enter URL...`}
-              className="w-full pl-14 pr-24 py-4.5 bg-transparent text-base text-white placeholder-gray-500 outline-none"
-            />
-            <button
-              type="submit"
-              className="absolute right-3 px-4 py-2 rounded-xl text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 transition-colors shadow-md shadow-violet-600/20"
-            >
-              Search
-            </button>
-          </div>
-        </form>
+        {/* Shortcuts */}
+        <ShortcutsWidget onNavigate={onNavigate} />
 
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full mt-4">
-          
-          {/* Column 1: Info Cards (8 cols) */}
-          <div className="md:col-span-8 flex flex-col gap-6">
-            
-            {/* Info Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              {/* How it protects */}
-              <div className="bg-[#121218]/65 backdrop-blur-md border border-white/5 rounded-2xl p-5">
-                <div className="flex items-center gap-2 mb-3 text-green-400">
-                  <Shield className="w-4 h-4" />
-                  <h3 className="text-sm font-bold tracking-wide">WHAT LUMO SHIELDS</h3>
-                </div>
-                <ul className="text-xs text-gray-400 space-y-2.5">
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-500 font-bold">✓</span>
-                    <span><strong>Browsing History:</strong> No sites visited, cache, or form details will be saved to your local profile.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-500 font-bold">✓</span>
-                    <span><strong>Isolated Cookies & Storage:</strong> Keeps website trackers boxed inside this session.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-500 font-bold">✓</span>
-                    <span><strong>Auto Memory Purge:</strong> Erases RAM partition instantly when this window is closed.</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* What remains visible */}
-              <div className="bg-[#121218]/65 backdrop-blur-md border border-white/5 rounded-2xl p-5">
-                <div className="flex items-center gap-2 mb-3 text-amber-500">
-                  <AlertTriangle className="w-4 h-4" />
-                  <h3 className="text-sm font-bold tracking-wide">WHAT REMAINS VISIBLE</h3>
-                </div>
-                <ul className="text-xs text-gray-400 space-y-2.5">
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-500 font-bold">•</span>
-                    <span><strong>Network Operator:</strong> Your ISP, employer, or school router can still see the hostnames you connect to.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-500 font-bold">•</span>
-                    <span><strong>Websites Visited:</strong> Web pages can still track your IP address and client browser parameters.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-500 font-bold">•</span>
-                    <span><strong>Downloaded Files:</strong> Any files you download are saved directly onto your physical hard drive.</span>
-                  </li>
-                </ul>
-              </div>
-
-            </div>
-
-            {/* Privacy Tips banner */}
-            <div className="bg-gradient-to-r from-violet-950/20 to-pink-950/10 border border-violet-900/20 rounded-2xl p-4 flex items-start gap-3">
-              <Info className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
-              <div className="text-xs text-gray-400 leading-relaxed">
-                <strong>Privacy Tip:</strong> Using a VPN or Tor proxy hides your IP address and network destination from your ISP. You can configure proxy connections in settings under <strong>Privacy & Security</strong>.
-              </div>
-            </div>
-
-          </div>
-
-          {/* Column 2: Live Controls Panel (4 cols) */}
-          <div className="md:col-span-4 bg-[#121218]/65 backdrop-blur-md border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Quick Privacy controls</h3>
-                <Settings className="w-3.5 h-3.5 text-gray-500" />
-              </div>
-
-              {/* Toggles */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold text-white">Aggressive Ad-Blocker</p>
-                    <p className="text-[10px] text-gray-500">Block ads & trackers</p>
-                  </div>
-                  <ToggleSwitch
-                    enabled={settings.blockAds}
-                    onChange={(v) => onUpdateSettings({ blockAds: v })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold text-white">Do Not Track Header</p>
-                    <p className="text-[10px] text-gray-500">Send DNT request to sites</p>
-                  </div>
-                  <ToggleSwitch
-                    enabled={settings.doNotTrack}
-                    onChange={(v) => onUpdateSettings({ doNotTrack: v })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold text-white">Block Popups</p>
-                    <p className="text-[10px] text-gray-500">Stop scripts from opening popups</p>
-                  </div>
-                  <ToggleSwitch
-                    enabled={settings.blockPopups}
-                    onChange={(v) => onUpdateSettings({ blockPopups: v })}
-                  />
-                </div>
-
-                <div className="border-t border-white/5 pt-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-bold text-white">Secure Proxy / VPN</p>
-                      <p className="text-[10px] text-gray-500">Route traffic through gateway</p>
-                    </div>
-                    <ToggleSwitch
-                      enabled={proxyEnabled}
-                      onChange={setProxyEnabled}
-                    />
-                  </div>
-
-                  {proxyEnabled && (
-                    <div className="mt-2.5 p-3 rounded-xl bg-white/5 border border-white/5 space-y-3 transition-all duration-200">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[9px] uppercase tracking-wider text-gray-400 font-bold">Proxy Gateway</label>
-                        <select
-                          value={proxyType}
-                          onChange={(e) => setProxyType(e.target.value as any)}
-                          className="bg-[#1a1a24] border border-[#3e3e4f] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
-                        >
-                          <option value="free">Auto Free Proxy (VPNBook US)</option>
-                          <option value="tor">Local Tor Gateway (SOCKS5)</option>
-                          <option value="custom">Custom Proxy Server</option>
-                        </select>
-                      </div>
-
-                      {proxyType === 'custom' && (
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="col-span-2 flex flex-col gap-1">
-                            <label className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Host / IP</label>
-                            <input
-                              type="text"
-                              value={customHost}
-                              onChange={(e) => setCustomHost(e.target.value)}
-                              className="bg-[#1a1a24] border border-[#3e3e4f] rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-violet-500"
-                              placeholder="127.0.0.1"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Port</label>
-                            <input
-                              type="text"
-                              value={customPort}
-                              onChange={(e) => setCustomPort(e.target.value)}
-                              className="bg-[#1a1a24] border border-[#3e3e4f] rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-violet-500"
-                              placeholder="8080"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Stats / Info */}
-            <div className="mt-6 pt-4 border-t border-white/5 text-[11px] text-gray-500 flex flex-col gap-1.5">
-              <div className="flex justify-between">
-                <span>Secure Proxy/VPN:</span>
-                {proxyEnabled ? (
-                  <span className="text-violet-400 font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                    {proxyType === 'free' ? 'VPNBook US' : proxyType === 'tor' ? 'Tor SOCKS5' : 'Custom'}
-                  </span>
-                ) : (
-                  <span className="text-gray-400">Direct Connection</span>
-                )}
-              </div>
-              <div className="flex justify-between">
-                <span>Clock Mode:</span>
-                <span className="font-mono text-gray-400">{timeStr}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Local Session:</span>
-                <span className="text-green-500 font-semibold">Active & Encrypted</span>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
+        {/* AI Tip / Privacy Notice */}
+        <AITipBanner />
 
       </div>
 
-      {/* Footer stamp */}
-      <div className="absolute bottom-4 text-[10px] font-semibold tracking-[0.4em] uppercase text-white/10 select-none">
-        Lumo Private Workspace v0.2.0
+      {/* Bottom watermark */}
+      <div className="absolute bottom-4 text-[10px] font-semibold tracking-[0.4em] uppercase select-none text-white/15">
+        Lumo Guest Workspace
       </div>
     </div>
   );
