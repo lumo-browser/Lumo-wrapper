@@ -546,21 +546,15 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
         }} />
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14">
-
-        {/* Logo mark moved to bottom */}
-
-        {/* Hide these widgets specifically on the brain-network theme as per user request */}
-        {config.theme !== 'brain-network' && (
-          <>
-            {config.showClock !== false && <ClockWidget isDark={configThemeIsDark} />}
-            {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
-            {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
-            {config.showAITips !== false && <AITipBanner isDark={configThemeIsDark} />}
-            <ShortcutStrip isDark={configThemeIsDark} />
-          </>
-        )}
-      </div>
+      {config.theme !== 'brain-network' && (
+        <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14">
+          {config.showClock !== false && <ClockWidget isDark={configThemeIsDark} />}
+          {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
+          {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
+          {config.showAITips !== false && <AITipBanner isDark={configThemeIsDark} />}
+          <ShortcutStrip isDark={configThemeIsDark} />
+        </div>
+      )}
 
       {/* Bottom watermark */}
       <div className="absolute bottom-8 flex flex-col items-center gap-2">
