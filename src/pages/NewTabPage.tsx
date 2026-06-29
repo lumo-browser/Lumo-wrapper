@@ -404,7 +404,21 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
   const config = useDashboardConfig();
   
   // Force light mode text (dark text) when bright themes are active
-  const themeIsDark = (config.theme === 'japan-cherry-blossom' || config.theme === 'brain-network') ? false : isDark;
+  const [themeIsDark, setThemeIsDark] = useState(isDark);
+  const [shortcuts, setShortcuts] = useState(() => {
+    try { const s = localStorage.getItem('lumo-shortcuts-v2'); if (s) return JSON.parse(s); } catch {}
+    return DEFAULT_SHORTCUTS;
+  });
+
+  useEffect(() => {
+    const handleConfigUpdate = () => {
+      try { const s = localStorage.getItem('lumo-shortcuts-v2'); if (s) setShortcuts(JSON.parse(s)); } catch {}
+    };
+    window.addEventListener('lumo:dashboard-config-updated', handleConfigUpdate);
+    return () => window.removeEventListener('lumo:dashboard-config-updated', handleConfigUpdate);
+  }, []);
+
+  const configThemeIsDark = (config.theme === 'japan-cherry-blossom' || config.theme === 'brain-network') ? false : isDark;
 
   const accentHex = config.accentColor || '#8b5cf6';
   const bgImage = config.bgImage || '';
@@ -440,7 +454,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
   }, []);
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-full w-full overflow-auto transition-colors duration-500"
+    <div className={`relative flex flex-col items-center justify-center min-h-full w-full overflow-auto transition-colors duration-700 ${configThemeIsDark ? 'text-white' : 'text-gray-900'}`}
       style={{ ...backgroundStyle, ...cssVars }}>
 
       {bgImage && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-none z-0" />}
@@ -467,9 +481,9 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
         isDark={themeIsDark} 
       />
 
-      {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={themeIsDark} />}
+      {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={configThemeIsDark} />}
       {config.theme === 'japan-cherry-blossom' && <JapanCherryBlossomTheme />}
-      {config.theme === 'brain-network' && <BrainNetworkTheme shortcuts={config.shortcuts || DEFAULT_SHORTCUTS} />}
+      {config.theme === 'brain-network' && <BrainNetworkTheme shortcuts={shortcuts} />}
       
       {(() => {
         const isSavedTheme = config.theme?.startsWith('saved-');
@@ -516,9 +530,9 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
       })()}
 
       {/* Subtle grid overlay */}
-      <div className={`pointer-events-none absolute inset-0 ${themeIsDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}
+      <div className={`pointer-events-none absolute inset-0 ${configThemeIsDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}
         style={{
-          backgroundImage: `linear-gradient(${themeIsDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'} 1px, transparent 1px), linear-gradient(90deg, ${themeIsDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'} 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(${configThemeIsDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'} 1px, transparent 1px), linear-gradient(90deg, ${configThemeIsDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'} 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
         }} />
 
@@ -530,11 +544,11 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
         {/* Hide these widgets specifically on the brain-network theme as per user request */}
         {config.theme !== 'brain-network' && (
           <>
-            {config.showClock !== false && <ClockWidget isDark={themeIsDark} />}
-            {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={themeIsDark} />}
-            {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={themeIsDark} />}
-            {config.showAITips !== false && <AITipBanner isDark={themeIsDark} />}
-            <ShortcutStrip isDark={themeIsDark} />
+            {config.showClock !== false && <ClockWidget isDark={configThemeIsDark} />}
+            {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
+            {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
+            {config.showAITips !== false && <AITipBanner isDark={configThemeIsDark} />}
+            <ShortcutStrip isDark={configThemeIsDark} />
           </>
         )}
       </div>
@@ -546,7 +560,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
             style={{ background: 'linear-gradient(135deg, var(--lumo-accent), #2563eb)' }}>
             <Layers className="w-3 h-3 text-white" />
           </div>
-          <span className={`text-[11px] font-semibold tracking-[0.3em] uppercase ${themeIsDark ? 'text-white/40' : 'text-gray-500'}`}>Lumo Browser</span>
+          <span className={`text-[11px] font-semibold tracking-[0.3em] uppercase ${configThemeIsDark ? 'text-white/40' : 'text-gray-500'}`}>Lumo Browser</span>
         </div>
       </div>
     </div>

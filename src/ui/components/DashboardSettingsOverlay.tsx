@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { X, Check, Image as ImageIcon, Layout, Zap, Edit2, Plus, Clock, Search, Link2, Sparkles, Move, Code2 } from 'lucide-react';
+import { X, Check, Image as ImageIcon, Layout, Zap, Edit2, Plus, Clock, Search, Link2, Sparkles, Move, Code2, Globe } from 'lucide-react';
 
 interface DashboardSettingsOverlayProps {
   isOpen: boolean;
@@ -8,6 +7,15 @@ interface DashboardSettingsOverlayProps {
   onSave: (newConfig: any) => void;
   isDark: boolean;
 }
+
+const DEFAULT_SHORTCUTS = [
+  { id: 's1', label: 'YouTube',  url: 'https://youtube.com',       icon: 'Youtube',     color: '#ef4444' },
+  { id: 's2', label: 'GitHub',   url: 'https://github.com',        icon: 'Github',      color: '#6366f1' },
+  { id: 's3', label: 'Trending', url: 'https://trends.google.com', icon: 'TrendingUp',  color: '#10b981' },
+  { id: 's4', label: 'News',     url: 'https://news.google.com',   icon: 'Newspaper',   color: '#3b82f6' },
+  { id: 's5', label: 'Dev.to',   url: 'https://dev.to',            icon: 'Code2',       color: '#8b5cf6' },
+  { id: 's6', label: 'Amazon',   url: 'https://amazon.in',         icon: 'ShoppingBag', color: '#f59e0b' },
+];
 
 const THEMES = [
   { id: 'custom', label: 'Lumo Dynamic', color: '#8b5cf6', preview: 'linear-gradient(135deg, #0a0a0f, #1a0533)' },
@@ -24,6 +32,13 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
   const [isSaving, setIsSaving] = useState(false);
   const [themeName, setThemeName] = useState('');
   const [fileError, setFileError] = useState('');
+
+  const [shortcuts, setShortcuts] = useState<any[]>(() => {
+    try { const s = localStorage.getItem('lumo-shortcuts-v2'); if (s) return JSON.parse(s); } catch { /* ignore */ }
+    return DEFAULT_SHORTCUTS;
+  });
+  const [newLabel, setNewLabel] = useState('');
+  const [newUrl, setNewUrl] = useState('');
 
   if (!isOpen) return null;
 
@@ -211,18 +226,51 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
               <h3 className={`text-2xl font-bold mb-2 ${text}`}>Shortcuts Manager</h3>
               <p className={`text-sm mb-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Manage the quick links that appear on your dashboard.</p>
               
-              <div className={`p-8 rounded-2xl border border-dashed ${border} flex flex-col items-center justify-center text-center`}>
-                <div className={`w-16 h-16 rounded-full mb-4 flex items-center justify-center ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-                  <Move className="w-6 h-6" />
+              <div className={`p-5 mb-6 rounded-2xl border ${border} ${panelBg}`}>
+                <div className="flex gap-3">
+                  <input type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                    placeholder="Label (e.g. Reddit)"
+                    className={`flex-1 px-4 py-3 rounded-xl text-sm outline-none border transition-colors ${isDark ? 'bg-black/20 border-white/10 text-white placeholder-gray-500 focus:border-violet-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-violet-500'}`} />
+                  <input type="text" value={newUrl} onChange={e => setNewUrl(e.target.value)}
+                    placeholder="URL (e.g. reddit.com)"
+                    className={`flex-[2] px-4 py-3 rounded-xl text-sm outline-none border transition-colors ${isDark ? 'bg-black/20 border-white/10 text-white placeholder-gray-500 focus:border-violet-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-violet-500'}`} />
+                  <button onClick={() => {
+                    if (!newLabel.trim() || !newUrl.trim()) return;
+                    let url = newUrl.trim();
+                    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+                    const next = [...shortcuts, { id: `s-${Date.now()}`, label: newLabel.trim(), url, icon: 'Globe', color: '#6366f1' }];
+                    setShortcuts(next);
+                    localStorage.setItem('lumo-shortcuts-v2', JSON.stringify(next));
+                    window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
+                    setNewLabel(''); setNewUrl('');
+                  }} className="px-5 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold transition-colors hover:bg-violet-700">
+                    Add
+                  </button>
                 </div>
-                <h4 className={`font-bold mb-2 ${text}`}>Shortcut Customizer</h4>
-                <p className={`text-sm max-w-sm mb-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  To add or remove shortcuts, click the "+" button directly on the New Tab Page. 
-                  (Drag-and-drop reordering is coming in the next update!)
-                </p>
-                <button onClick={onClose} className="px-6 py-2.5 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-700 transition-colors">
-                  Go to Dashboard
-                </button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {shortcuts.map(s => (
+                  <div key={s.id} className={`flex items-center justify-between p-4 rounded-xl border ${border} ${panelBg}`}>
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${s.color}22` }}>
+                        <Globe className="w-4 h-4" style={{ color: s.color }} />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className={`text-sm font-bold truncate ${text}`}>{s.label}</span>
+                        <span className={`text-xs truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{s.url}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => {
+                      const next = shortcuts.filter(x => x.id !== s.id);
+                      setShortcuts(next);
+                      localStorage.setItem('lumo-shortcuts-v2', JSON.stringify(next));
+                      window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
+                    }} className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
