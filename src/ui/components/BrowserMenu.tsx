@@ -21,6 +21,7 @@ import {
   EyeOff,
   Plus,
   Ghost,
+  User,
 } from 'lucide-react';
 
 interface BrowserMenuProps {
@@ -68,7 +69,8 @@ export function BrowserMenu({
     { id: 'new-disposable',icon: Ghost,     label: 'New Disposable Workspace', shortcut: 'Ctrl+Shift+N', onClick: () => { onNewDisposableWindow(); onClose(); }, separator: true },
     { id: 'zoom-in',       icon: ZoomIn,    label: 'Zoom in',             shortcut: 'Ctrl++', onClick: () => { onZoomIn(); onClose(); } },
     { id: 'zoom-out',   icon: ZoomOut,   label: 'Zoom out',     shortcut: 'Ctrl+-', onClick: () => { onZoomOut(); onClose(); } },
-    { id: 'bookmarks',  icon: BookOpen,  label: 'Bookmarks',    shortcut: 'Ctrl+B', onClick: () => { onNavigate('lumo://bookmarks'); onClose(); }, separator: true },
+    { id: 'switch-profile', icon: User, label: 'Switch Profile', onClick: () => { onOpenAccount(); onClose(); }, separator: true },
+    { id: 'bookmarks',  icon: BookOpen,  label: 'Bookmarks',    shortcut: 'Ctrl+B', onClick: () => { onNavigate('lumo://bookmarks'); onClose(); } },
     { id: 'history',    icon: Clock,     label: 'History',      shortcut: 'Ctrl+H', onClick: () => { onNavigate('lumo://history'); onClose(); } },
     { id: 'downloads',  icon: Download,  label: 'Downloads',    shortcut: 'Ctrl+J', onClick: () => { onNavigate('lumo://downloads'); onClose(); }, separator: true },
     { id: 'print',      icon: Printer,   label: 'Print',        shortcut: 'Ctrl+P', onClick: () => { onPrint(); onClose(); } },
