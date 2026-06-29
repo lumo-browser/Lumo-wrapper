@@ -102,6 +102,7 @@ export function BrainNetworkTheme({ shortcuts = [] }: BrainNetworkThemeProps) {
       position: relative; z-index: 10;
       width: 60px; height: 60px;
       filter: var(--brain-glow);
+      transform: translateX(2px);
     }
     .lines-svg {
       position: absolute; top: 0; left: 0;

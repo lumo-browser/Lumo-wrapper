@@ -525,14 +525,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14">
 
-        {/* Logo mark */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center shadow-md"
-            style={{ background: 'linear-gradient(135deg, var(--lumo-accent), #2563eb)' }}>
-            <Layers className="w-4 h-4 text-white" />
-          </div>
-          <span className={`text-xs font-semibold tracking-[0.3em] uppercase ${themeIsDark ? 'text-white/30' : 'text-gray-400'}`}>Lumo Browser</span>
-        </div>
+        {/* Logo mark moved to bottom */}
 
         {/* Hide these widgets specifically on the brain-network theme as per user request */}
         {config.theme !== 'brain-network' && (
@@ -547,8 +540,14 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
       </div>
 
       {/* Bottom watermark */}
-      <div className={`absolute bottom-4 text-[10px] font-semibold tracking-[0.4em] uppercase select-none ${themeIsDark ? 'text-white/15' : 'text-gray-400'}`}>
-        Lumo v0.2.0
+      <div className="absolute bottom-8 flex flex-col items-center gap-2">
+        <div className="flex items-center gap-2.5 select-none">
+          <div className="w-5 h-5 rounded-md flex items-center justify-center shadow-sm"
+            style={{ background: 'linear-gradient(135deg, var(--lumo-accent), #2563eb)' }}>
+            <Layers className="w-3 h-3 text-white" />
+          </div>
+          <span className={`text-[11px] font-semibold tracking-[0.3em] uppercase ${themeIsDark ? 'text-white/40' : 'text-gray-500'}`}>Lumo Browser</span>
+        </div>
       </div>
     </div>
   );
