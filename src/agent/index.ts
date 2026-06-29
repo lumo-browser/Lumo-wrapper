@@ -5,11 +5,15 @@ export {
   executeToolCall,
   captureTaggedScreenshot,
   buildElementText,
-  DOM_EXTRACTOR_SCRIPT,
+  extractDOM,
+  DOM_EXTRACTOR_TEXT_SCRIPT,
+  DOM_EXTRACTOR_VISION_SCRIPT,
 } from './AgentExecutor';
-export type { ExecutionResult, ElementInfo } from './AgentExecutor';
+export type { ExecutionResult, ElementInfo, CaptureResult } from './AgentExecutor';
 export {
   buildSystemPrompt,
   buildContextPrompt,
+  buildTextOnlySystemPrompt,
+  buildTextOnlyContextMessages,
   buildVisionContextMessages,
 } from './AgentPrompts';

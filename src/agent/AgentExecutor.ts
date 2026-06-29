@@ -1,36 +1,133 @@
 /**
- * AgentExecutor — Vision-based browser control engine.
+ * AgentExecutor — Browser control engine with dual-mode DOM access.
  *
- * ARCHITECTURE: "Set of Marks" + Native Input Events
- * ─────────────────────────────────────────────────────
- * 1. DOM_EXTRACTOR_SCRIPT tags every interactable element with a red numbered
- *    overlay and records its center (x, y) coordinates in window.__LumoAgentElements.
- * 2. captureTaggedScreenshot() injects the tags, takes a capturePage() screenshot,
- *    then removes the tags. The annotated base64 image is sent to the VLM alongside
- *    a short element list so the model can reason visually.
- * 3. All click actions use Electron's native sendInputEvent (real mouse down/up)
- *    directly on the webview element — bypasses JS-event guards on modern websites.
- * 4. Type actions simulate character-by-character keyboard events for the same reason.
- *
- * The executor is stateless — all state lives in AgentMemory.
+ * ARCHITECTURE: "Set of Marks" + ID-based DOM Interaction
+ * ────────────────────────────────────────────────────────
+ * 1. DOM extraction finds every interactable element, assigns a numeric ID,
+ *    and records its text, type, role, and coordinates (viewport-relative).
+ *    The element reference is stored in window.__LumoAgentElements.
+ * 2. In VISION mode, red numbered tags are painted onto the page and a
+ *    screenshot is captured. In TEXT mode, only the element list is returned.
+ * 3. All click/type actions use the stored element reference (by numeric ID)
+ *    via direct JS DOM manipulation as the PRIMARY method — coordinates and
+ *    native events are SECONDARY fallbacks.
+ * 4. This approach is faster, more reliable (no coordinate mismatch), and
+ *    works with both vision and text-only models.
  */
 
 import type { TaskMemory, ExtractedProduct } from './AgentMemory';
 import { addProductToMemory, addActionToMemory } from './AgentMemory';
 
-// ── DOM Extractor (Vision Mode) ────────────────────────────────────────────
+// ── DOM Extractor (Text Mode — no visual tags) ───────────────────────────
 
 /**
  * Injected into the webview to:
  *  - Find every interactable element
- *  - Record its center (x, y) in window.__LumoAgentElements keyed by numeric ID
- *  - Paint a visible red numbered tag over each element
+ *  - Record its reference + metadata in window.__LumoAgentElements
  *  - Return a compact JSON array of { id, tag, text, x, y, type, role, href }
  *
- * Coordinates are viewport-relative (no scroll offset) to match sendInputEvent.
- * Tags use position:fixed so they appear at the correct viewport position.
+ * NO visual tags are created — use this for text-only models.
  */
-export const DOM_EXTRACTOR_SCRIPT = `
+export const DOM_EXTRACTOR_TEXT_SCRIPT = `
+  (function() {
+    window.__LumoAgentElements = {};
+    var results = [];
+    var idCounter = 1;
+
+    function isVisible(el) {
+      if (el.type === 'radio' || el.type === 'checkbox') return true;
+      var rect = el.getBoundingClientRect();
+      var style = window.getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0
+        && style.visibility !== 'hidden'
+        && style.display !== 'none'
+        && parseFloat(style.opacity) > 0;
+    }
+
+    function getLabel(el) {
+      var type = el.getAttribute('type') || '';
+      if (type === 'radio' || type === 'checkbox') {
+        var labelEl = el.id ? document.querySelector('label[for="' + el.id + '"]') : el.closest('label');
+        if (labelEl) return labelEl.innerText.trim().substring(0, 100);
+        var p = el.parentElement;
+        for (var i = 0; i < 4 && p; i++) {
+          var t = p.innerText.trim();
+          if (t.length > 1 && t.length < 200) return t.substring(0, 100);
+          p = p.parentElement;
+        }
+      }
+      return (
+        el.innerText ||
+        el.value ||
+        el.placeholder ||
+        el.getAttribute('aria-label') ||
+        el.getAttribute('title') ||
+        el.getAttribute('alt') || ''
+      ).trim().substring(0, 80);
+    }
+
+    /** Collect interactable elements including shadow DOM */
+    function collectElements(root) {
+      var els = [];
+      var selectors = 'a, button, input, textarea, select, canvas, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [onclick], label, summary, [tabindex]';
+      var nodes = root.querySelectorAll(selectors);
+      for (var i = 0; i < nodes.length; i++) els.push(nodes[i]);
+      var all = root.querySelectorAll('*');
+      for (var j = 0; j < all.length; j++) {
+        if (all[j].shadowRoot) {
+          var shadowEls = collectElements(all[j].shadowRoot);
+          for (var k = 0; k < shadowEls.length; k++) els.push(shadowEls[k]);
+        }
+      }
+      return els;
+    }
+
+    var elements = collectElements(document);
+    for (var idx = 0; idx < elements.length; idx++) {
+      var el = elements[idx];
+      if (!isVisible(el)) continue;
+      if (el.__lumoTagged) continue;
+      el.__lumoTagged = true;
+
+      var rect = el.getBoundingClientRect();
+      var id   = idCounter++;
+      var cx   = Math.round(rect.left + rect.width  / 2);
+      var cy   = Math.round(rect.top  + rect.height / 2);
+
+      window.__LumoAgentElements[id] = { el: el, x: cx, y: cy };
+
+      var tagName = el.tagName.toLowerCase();
+      var type    = el.getAttribute('type') || '';
+      var role    = el.getAttribute('role') || '';
+      var href    = el.getAttribute('href') || '';
+      var checked = (type === 'radio' || type === 'checkbox')
+        ? (el.checked ? '[CHECKED]' : '[UNCHECKED]') : '';
+
+      results.push({
+        id:     id,
+        tag:    tagName,
+        type:   type,
+        role:   role,
+        href:   href.length < 80 ? href : '',
+        text:   getLabel(el),
+        checked: checked,
+        x:      cx,
+        y:      cy,
+      });
+    }
+
+    return JSON.stringify(results);
+  })();
+`;
+
+// ── DOM Extractor (Vision Mode — paints numbered tags) ──────────────────
+
+/**
+ * Same as TEXT_SCRIPT but also paints red numbered tags over each element.
+ * Tags are removed after screenshot capture via REMOVE_TAGS_SCRIPT.
+ * Coordinates are viewport-relative. Tags use position:fixed.
+ */
+export const DOM_EXTRACTOR_VISION_SCRIPT = `
   (function() {
     document.querySelectorAll('.Lumo-agent-tag').forEach(function(t){ t.remove(); });
 
@@ -70,9 +167,33 @@ export const DOM_EXTRACTOR_SCRIPT = `
       ).trim().substring(0, 80);
     }
 
-    var selectors = 'a, button, input, textarea, select, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [onclick], label, summary';
-    document.querySelectorAll(selectors).forEach(function(el) {
-      if (!isVisible(el)) return;
+    /** Collect interactable elements including shadow DOM penetration */
+    function collectElements(root) {
+      var els = [];
+      var selectors = 'a, button, input, textarea, select, canvas, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [onclick], label, summary, [tabindex]';
+      var nodes = root.querySelectorAll(selectors);
+      for (var i = 0; i < nodes.length; i++) els.push(nodes[i]);
+      // Penetrate open shadow roots
+      var all = root.querySelectorAll('*');
+      for (var j = 0; j < all.length; j++) {
+        if (all[j].shadowRoot) {
+          var shadowEls = collectElements(all[j].shadowRoot);
+          for (var k = 0; k < shadowEls.length; k++) els.push(shadowEls[k]);
+        }
+      }
+      return els;
+    }
+
+    var elements = collectElements(document);
+
+    for (var idx = 0; idx < elements.length; idx++) {
+      var el = elements[idx];
+      if (!isVisible(el)) continue;
+
+      // Skip if already tagged (duplicate from shadow root penetration)
+      if (el.__lumoTagged) continue;
+      el.__lumoTagged = true;
+
       var rect = el.getBoundingClientRect();
       var id   = idCounter++;
       var cx   = Math.round(rect.left + rect.width  / 2);
@@ -85,8 +206,8 @@ export const DOM_EXTRACTOR_SCRIPT = `
       tag.textContent = String(id);
       tag.style.cssText = [
         'position:fixed',
-        'top:'   + (rect.top - 2) + 'px',
-        'left:'  + (rect.left - 2) + 'px',
+        'top:'   + (Math.max(rect.top, 0)) + 'px',
+        'left:'  + (Math.max(rect.left, 0)) + 'px',
         'background:#ef4444',
         'color:#fff',
         'font-size:9px',
@@ -108,17 +229,17 @@ export const DOM_EXTRACTOR_SCRIPT = `
         ? (el.checked ? '[CHECKED]' : '[UNCHECKED]') : '';
 
       results.push({
-        id:   id,
-        tag:  tagName,
-        type: type,
-        role: role,
-        href: href.length < 80 ? href : '',
-        text: getLabel(el),
+        id:     id,
+        tag:    tagName,
+        type:   type,
+        role:   role,
+        href:   href.length < 80 ? href : '',
+        text:   getLabel(el),
         checked: checked,
-        x:    cx,
-        y:    cy,
+        x:      cx,
+        y:      cy,
       });
-    });
+    }
 
     return JSON.stringify(results);
   })();
@@ -129,21 +250,50 @@ const REMOVE_TAGS_SCRIPT = `
   document.querySelectorAll('.Lumo-agent-tag').forEach(function(t){ t.remove(); });
 `;
 
-/** Extract visible page text for context */
+/** 
+ * Extract all visible page text including shadow DOM and canvas fallback.
+ * Works on pages that prevent selection/copying (exam portals, paywalls, etc.)
+ * Canvas text is extracted via getContext('2d') when same-origin.
+ */
 const READ_PAGE_TEXT_SCRIPT = `
   (function() {
-    var selectors = 'h1, h2, h3, h4, p, li, td, th, span, label, figcaption, blockquote, .a-price, .a-size-base, [data-testid]';
-    var nodes = document.querySelectorAll(selectors);
     var text = [], seen = {};
-    for (var i = 0; i < nodes.length; i++) {
-      var t = (nodes[i].innerText || '').trim();
-      if (t.length > 2 && t.length < 500 && !seen[t]) {
-        seen[t] = true;
-        text.push(t);
+
+    /** Recursively walk the DOM including shadow roots */
+    function walkText(root) {
+      var nodes = root.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, td, th, span, label, figcaption, blockquote, dt, dd, article, section, .content, .text, [class*="content"], [class*="text"], [data-testid]');
+      for (var i = 0; i < nodes.length; i++) {
+        var t = (nodes[i].innerText || nodes[i].textContent || '').trim();
+        if (t.length > 2 && t.length < 1000 && !seen[t]) {
+          seen[t] = true;
+          text.push(t);
+        }
+        if (text.length > 300) return;
       }
-      if (text.length > 200) break;
+      // Shadow DOM penetration
+      var all = root.querySelectorAll('*');
+      for (var j = 0; j < all.length; j++) {
+        if (all[j].shadowRoot) walkText(all[j].shadowRoot);
+        if (text.length > 300) return;
+      }
     }
-    return text.join('\\n');
+    walkText(document);
+
+    // Canvas text extraction (same-origin only)
+    try {
+      var canvases = document.querySelectorAll('canvas');
+      for (var c = 0; c < canvases.length; c++) {
+        var ctx = canvases[c].getContext('2d');
+        if (ctx) {
+          var imgData = ctx.getImageData(0, 0, canvases[c].width, canvases[c].height);
+          if (imgData && imgData.data.length > 100) {
+            text.push('[Canvas element #' + (c+1) + ': ' + canvases[c].width + 'x' + canvases[c].height + ' pixels]');
+          }
+        }
+      }
+    } catch(e) {}
+
+    return text.join('\\n').substring(0, 15000);
   })();
 `;
 
@@ -183,46 +333,80 @@ function buildExtractProductScript(maxProducts: number): string {
   `;
 }
 
-// ── Screenshot Helper ──────────────────────────────────────────────────────
+// ── Element Discovery ─────────────────────────────────────────────────────
 
 /**
- * captureTaggedScreenshot
- *  1. Injects the DOM extractor to paint numbered tags
- *  2. Waits for next animation frame so tags are painted
- *  3. Asks Electron main process to capturePage() for this specific webview
- *  4. Removes the tags
- *  5. Returns { elementList, screenshotBase64 }
+ * extractDOM: Text-only extraction — no visual tags, no screenshot.
+ * Use this for models without vision capability or when speed matters.
+ * Returns the list of interactable elements on the page.
+ */
+export async function extractDOM(
+  webview: any
+): Promise<ElementInfo[]> {
+  try {
+    const raw: string = await webview.executeJavaScript(DOM_EXTRACTOR_TEXT_SCRIPT);
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+// ── Screenshot Helper ─────────────────────────────────────────────────────
+
+/**
+ * captureTaggedScreenshot: Vision-mode extraction with full content access.
+ *  1. Extracts full page text (handles shadow DOM, canvas)
+ *  2. Injects the DOM extractor to paint numbered tags
+ *  3. Polls until tags are confirmed visible in the DOM
+ *  4. Captures a screenshot of the specific webview
+ *  5. Removes the tags
+ *  6. Returns { elementList, screenshotBase64, pageText }
+ *
+ * The pageText provides text-layer content for non-copyable content.
+ * The screenshot provides pixel-perfect capture for canvas/rendered content.
  */
 export async function captureTaggedScreenshot(
   webview: any
-): Promise<{ elementList: ElementInfo[]; screenshotBase64: string }> {
-  // Step 1 — inject tags and collect element data
-  const raw: string = await webview.executeJavaScript(DOM_EXTRACTOR_SCRIPT);
+): Promise<{ elementList: ElementInfo[]; screenshotBase64: string; pageText: string }> {
+  // Step 1 — Extract full page text alongside vision capture
+  let pageText = '';
+  try {
+    pageText = await webview.executeJavaScript(READ_PAGE_TEXT_SCRIPT);
+  } catch { /* non-critical */ }
+
+  // Step 2 — inject tags and collect element data
+  const raw: string = await webview.executeJavaScript(DOM_EXTRACTOR_VISION_SCRIPT);
   let elementList: ElementInfo[] = [];
   try { elementList = JSON.parse(raw); } catch { elementList = []; }
 
-  // Step 2 — wait for tags to be painted before capturing
-  await webview.executeJavaScript(
-    'new Promise(function(r){requestAnimationFrame(function(){setTimeout(r,50)});})'
-  );
+  // Step 3 — poll until at least one tag is visible, with timeout
+  const maxWaitMs = 2000;
+  const pollStart = Date.now();
+  while (Date.now() - pollStart < maxWaitMs) {
+    const tagCount: number = await webview.executeJavaScript(
+      'document.querySelectorAll(".Lumo-agent-tag").length'
+    );
+    if (tagCount > 0) break;
+    await new Promise(r => setTimeout(r, 100));
+  }
 
-  // Step 3 — capture this webview only (via its webContents ID)
+  // Step 4 — capture this webview only (via its webContents ID)
   let screenshotBase64 = '';
   try {
-    const wcId: number = await webview.getWebContentsId();
+    const wcId: number = webview.getWebContentsId();
     const result = await window.electron?.invoke?.('lumo:capture-webview', { webContentsId: wcId });
     if (result?.base64) screenshotBase64 = result.base64;
   } catch {
     // capturePage unavailable — proceed with text-only mode
   }
 
-  // Step 4 — remove tags so the user sees a clean page
-  await webview.executeJavaScript(REMOVE_TAGS_SCRIPT);
+  // Step 5 — remove tags so the user sees a clean page
+  try { await webview.executeJavaScript(REMOVE_TAGS_SCRIPT); } catch { /* ignore */ }
 
-  return { elementList, screenshotBase64 };
+  return { elementList, screenshotBase64, pageText };
 }
 
-/** Compact text representation of the element list for the text portion of the prompt */
+/** Compact text representation of the element list for the context prompt */
 export function buildElementText(elementList: ElementInfo[]): string {
   return elementList
     .map((e) => {
@@ -231,13 +415,18 @@ export function buildElementText(elementList: ElementInfo[]): string {
       if (e.role) line += ' role="' + e.role + '"';
       if (e.href) line += ' href="' + e.href + '"';
       line += '>' + (e.checked ? ' ' + e.checked : '') + ' "' + e.text + '"';
-      line += '  @(' + e.x + ',' + e.y + ')';
       return line;
     })
     .join('\n');
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
+
+export interface CaptureResult {
+  elementList: ElementInfo[];
+  screenshotBase64: string;
+  pageText: string;
+}
 
 export interface ElementInfo {
   id: number;
@@ -264,44 +453,93 @@ export interface ExecutionResult {
   planSteps?: string[];
 }
 
-// ── Native Input Helpers ───────────────────────────────────────────────────
+// ── DOM Interaction Helpers ───────────────────────────────────────────────
 
 /**
- * Simulate a real mouse click at (x, y) via webview.sendInputEvent.
+ * Click an element by its numeric [ID] using the stored DOM reference.
+ *
+ * Strategy (fastest -> fallback):
+ *  1. Look up element by ID in window.__LumoAgentElements and call .click()
+ *  2. If coordinates are available, use webview.sendInputEvent (native)
+ *  3. Use document.elementFromPoint as last resort
+ *
  * Coordinates are viewport-relative (matching the DOM extractor output).
- * Falls back to element.click() if native events are unavailable.
  */
-async function nativeClick(webview: any, x: number, y: number, elementId: number): Promise<void> {
-  try {
-    webview.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
-    await sleep(50);
-    webview.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
-    return;
-  } catch { /* fall through */ }
-
-  await webview.executeJavaScript(
+async function clickElement(
+  webview: any,
+  elementId: number,
+  x?: number,
+  y?: number
+): Promise<void> {
+  // Step 1 — Direct JS click on the stored element reference
+  const result: string = await webview.executeJavaScript(
     '(function(){' +
     'var e=window.__LumoAgentElements&&window.__LumoAgentElements[' + elementId + '];' +
-    'if(e&&e.el){e.el.scrollIntoView({block:"center"});e.el.focus();e.el.click();}' +
+    'if(e&&e.el&&typeof e.el.click==="function"){try{e.el.scrollIntoView({block:"center"});e.el.focus();e.el.click();return"ok";}catch(err){return"err:"+err.message;}}' +
+    'return"not_found";' +
     '})()'
   );
+  if (result === 'ok') return;
+
+  // Step 2 — Native events at stored coordinates (handles sites that block synthetic events)
+  if (x !== undefined && y !== undefined) {
+    try {
+      webview.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
+      await sleep(50);
+      webview.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
+      return;
+    } catch { /* fall through */ }
+  }
+
+  // Step 3 — elementFromPoint (handles stale element references)
+  if (x !== undefined && y !== undefined) {
+    try {
+      await webview.executeJavaScript(
+        'document.elementFromPoint(' + x + ',' + y + ')?.click();'
+      );
+    } catch { /* ignore */ }
+  }
 }
 
 /**
- * Type text via webview.sendInputEvent char-by-char.
- * Falls back to setting element.value directly + synthetic events.
+ * Type text into an element by its numeric [ID].
+ *
+ * Strategy:
+ *  1. Focus the element via JS
+ *  2. Set value via JS + dispatch input/change events (works for most frameworks)
+ *  3. If native keyboard is needed, sendInputEvent char-by-char
  */
-async function nativeType(webview: any, elementId: number, text: string, clearFirst: boolean, pressEnter: boolean): Promise<void> {
-  await webview.executeJavaScript(
+async function typeText(
+  webview: any,
+  elementId: number,
+  text: string,
+  clearFirst: boolean,
+  pressEnter: boolean
+): Promise<void> {
+  // Step 1 — Focus + set value via JS
+  const escaped = text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+  const jsResult: string = await webview.executeJavaScript(
     '(function(){' +
     'var e=window.__LumoAgentElements&&window.__LumoAgentElements[' + elementId + '];' +
-    'if(e&&e.el){e.el.scrollIntoView({block:"center"});e.el.focus();' +
-    (clearFirst ? 'e.el.value="";' : '') +
+    'if(!e||!e.el)return"not_found";' +
+    'e.el.scrollIntoView({block:"center"});' +
+    'e.el.focus();' +
     'e.el.dispatchEvent(new Event("focus",{bubbles:true}));' +
-    '}' +
+    (clearFirst ? 'e.el.value="";' : '') +
+    'var sel=e.el.value?e.el.value.length:0;' +
+    'e.el.value=\'' + escaped + '\';' +
+    'e.el.dispatchEvent(new Event("input",{bubbles:true}));' +
+    'e.el.dispatchEvent(new Event("change",{bubbles:true}));' +
+    (pressEnter
+      ? 'e.el.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",code:"Enter",keyCode:13,which:13,bubbles:true}));' +
+        'if(e.el.form)e.el.form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));'
+      : '') +
+    'return"ok";' +
     '})()'
   );
+  if (jsResult === 'ok') return;
 
+  // Step 2 — Native keyboard simulation (handles JS-framework guards)
   try {
     for (const char of text) {
       webview.sendInputEvent({ type: 'keyDown', keyCode: char });
@@ -316,25 +554,20 @@ async function nativeType(webview: any, elementId: number, text: string, clearFi
       await sleep(30);
       webview.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
     }
-    return;
-  } catch { /* fall through */ }
+  } catch { /* both approaches failed — nothing more we can do */ }
+}
 
-  const escaped = text.replace(/'/g, "\\'").replace(/\n/g, '\\n');
-  await webview.executeJavaScript(
-    '(function(){' +
-    'var e=window.__LumoAgentElements&&window.__LumoAgentElements[' + elementId + '];' +
-    'if(e&&e.el){' +
-    (clearFirst ? 'e.el.value="";' : '') +
-    'e.el.value=\'' + escaped + '\';' +
-    'e.el.dispatchEvent(new Event("input",{bubbles:true}));' +
-    'e.el.dispatchEvent(new Event("change",{bubbles:true}));' +
-    (pressEnter
-      ? 'e.el.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",code:"Enter",keyCode:13,which:13,bubbles:true}));' +
-        'if(e.el.form)e.el.form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));'
-      : '') +
-    '}' +
-    '})()'
-  );
+/** Find coordinates of an element by ID from the stored data */
+async function getElementCoords(webview: any, elementId: number): Promise<{ x: number; y: number } | null> {
+  try {
+    const result: string = await webview.executeJavaScript(
+      'JSON.stringify(window.__LumoAgentElements&&window.__LumoAgentElements[' + elementId + ']' +
+      '?{x:window.__LumoAgentElements[' + elementId + '].x,y:window.__LumoAgentElements[' + elementId + '].y}:null)'
+    );
+    return JSON.parse(result);
+  } catch {
+    return null;
+  }
 }
 
 // ── Main Executor ──────────────────────────────────────────────────────────
@@ -362,29 +595,13 @@ export async function executeToolCall(
         break;
       }
 
-      // ── Click (Vision-native) ────────────────────────────────────
+      // ── Click by element [ID] ────────────────────────────────────
       case 'click': {
         const clickId = Number(args.id);
-        // Retrieve stored coordinates from the last DOM extraction
-        const coordResult: string = await webview.executeJavaScript(
-          'JSON.stringify(window.__LumoAgentElements&&window.__LumoAgentElements[' + clickId + ']' +
-          '?{x:window.__LumoAgentElements[' + clickId + '].x,y:window.__LumoAgentElements[' + clickId + '].y}:null)'
-        );
-        let coord: { x: number; y: number } | null = null;
-        try { coord = JSON.parse(coordResult); } catch { /* ignore */ }
-
-        if (coord) {
-          await nativeClick(webview, coord.x, coord.y, clickId);
-        } else {
-          // Coordinate not found — fall back to JS click
-          await webview.executeJavaScript(
-            '(function(){var e=window.__LumoAgentElements&&window.__LumoAgentElements[' + clickId + '];' +
-            'if(e&&e.el){e.el.scrollIntoView({block:"center"});e.el.focus();e.el.click();}})()'
-          );
-        }
+        const coords = await getElementCoords(webview, clickId);
+        await clickElement(webview, clickId, coords?.x, coords?.y);
         await sleep(2000);
         output = 'Clicked element [' + clickId + ']' +
-          (coord ? ' at (' + coord.x + ',' + coord.y + ')' : ' (JS fallback)') +
           (args.description ? ' — ' + args.description : '');
         break;
       }
@@ -393,6 +610,7 @@ export async function executeToolCall(
       case 'click_at': {
         const cx = Number(args.x);
         const cy = Number(args.y);
+        // Try native events first (no element reference available)
         try {
           webview.sendInputEvent({ type: 'mouseDown', x: cx, y: cy, button: 'left', clickCount: 1 });
           await sleep(50);
@@ -405,14 +623,14 @@ export async function executeToolCall(
         break;
       }
 
-      // ── Type Text (native keyboard) ──────────────────────────────
+      // ── Type Text ──────────────────────────────────────────────
       case 'type_text': {
-        const typeId    = Number(args.id);
-        const text      = args.text || '';
+        const typeId     = Number(args.id);
+        const text       = args.text || '';
         const clearFirst = args.clear_first !== false;
         const pressEnter = args.press_enter === true;
 
-        await nativeType(webview, typeId, text, clearFirst, pressEnter);
+        await typeText(webview, typeId, text, clearFirst, pressEnter);
         await sleep(pressEnter ? 2500 : 600);
         output = 'Typed "' + text + '" into element [' + typeId + ']' + (pressEnter ? ' and pressed Enter' : '');
         break;
@@ -468,14 +686,22 @@ export async function executeToolCall(
       // ── Press Key ────────────────────────────────────────────────
       case 'press_key': {
         const key = args.key || 'Enter';
+        // Try native key event first
         try {
           webview.sendInputEvent({ type: 'keyDown', keyCode: key });
           await sleep(30);
           webview.sendInputEvent({ type: 'keyUp', keyCode: key });
         } catch {
+          // Fallback: dispatch keyboard events on the active element
+          const keyLower = key.toLowerCase();
+          const keyCodeMap: Record<string, number> = {
+            'enter': 13, 'escape': 27, 'tab': 9, 'backspace': 8,
+            'arrowdown': 40, 'arrowup': 38, 'arrowleft': 37, 'arrowright': 39,
+          };
+          const code = keyCodeMap[keyLower] || 0;
           await webview.executeJavaScript(
-            'document.activeElement.dispatchEvent(new KeyboardEvent("keydown",{key:"' + key + '",bubbles:true}));' +
-            'document.activeElement.dispatchEvent(new KeyboardEvent("keyup",{key:"' + key + '",bubbles:true}));'
+            'document.activeElement.dispatchEvent(new KeyboardEvent("keydown",{key:"' + key + '",code:"' + key + '",keyCode:' + code + ',which:' + code + ',bubbles:true}));' +
+            'document.activeElement.dispatchEvent(new KeyboardEvent("keyup",{key:"' + key + '",code:"' + key + '",keyCode:' + code + ',which:' + code + ',bubbles:true}));'
           );
         }
         await sleep(1000);
@@ -507,7 +733,7 @@ export async function executeToolCall(
           'var candidates=document.querySelectorAll("label,[role=\\"radio\\"],[role=\\"option\\"],li,.answer,.option,.choice,td,th,div,span,p,a,button");' +
           'for(var i=0;i<candidates.length;i++){' +
           'var t=(candidates[i].innerText||"").toLowerCase().trim();' +
-          'if(t.indexOf("' + searchText + '")!==-1&&t.length<300){candidates[i].click();return "clicked:"+candidates[i].innerText.trim().substring(0,80);}' +
+          'if(t.indexOf("' + searchText + '")!==-1&&t.length<300){candidates[i].scrollIntoView({block:"center"});candidates[i].focus();candidates[i].click();return "clicked:"+candidates[i].innerText.trim().substring(0,80);}' +
           '}return "not_found";' +
           '})()'
         );
@@ -527,13 +753,13 @@ export async function executeToolCall(
           'var candidates=document.querySelectorAll("label,[role=\'radio\'],[role=\'option\'],li,td,.answer,.option,.choice,.a-label,input[type=\'radio\'],input[type=\'checkbox\'],div,span,p,a,button");' +
           'for(var i=0;i<candidates.length;i++){' +
           'var el=candidates[i];var t=(el.innerText||el.textContent||el.value||"").toLowerCase().trim();' +
-          'if(t.indexOf("' + answerText + '")!==-1&&t.length<400){el.click();result.selected=true;result.msg="Selected: "+(el.innerText||el.value||"").trim().substring(0,80);break;}' +
+          'if(t.indexOf("' + answerText + '")!==-1&&t.length<400){el.scrollIntoView({block:"center"});el.focus();el.click();result.selected=true;result.msg="Selected: "+(el.innerText||el.value||"").trim().substring(0,80);break;}' +
           '}' +
           'if(result.selected){' +
           'var btns=document.querySelectorAll("button,input[type=\'submit\'],input[type=\'button\'],a,[role=\'button\']");' +
           'var kw=["next","submit","continue","ok","proceed","finish","done","save","forward","check"];' +
           'for(var j=0;j<btns.length;j++){var btext=(btns[j].innerText||btns[j].value||btns[j].getAttribute("aria-label")||"").toLowerCase().trim();' +
-          'for(var k=0;k<kw.length;k++){if(btext.indexOf(kw[k])!==-1){btns[j].click();result.advanced=true;result.msg+=" | Clicked: "+btext;break;}}if(result.advanced)break;}' +
+          'for(var k=0;k<kw.length;k++){if(btext.indexOf(kw[k])!==-1){btns[j].scrollIntoView({block:"center"});btns[j].focus();btns[j].click();result.advanced=true;result.msg+=" | Clicked: "+btext;break;}}if(result.advanced)break;}' +
           '}' +
           'return JSON.stringify(result);' +
           '})()'

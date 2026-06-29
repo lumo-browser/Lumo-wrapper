@@ -37,6 +37,7 @@ export interface TaskMemory {
   maxErrors: number;
   startedAt: number;
   lastActionAt: number;
+  visionMode: boolean;
 }
 
 export interface ActionRecord {
@@ -47,7 +48,7 @@ export interface ActionRecord {
   stepId: number;
 }
 
-export function createTaskMemory(goal: string): TaskMemory {
+export function createTaskMemory(goal: string, vision: boolean = false): TaskMemory {
   return {
     goal,
     plan: [],
@@ -62,6 +63,7 @@ export function createTaskMemory(goal: string): TaskMemory {
     maxErrors: 5,
     startedAt: Date.now(),
     lastActionAt: Date.now(),
+    visionMode: vision,
   };
 }
 

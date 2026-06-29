@@ -1,40 +1,111 @@
 /**
- * AgentPrompts — System prompt engineering for the vision-based autonomous agent.
+ * AgentPrompts — System prompt engineering for the autonomous browser agent.
  *
- * The agent now receives a "Set of Marks" screenshot at each step:
- *   - The screenshot shows the live webpage with red numbered [ID] tags painted
- *     over every interactable element.
- *   - The text portion of the turn contains the element list, plan status,
- *     and recent actions.
- *   - The AI can reason visually ("I can see a search box tagged [3]") and
- *     use coordinates or IDs to interact.
+ * Supports two modes:
+ *  - VISION mode: model receives a tagged screenshot + element list
+ *  - TEXT mode: model receives only the element list (faster, cheaper, works with any model)
+ *
+ * Both modes use the same tool set. TEXT mode is the default and is recommended
+ * for free/public API tokens. VISION mode is an enhancement for models that
+ * support image understanding.
  */
 
 import { type TaskMemory } from './AgentMemory';
 
 export function buildSystemPrompt(): string {
+  return buildTextOnlySystemPrompt();
+}
+
+// ── Text-Only System Prompt (Default — works with all models) ────────────
+
+export function buildTextOnlySystemPrompt(): string {
+  return `You are Lumo, an elite AI browser agent with full DOM control of a real Chromium browser.
+
+## HOW YOU SEE THE BROWSER
+Every turn you receive a text description of the current page state:
+1. Current URL and page title
+2. A numbered list of interactive elements on the page (e.g., [3] <button> "Search")
+3. Your plan status, recent actions, and saved data
+
+Use the element [ID] numbers to interact with specific elements.
+For example, click [3] to press the "Search" button, or type_text(5, "hello") to type into input [5].
+
+## CORE CAPABILITIES
+- navigate(url) — load a URL
+- click(id) — click tagged element by its [ID] number from the element list
+- click_at(x, y) — click at raw pixel coordinates (for elements not in the tag list)
+- type_text(id, text) — type into an input field
+- scroll(direction, amount) — scroll the page
+- read_page_text() — read paragraph/content text
+- extract_product_data(vendor) — scrape product cards from e-commerce pages
+- press_key(key) — press a keyboard key (Enter, Tab, Escape, ArrowDown, etc.)
+- go_back() — browser back button
+- click_by_text(text) — fallback text-match click
+- quiz_answer(answer) — one-shot quiz answer + Next button
+- save_product(...) — save product to compare tab
+- present_comparison(recommendation) — show product comparison table
+- update_plan(steps) — set/update execution plan
+- request_user_confirmation(action) — SAFETY GATE for irreversible actions
+- done(message, success) — finish task
+
+## CRITICAL SAFETY RULES (NEVER VIOLATE)
+1. NEVER complete a purchase, payment, checkout, or form with personal/financial data
+   without calling request_user_confirmation first.
+2. NEVER delete accounts, change passwords, or send money without confirmation.
+3. When uncertain if an action is reversible, ALWAYS call request_user_confirmation.
+
+## EXECUTION RULES
+- Start every task by calling update_plan with a step-by-step breakdown.
+- Execute exactly ONE tool call per response.
+- After each action, you will receive updated state showing the result.
+- Use the element [ID] numbers from the list — do NOT guess IDs.
+- If click(id) fails, try click_by_text or navigate directly.
+- If the same action fails twice, try a different approach.
+- Call read_page_text() when you need to read content (articles, descriptions, prices).
+
+## SHOPPING / PRODUCT COMPARISON TASKS
+1. Search for the product on the first vendor site
+2. Use extract_product_data or save_product to record results
+3. Repeat for additional vendor sites
+4. Call present_comparison with your recommendation
+5. Wait for user to select a product
+6. Navigate to checkout
+7. Call request_user_confirmation BEFORE placing any order
+
+## QUIZ / EXAM TASKS
+For EVERY question: call read_page_text() to read the question and options,
+then call quiz_answer(correct_answer_text) to select the answer and advance.
+
+## STOPPING
+- Call done(success=true) when the goal is fully achieved.
+- Call done(success=false) when all approaches are exhausted.
+- Never repeat the same failing action more than 3 times.`;
+}
+
+// ── Vision-Enhanced System Prompt ────────────────────────────────────────
+
+export function buildVisionSystemPrompt(): string {
   return `You are Lumo, an elite AI browser agent with FULL VISUAL CONTROL of a real Chromium browser.
 
 ## HOW YOU SEE THE BROWSER
 Every turn you receive:
 1. A SCREENSHOT of the current browser page. Red numbered tags (e.g. [3], [12]) are painted
    directly on the screenshot over every clickable/typeable element.
-2. A text element list showing each tag's ID, type, text label, and (x, y) coordinates.
+2. A text element list showing each tag's ID, type, text label, and coordinates.
 
-Use BOTH the screenshot AND the element list together to decide your next action.
-- Prefer clicking by [ID] when the element list clearly identifies the element.
-- Use click_at with x/y coordinates only when elements are not in the tag list.
-- Use read_page_text when you need to read paragraph or article content.
+Use the numbered tags in the screenshot to identify which element to interact with.
+Prefer clicking by [ID] when the element list clearly identifies the element.
+Use click_at with x/y coordinates only when elements are not in the tag list.
 
 ## CORE CAPABILITIES
 - navigate(url) — load a URL
 - click(id) — click tagged element by its [ID] number shown in the screenshot
 - click_at(x, y) — click at raw pixel coordinates (for elements not in the tag list)
-- type_text(id, text) — type into an input field (uses native keyboard simulation)
+- type_text(id, text) — type into an input field
 - scroll(direction, amount) — scroll the page
 - read_page_text() — read paragraph/content text
 - extract_product_data(vendor) — scrape product cards from e-commerce pages
-- press_key(key) — native key press (Enter, Tab, Escape, ArrowDown, etc.)
+- press_key(key) — press a keyboard key (Enter, Tab, Escape, ArrowDown, etc.)
 - go_back() — browser back button
 - click_by_text(text) — fallback text-match click
 - quiz_answer(answer) — one-shot quiz answer + Next button
@@ -65,6 +136,7 @@ Use BOTH the screenshot AND the element list together to decide your next action
   • Scroll to reveal hidden elements
   • Navigate directly to the target URL
   • Use go_back and try a different path
+- Call read_page_text() when you need to read content (articles, descriptions, prices).
 
 ## SHOPPING / PRODUCT COMPARISON TASKS
 1. Search for the product on the first vendor site
@@ -76,8 +148,8 @@ Use BOTH the screenshot AND the element list together to decide your next action
 7. Call request_user_confirmation BEFORE placing any order
 
 ## QUIZ / EXAM TASKS
-For EVERY question: call read_page_text → call quiz_answer(correct answer text)
-Do NOT use click with raw IDs for quiz answers — always use quiz_answer.
+For EVERY question: call read_page_text() to read the question and options,
+then call quiz_answer(correct_answer_text) to select the answer and advance.
 
 ## STOPPING
 - Call done(success=true) when the goal is fully achieved.
@@ -85,7 +157,29 @@ Do NOT use click with raw IDs for quiz answers — always use quiz_answer.
 - Never repeat the same failing action more than 3 times.`;
 }
 
-// ── Multimodal Context Builder ─────────────────────────────────────────────
+// ── Text-Only Context Builder ───────────────────────────────────────────
+
+/**
+ * buildTextOnlyContextMessages
+ *
+ * Returns an OpenAI-compatible "user" message with only text content.
+ * Use this for models without vision capability.
+ */
+export function buildTextOnlyContextMessages(
+  currentUrl: string,
+  elementText: string,
+  memory: TaskMemory,
+  iteration: number
+): any[] {
+  const textContent = buildTextContext(currentUrl, elementText, memory, iteration);
+
+  return [{
+    role: 'user',
+    content: textContent,
+  }];
+}
+
+// ── Vision Context Builder ─────────────────────────────────────────────
 
 /**
  * buildVisionContextMessages
@@ -94,28 +188,28 @@ Do NOT use click with raw IDs for quiz answers — always use quiz_answer.
  *   - text block: current URL, plan, element list, recent actions, error count, goal
  *   - image_url block: base64-encoded JPEG of the tagged screenshot (if available)
  *
- * This is the message appended to conversationHistory each turn in AgentSidebar.
+ * Use this for vision-capable models. Falls back to text-only if no screenshot.
  */
 export function buildVisionContextMessages(
   currentUrl: string,
   elementText: string,
   screenshotBase64: string,
+  pageText: string,
   memory: TaskMemory,
   iteration: number
 ): any[] {
-  const textContent = buildTextContext(currentUrl, elementText, memory, iteration);
+  const textContent = buildTextContext(currentUrl, elementText, memory, iteration, pageText);
 
   const content: any[] = [
     { type: 'text', text: textContent },
   ];
 
-  // Attach the screenshot if one was captured
   if (screenshotBase64) {
     content.push({
       type: 'image_url',
       image_url: {
         url: 'data:image/jpeg;base64,' + screenshotBase64,
-        detail: 'high',
+        detail: 'auto',
       },
     });
   }
@@ -123,12 +217,13 @@ export function buildVisionContextMessages(
   return [{ role: 'user', content }];
 }
 
-/** Builds the text portion of the context prompt */
+/** Builds the text portion of the context prompt (shared by both modes) */
 function buildTextContext(
   currentUrl: string,
   elementText: string,
   memory: TaskMemory,
-  iteration: number
+  iteration: number,
+  pageText?: string
 ): string {
   const parts: string[] = [];
 
@@ -162,9 +257,16 @@ function buildTextContext(
     parts.push('');
   }
 
-  parts.push('TAGGED ELEMENTS ON PAGE (match [ID] numbers visible in the screenshot):');
+  parts.push('INTERACTABLE ELEMENTS ON PAGE:');
   parts.push(elementText || '(No interactable elements detected)');
   parts.push('');
+
+  // Include full page text in both modes (critical for non-copyable content)
+  if (pageText && pageText.length > 0) {
+    parts.push('PAGE TEXT CONTENT:');
+    parts.push(pageText.substring(0, 8000));
+    parts.push('');
+  }
 
   if (memory.actionHistory.length > 0) {
     const recent = memory.actionHistory.slice(-5);
@@ -181,12 +283,16 @@ function buildTextContext(
 
   parts.push('ERRORS: ' + memory.errorCount + ' / ' + memory.maxErrors);
   parts.push('');
-  parts.push('Look at the screenshot above. What is your next action to achieve: "' + memory.goal + '"?');
+
+  const mode = memory.visionMode
+    ? 'You also have a screenshot of the page above. The PAGE TEXT CONTENT shows text that may not be copyable.'
+    : 'Read the element list and page text above.';
+  parts.push(mode + ' What is your next action to achieve: "' + memory.goal + '"?');
 
   return parts.join('\n');
 }
 
-// ── Legacy text-only context (kept for fallback / non-vision models) ────────
+// ── Legacy exports (keep for backward compatibility) ─────────────────────
 
 export function buildContextPrompt(
   currentUrl: string,

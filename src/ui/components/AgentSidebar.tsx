@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Cpu, X, Play, Square, Loader2, Target, CheckCircle2, AlertCircle, Pause, ShieldCheck, ShieldAlert, ListChecks, BarChart3, Camera } from 'lucide-react';
+import { Cpu, X, Play, Square, Loader2, Target, CheckCircle2, AlertCircle, Pause, ShieldCheck, ShieldAlert, ListChecks, BarChart3, Camera, EyeOff } from 'lucide-react';
 import { BrowserTab } from './BrowserTabBar';
 import {
   AGENT_TOOLS,
@@ -9,7 +9,10 @@ import {
   captureTaggedScreenshot,
   buildElementText,
   buildSystemPrompt,
+  buildTextOnlySystemPrompt,
+  buildTextOnlyContextMessages,
   buildVisionContextMessages,
+  extractDOM,
 } from '../../agent';
 import type { TaskMemory } from '../../agent';
 
@@ -57,7 +60,8 @@ function hasDangerousAction(toolName: string, args: Record<string, any>): boolea
 
 export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSidebarProps): React.ReactElement {
   const [goal, setGoal] = useState('');
-  const [selectedModel, setSelectedModel] = useState('openrouter/free');
+  const [selectedModel, setSelectedModel] = useState('google/gemini-2.0-flash-exp:free');
+  const [visionMode, setVisionMode] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -74,13 +78,21 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
 
   const normalizeApiKey = useCallback((key: string): string => {
     return (key || '')
-      .replace(/[\x00-\x1F\x7F]/g, '') // strip newlines, null bytes, control chars
-      .replace(/^Bearer\s+/i, '')       // strip accidental "Bearer " prefix
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .replace(/^Bearer\s+/i, '')
       .trim();
+  }, []);
+
+  const getModelFamily = useCallback((model: string): 'vision' | 'text' => {
+    const visionModels = ['claude-sonnet-4', 'claude-3-5-sonnet', 'gpt-4o', 'gemini-2.0-flash', 'gemini-2.5-pro'];
+    return visionModels.some(v => model.includes(v)) ? 'vision' : 'text';
   }, []);
 
   useEffect(() => { logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
   useEffect(() => { memoryRef.current = memory; }, [memory]);
+  useEffect(() => {
+    setVisionMode(getModelFamily(selectedModel) === 'vision');
+  }, [selectedModel, getModelFamily]);
 
   const addLog = useCallback((type: LogEntry['type'], message: string) => {
     setLogs(prev => [...prev, { id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), type, message }]);
@@ -125,7 +137,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
 
     let currentMemory: TaskMemory;
     if (!isPaused || !memoryRef.current) {
-      currentMemory = createTaskMemory(goal);
+      currentMemory = createTaskMemory(goal, visionMode);
       setLogs([]);
       addLog('user', 'Goal: ' + goal);
     } else {
@@ -139,7 +151,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
     setActiveView('logs');
     runningRef.current = true;
 
-    const systemPrompt = buildSystemPrompt();
+    const systemPrompt = visionMode ? buildSystemPrompt() : buildTextOnlySystemPrompt();
     let conversationHistory: any[] = currentMemory.conversationContext.length > 0
       ? [...currentMemory.conversationContext] : [];
     let iteration = currentMemory.actionHistory.length;
@@ -152,23 +164,44 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
       }
       try {
         iteration++;
-        addLog('system', '👁 Step ' + iteration + ': Capturing visual state...');
 
-        // ── VISION STEP 1: Capture tagged screenshot ────────────────
-        const { elementList, screenshotBase64 } = await captureTaggedScreenshot(wv);
-        const elementText = buildElementText(elementList);
-        const currentUrl = (wv.getURL && wv.getURL()) || activeTab.url || '';
+        // ── STEP 1: Capture DOM state ─────────────────────────────
+        let elementText: string;
+        let screenshotBase64 = '';
+        let pageText = '';
 
-        if (screenshotBase64) {
-          addLog('system', '📸 Screenshot captured (' + elementList.length + ' elements tagged)');
+        if (visionMode) {
+          addLog('system', 'Step ' + iteration + ': Capturing visual state...');
+          const result = await captureTaggedScreenshot(wv);
+          elementText = buildElementText(result.elementList);
+          screenshotBase64 = result.screenshotBase64;
+          pageText = result.pageText || '';
+          const textLen = pageText.length;
+          if (screenshotBase64) {
+            addLog('system', 'Screenshot + ' + result.elementList.length + ' elements, ' + textLen + ' chars text');
+          } else {
+            addLog('system', 'Text-only fallback: ' + result.elementList.length + ' elements, ' + textLen + ' chars text');
+          }
         } else {
-          addLog('system', '⚠ Screenshot unavailable — text-only mode (' + elementList.length + ' elements)');
+          addLog('system', 'Step ' + iteration + ': Extracting DOM...');
+          const elements = await extractDOM(wv);
+          elementText = buildElementText(elements);
+          addLog('system', 'DOM extracted (' + elements.length + ' element(s))');
         }
 
-        // ── VISION STEP 2: Build multimodal turn message ─────────────
-        const turnMessages = buildVisionContextMessages(
-          currentUrl, elementText, screenshotBase64, currentMemory, iteration
-        );
+        const currentUrl = (wv.getURL && wv.getURL()) || activeTab.url || '';
+
+        // ── STEP 2: Build context messages ─────────────────────────
+        let turnMessages: any[];
+        if (visionMode) {
+          turnMessages = buildVisionContextMessages(
+            currentUrl, elementText, screenshotBase64, pageText, currentMemory, iteration
+          );
+        } else {
+          turnMessages = buildTextOnlyContextMessages(
+            currentUrl, elementText, currentMemory, iteration
+          );
+        }
         conversationHistory.push(...turnMessages);
 
         // Trim history to avoid token overflow while preserving tool_call pairs
@@ -177,7 +210,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
           conversationHistory = trimmed;
         }
 
-        // ── VISION STEP 3: Send to VLM ───────────────────────────────
+        // ── STEP 3: Send to LLM ────────────────────────────────────
         const apiResponse = await window.electron?.invoke?.('lumo:openrouter-chat', {
           apiKey,
           model: selectedModel,
@@ -205,7 +238,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
 
         if (msg.content) addLog('system', 'Agent: ' + msg.content.substring(0, 300));
 
-        // ── VISION STEP 4: Execute tool calls ────────────────────────
+        // ── STEP 4: Execute tool calls ─────────────────────────────
         if (msg.tool_calls && msg.tool_calls.length > 0) {
           for (const toolCall of msg.tool_calls) {
             if (!runningRef.current) break;
@@ -218,14 +251,14 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
               addLog('error', 'Agent tried to click with no element ID — skipping.');
               conversationHistory.push({
                 role: 'tool', tool_call_id: toolCall.id,
-                content: 'ERROR: click() requires a valid numeric id from the screenshot tags. Use click_at(x,y) if no tag is visible.',
+                content: 'ERROR: click() requires a valid numeric id from the element list. Use click_at(x,y) if no element is listed.',
               });
               continue;
             }
 
             // Safety: force confirmation for dangerous actions even if the LLM bypasses the prompt
             if (hasDangerousAction(toolName, args)) {
-              addLog('confirm', '⚠ SAFETY GATE: ' + toolName + ' contains potentially dangerous action. Confirmation required.');
+              addLog('confirm', 'SAFETY GATE: ' + toolName + ' contains potentially dangerous action. Confirmation required.');
               const approved = await waitForConfirmation(
                 'The agent wants to execute: ' + toolName +
                 '(' + JSON.stringify(args).substring(0, 200) + ')\n\n' +
@@ -241,7 +274,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
               }
             }
 
-            addLog('action', '⚡ ' + toolName + '(' + JSON.stringify(args).substring(0, 120) + ')');
+            addLog('action', toolName + '(' + JSON.stringify(args).substring(0, 120) + ')');
 
             const result = await executeToolCall(wv, toolName, args, currentMemory);
             currentMemory = result.updatedMemory;
@@ -297,7 +330,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
     if (iteration >= MAX_ITERATIONS) addLog('error', 'Reached maximum iterations (' + MAX_ITERATIONS + ').');
     setIsRunning(false);
     runningRef.current = false;
-  }, [openRouterApiKey, normalizeApiKey, activeTab, goal, selectedModel, isPaused, findWebview, addLog, waitForConfirmation]);
+  }, [openRouterApiKey, normalizeApiKey, activeTab, goal, selectedModel, visionMode, isPaused, findWebview, addLog, waitForConfirmation]);
 
   const pauseAgent = useCallback(() => { runningRef.current = false; setIsRunning(false); setIsPaused(true); addLog('system', 'Agent paused.'); }, [addLog]);
   const stopAgent = useCallback(() => { runningRef.current = false; setIsRunning(false); setIsPaused(false); setAwaitingConfirmation(false); setMemory(null); addLog('system', 'Agent stopped.'); }, [addLog]);
@@ -311,10 +344,19 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
       <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200 dark:border-[#333] shrink-0">
         <div className="flex items-center gap-2">
           <Cpu className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">Lumo Vision Agent</span>
-          <span className="flex items-center gap-1 text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-full px-2 py-0.5 font-medium">
-            <Camera className="w-2.5 h-2.5" /> Vision
-          </span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">Lumo Agent</span>
+          <button
+            onClick={() => setVisionMode(v => !v)}
+            disabled={isRunning}
+            title={visionMode ? 'Switch to text-only mode (works with all models)' : 'Switch to vision mode (requires vision model)'}
+            className={'flex items-center gap-1 text-[10px] rounded-full px-2 py-0.5 font-medium transition-colors disabled:opacity-50 ' + (
+              visionMode
+                ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/60'
+                : 'bg-gray-200 dark:bg-[#333] text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-[#444]'
+            )}>
+            {visionMode ? <Camera className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
+            {visionMode ? 'Vision' : 'Text'}
+          </button>
           {isRunning && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
           {isPaused && <span className="w-2 h-2 rounded-full bg-yellow-500" />}
         </div>
@@ -462,12 +504,19 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
       <div className="p-3 border-t border-gray-200 dark:border-[#333] shrink-0 bg-white dark:bg-[#1e1e1e] flex flex-col gap-2">
         <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} disabled={isRunning}
           className="w-full text-xs p-1.5 rounded-lg bg-gray-100 dark:bg-[#2a2a2a] text-gray-900 dark:text-gray-100 border-none outline-none focus:ring-2 focus:ring-blue-500/50">
-          <optgroup label="Vision Models (Required)">
+          <optgroup label="Text Models (Free / Any API)">
+            <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Free)</option>
+            <option value="mistralai/mistral-small-3.1-24b-instruct:free">Mistral Small 3.1 (Free)</option>
+            <option value="qwen/qwen-2.5-72b-instruct:free">Qwen 2.5 72B (Free)</option>
+            <option value="microsoft/phi-4-multimodal-instruct:free">Phi-4 Multimodal (Free)</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+          </optgroup>
+          <optgroup label="Vision Models (Enhanced)">
             <option value="anthropic/claude-sonnet-4">Claude Sonnet 4 ✦ Vision</option>
             <option value="anthropic/claude-3-5-sonnet">Claude 3.5 Sonnet ✦ Vision</option>
             <option value="openai/gpt-4o">GPT-4o ✦ Vision</option>
-            <option value="openai/gpt-4o-mini">GPT-4o Mini ✦ Vision</option>
             <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Free) ✦ Vision</option>
+            <option value="google/gemini-2.5-pro-exp-03-25:free">Gemini 2.5 Pro (Free) ✦ Vision</option>
           </optgroup>
         </select>
 
