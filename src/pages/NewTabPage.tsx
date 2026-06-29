@@ -440,12 +440,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data?.type === 'lumo-navigate') {
-        const electron = (window as any).electron;
-        if (electron?.send) {
-          electron.send('lumo:navigate', e.data.url);
-        } else {
-          window.location.href = e.data.url;
-        }
+        onNavigate(e.data.url);
       } else if (e.data?.type === 'lumo-open-settings') {
         setSettingsTab('shortcuts');
         setShowSettings(true);
@@ -453,7 +448,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [onNavigate]);
 
   return (
     <div className={`relative flex flex-col items-center justify-center min-h-full w-full overflow-auto transition-colors duration-700 ${configThemeIsDark ? 'text-white' : 'text-gray-900'}`}
