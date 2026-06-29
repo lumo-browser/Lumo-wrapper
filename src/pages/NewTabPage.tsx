@@ -518,10 +518,15 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
 
         {config.showClock !== false && <ClockWidget isDark={themeIsDark} />}
         {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={themeIsDark} />}
-        {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={themeIsDark} />}
-        {config.showAITips !== false && <AITipBanner isDark={themeIsDark} />}
         
-        <ShortcutStrip isDark={themeIsDark} />
+        {/* Hide these widgets specifically on the brain-network theme as per user request */}
+        {config.theme !== 'brain-network' && (
+          <>
+            {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={themeIsDark} />}
+            {config.showAITips !== false && <AITipBanner isDark={themeIsDark} />}
+            <ShortcutStrip isDark={themeIsDark} />
+          </>
+        )}
       </div>
 
       {/* Bottom watermark */}
