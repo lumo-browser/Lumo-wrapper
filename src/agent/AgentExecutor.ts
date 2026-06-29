@@ -9,7 +9,7 @@
  *    then removes the tags. The annotated base64 image is sent to the VLM alongside
  *    a short element list so the model can reason visually.
  * 3. All click actions use Electron's native sendInputEvent (real mouse down/up)
- *    instead of element.click() — bypasses JS-event guards on modern websites.
+ *    directly on the webview element — bypasses JS-event guards on modern websites.
  * 4. Type actions simulate character-by-character keyboard events for the same reason.
  *
  * The executor is stateless — all state lives in AgentMemory.
@@ -26,10 +26,12 @@ import { addProductToMemory, addActionToMemory } from './AgentMemory';
  *  - Record its center (x, y) in window.__LumoAgentElements keyed by numeric ID
  *  - Paint a visible red numbered tag over each element
  *  - Return a compact JSON array of { id, tag, text, x, y, type, role, href }
+ *
+ * Coordinates are viewport-relative (no scroll offset) to match sendInputEvent.
+ * Tags use position:fixed so they appear at the correct viewport position.
  */
 export const DOM_EXTRACTOR_SCRIPT = `
   (function() {
-    // Remove stale tags from previous run
     document.querySelectorAll('.Lumo-agent-tag').forEach(function(t){ t.remove(); });
 
     window.__LumoAgentElements = {};
@@ -73,8 +75,8 @@ export const DOM_EXTRACTOR_SCRIPT = `
       if (!isVisible(el)) return;
       var rect = el.getBoundingClientRect();
       var id   = idCounter++;
-      var cx   = Math.round(rect.left + rect.width  / 2 + window.scrollX);
-      var cy   = Math.round(rect.top  + rect.height / 2 + window.scrollY);
+      var cx   = Math.round(rect.left + rect.width  / 2);
+      var cy   = Math.round(rect.top  + rect.height / 2);
 
       window.__LumoAgentElements[id] = { el: el, x: cx, y: cy };
 
@@ -82,9 +84,9 @@ export const DOM_EXTRACTOR_SCRIPT = `
       tag.className  = 'Lumo-agent-tag';
       tag.textContent = String(id);
       tag.style.cssText = [
-        'position:absolute',
-        'top:'   + (rect.top  + window.scrollY - 2) + 'px',
-        'left:'  + (rect.left + window.scrollX - 2) + 'px',
+        'position:fixed',
+        'top:'   + (rect.top - 2) + 'px',
+        'left:'  + (rect.left - 2) + 'px',
         'background:#ef4444',
         'color:#fff',
         'font-size:9px',
@@ -186,9 +188,10 @@ function buildExtractProductScript(maxProducts: number): string {
 /**
  * captureTaggedScreenshot
  *  1. Injects the DOM extractor to paint numbered tags
- *  2. Asks Electron main process to capturePage() on the webview
- *  3. Removes the tags
- *  4. Returns { elementList, screenshotBase64 }
+ *  2. Waits for next animation frame so tags are painted
+ *  3. Asks Electron main process to capturePage() for this specific webview
+ *  4. Removes the tags
+ *  5. Returns { elementList, screenshotBase64 }
  */
 export async function captureTaggedScreenshot(
   webview: any
@@ -198,17 +201,22 @@ export async function captureTaggedScreenshot(
   let elementList: ElementInfo[] = [];
   try { elementList = JSON.parse(raw); } catch { elementList = []; }
 
-  // Step 2 — capture the page (with tags painted on it)
-  // The IPC channel 'lumo:capture-webview' must be registered in main.ts (see below)
+  // Step 2 — wait for tags to be painted before capturing
+  await webview.executeJavaScript(
+    'new Promise(function(r){requestAnimationFrame(function(){setTimeout(r,50)});})'
+  );
+
+  // Step 3 — capture this webview only (via its webContents ID)
   let screenshotBase64 = '';
   try {
-    const result = await window.electron?.invoke?.('lumo:capture-webview');
+    const wcId: number = await webview.getWebContentsId();
+    const result = await window.electron?.invoke?.('lumo:capture-webview', { webContentsId: wcId });
     if (result?.base64) screenshotBase64 = result.base64;
   } catch {
     // capturePage unavailable — proceed with text-only mode
   }
 
-  // Step 3 — remove tags so the user sees a clean page
+  // Step 4 — remove tags so the user sees a clean page
   await webview.executeJavaScript(REMOVE_TAGS_SCRIPT);
 
   return { elementList, screenshotBase64 };
@@ -259,17 +267,18 @@ export interface ExecutionResult {
 // ── Native Input Helpers ───────────────────────────────────────────────────
 
 /**
- * Simulate a real mouse click at (x, y) via Electron IPC.
+ * Simulate a real mouse click at (x, y) via webview.sendInputEvent.
+ * Coordinates are viewport-relative (matching the DOM extractor output).
  * Falls back to element.click() if native events are unavailable.
  */
 async function nativeClick(webview: any, x: number, y: number, elementId: number): Promise<void> {
-  // Try native input events via main process IPC first
   try {
-    await window.electron?.invoke?.('lumo:native-click', { x, y });
+    webview.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
+    await sleep(50);
+    webview.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
     return;
   } catch { /* fall through */ }
 
-  // Fallback: JS click on the stored element reference
   await webview.executeJavaScript(
     '(function(){' +
     'var e=window.__LumoAgentElements&&window.__LumoAgentElements[' + elementId + '];' +
@@ -279,11 +288,10 @@ async function nativeClick(webview: any, x: number, y: number, elementId: number
 }
 
 /**
- * Simulate native keyboard typing character by character via IPC.
- * Falls back to setting element.value directly.
+ * Type text via webview.sendInputEvent char-by-char.
+ * Falls back to setting element.value directly + synthetic events.
  */
 async function nativeType(webview: any, elementId: number, text: string, clearFirst: boolean, pressEnter: boolean): Promise<void> {
-  // Move focus to the target element
   await webview.executeJavaScript(
     '(function(){' +
     'var e=window.__LumoAgentElements&&window.__LumoAgentElements[' + elementId + '];' +
@@ -294,14 +302,23 @@ async function nativeType(webview: any, elementId: number, text: string, clearFi
     '})()'
   );
 
-  // Try native keyboard events via IPC
   try {
-    const escaped = text.replace(/'/g, "\\'");
-    await window.electron?.invoke?.('lumo:native-type', { text: escaped, pressEnter });
+    for (const char of text) {
+      webview.sendInputEvent({ type: 'keyDown', keyCode: char });
+      await sleep(10);
+      webview.sendInputEvent({ type: 'char', keyCode: char });
+      await sleep(5);
+      webview.sendInputEvent({ type: 'keyUp', keyCode: char });
+      await sleep(10);
+    }
+    if (pressEnter) {
+      webview.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+      await sleep(30);
+      webview.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+    }
     return;
   } catch { /* fall through */ }
 
-  // Fallback: set value directly and fire events
   const escaped = text.replace(/'/g, "\\'").replace(/\n/g, '\\n');
   await webview.executeJavaScript(
     '(function(){' +
@@ -377,7 +394,9 @@ export async function executeToolCall(
         const cx = Number(args.x);
         const cy = Number(args.y);
         try {
-          await window.electron?.invoke?.('lumo:native-click', { x: cx, y: cy });
+          webview.sendInputEvent({ type: 'mouseDown', x: cx, y: cy, button: 'left', clickCount: 1 });
+          await sleep(50);
+          webview.sendInputEvent({ type: 'mouseUp', x: cx, y: cy, button: 'left', clickCount: 1 });
         } catch {
           await webview.executeJavaScript('document.elementFromPoint(' + cx + ',' + cy + ')?.click();');
         }
@@ -450,7 +469,9 @@ export async function executeToolCall(
       case 'press_key': {
         const key = args.key || 'Enter';
         try {
-          await window.electron?.invoke?.('lumo:native-key', { key });
+          webview.sendInputEvent({ type: 'keyDown', keyCode: key });
+          await sleep(30);
+          webview.sendInputEvent({ type: 'keyUp', keyCode: key });
         } catch {
           await webview.executeJavaScript(
             'document.activeElement.dispatchEvent(new KeyboardEvent("keydown",{key:"' + key + '",bubbles:true}));' +

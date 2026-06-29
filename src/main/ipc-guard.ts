@@ -49,6 +49,7 @@ const IPC_PERMISSIONS: Record<string, IpcPermission> = {
   'lumo:capture-webview': 'SENSITIVE',
   'lumo:native-click': 'SENSITIVE',
   'lumo:native-key': 'SENSITIVE',
+  'lumo:native-type': 'SENSITIVE',
   'lumo:security-event-from-preload': 'PUBLIC',
   'lumo:set-security-monitor': 'ADMIN',
   'lumo:get-security-monitor-state': 'SESSION',

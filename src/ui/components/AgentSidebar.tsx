@@ -3,6 +3,7 @@ import { Cpu, X, Play, Square, Loader2, Target, CheckCircle2, AlertCircle, Pause
 import { BrowserTab } from './BrowserTabBar';
 import {
   AGENT_TOOLS,
+  DANGEROUS_ACTIONS,
   createTaskMemory,
   executeToolCall,
   captureTaggedScreenshot,
@@ -14,6 +15,45 @@ import type { TaskMemory } from '../../agent';
 
 interface AgentSidebarProps { onClose: () => void; activeTab: BrowserTab | null; openRouterApiKey: string; }
 interface LogEntry { id: string; type: 'system'|'user'|'action'|'success'|'error'|'confirm'|'plan'|'compare'; message: string; }
+
+/** Truncate conversation history keeping tool_call/response pairs intact */
+function trimConversationHistory(history: any[], maxLen: number): any[] {
+  if (history.length <= maxLen) return history;
+
+  const seenToolIds = new Set<string>();
+  const unmatchedAssistants = new Set<string>();
+  let splitAt = -1;
+
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+
+    if (msg.role === 'tool' && msg.tool_call_id) {
+      seenToolIds.add(msg.tool_call_id);
+      unmatchedAssistants.delete(msg.tool_call_id);
+    } else if (msg.tool_calls) {
+      for (const tc of msg.tool_calls) {
+        if (!seenToolIds.has(tc.id)) {
+          unmatchedAssistants.add(tc.id);
+        }
+      }
+    }
+
+    if (msg.role === 'user' && unmatchedAssistants.size === 0) {
+      splitAt = i;
+      const kept = history.length - i;
+      if (kept >= maxLen) break;
+    }
+  }
+
+  if (splitAt >= 0) return history.slice(splitAt);
+  return history.slice(Math.max(0, history.length - Math.floor(maxLen / 2)));
+}
+
+function hasDangerousAction(toolName: string, args: Record<string, any>): boolean {
+  if (!args) return false;
+  const argStr = (JSON.stringify(args) || '').toLowerCase();
+  return DANGEROUS_ACTIONS.some(action => argStr.includes(action));
+}
 
 export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSidebarProps): React.ReactElement {
   const [goal, setGoal] = useState('');
@@ -131,9 +171,10 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
         );
         conversationHistory.push(...turnMessages);
 
-        // Trim history to avoid token overflow
+        // Trim history to avoid token overflow while preserving tool_call pairs
         if (conversationHistory.length > 30) {
-          conversationHistory = conversationHistory.slice(-20);
+          const trimmed = trimConversationHistory(conversationHistory, 20);
+          conversationHistory = trimmed;
         }
 
         // ── VISION STEP 3: Send to VLM ───────────────────────────────
@@ -180,6 +221,24 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
                 content: 'ERROR: click() requires a valid numeric id from the screenshot tags. Use click_at(x,y) if no tag is visible.',
               });
               continue;
+            }
+
+            // Safety: force confirmation for dangerous actions even if the LLM bypasses the prompt
+            if (hasDangerousAction(toolName, args)) {
+              addLog('confirm', '⚠ SAFETY GATE: ' + toolName + ' contains potentially dangerous action. Confirmation required.');
+              const approved = await waitForConfirmation(
+                'The agent wants to execute: ' + toolName +
+                '(' + JSON.stringify(args).substring(0, 200) + ')\n\n' +
+                'This action was flagged as potentially dangerous. Approve only if you intended this.'
+              );
+              if (!approved) {
+                conversationHistory.push({
+                  role: 'tool', tool_call_id: toolCall.id,
+                  content: 'ERROR: Automatically blocked by safety gate — action contains dangerous keywords.',
+                });
+                addLog('error', 'Blocked by safety gate: ' + toolName);
+                continue;
+              }
             }
 
             addLog('action', '⚡ ' + toolName + '(' + JSON.stringify(args).substring(0, 120) + ')');

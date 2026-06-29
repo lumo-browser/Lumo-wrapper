@@ -3,7 +3,7 @@
  * Self-contained — no shared imports from renderer code
  */
 
-import { app, BrowserWindow, Menu, MenuItem, session, ipcMain, nativeTheme, safeStorage, shell, globalShortcut } from 'electron';
+import { app, BrowserWindow, Menu, MenuItem, session, ipcMain, nativeTheme, safeStorage, shell, globalShortcut, webContents } from 'electron';
 import https from 'https';
 import path from 'path';
 import fs from 'fs';
@@ -1170,15 +1170,20 @@ app.on('ready', () => {
 
   /**
    * lumo:capture-webview
-   * Captures a JPEG screenshot of the focused webview's webContents.
+   * Captures a JPEG screenshot of a specific webview (by webContentsId).
+   * Falls back to main window if no webContentsId is given.
    * Returns { base64: string } with the image data for the VLM.
    */
-  guardedHandle('lumo:capture-webview', async () => {
-    if (!mainWindow) return { base64: '' };
+  guardedHandle('lumo:capture-webview', async (_event, { webContentsId }: { webContentsId?: number }) => {
     try {
-      // capturePage captures the entire renderer, including the webview
-      const image = await mainWindow.webContents.capturePage();
-      const jpeg = image.toJPEG(85); // 85% quality — good balance for VLMs
+      let wc = mainWindow?.webContents || null;
+      if (webContentsId && !isNaN(webContentsId)) {
+        const target = webContents.fromId(webContentsId);
+        if (target) wc = target;
+      }
+      if (!wc) return { base64: '' };
+      const image = await wc.capturePage();
+      const jpeg = image.toJPEG(85);
       return { base64: jpeg.toString('base64') };
     } catch (err: any) {
       console.error('[Lumo] capturePage failed:', err?.message);
@@ -1218,6 +1223,34 @@ app.on('ready', () => {
       console.log(`[Lumo] Native key: ${key}`);
     } catch (err: any) {
       console.error('[Lumo] Native key failed:', err?.message);
+    }
+  });
+
+  /**
+   * lumo:native-type
+   * Types text character-by-character via native keyboard events.
+   * Fallback for callers that cannot use webview.sendInputEvent() directly.
+   */
+  guardedHandle('lumo:native-type', async (_event, { text, pressEnter }: { text: string; pressEnter: boolean }) => {
+    if (!mainWindow) return;
+    try {
+      const wc = mainWindow.webContents;
+      for (const char of text) {
+        wc.sendInputEvent({ type: 'keyDown', keyCode: char } as any);
+        await new Promise(r => setTimeout(r, 10));
+        wc.sendInputEvent({ type: 'char', keyCode: char } as any);
+        await new Promise(r => setTimeout(r, 5));
+        wc.sendInputEvent({ type: 'keyUp', keyCode: char } as any);
+        await new Promise(r => setTimeout(r, 10));
+      }
+      if (pressEnter) {
+        wc.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' } as any);
+        await new Promise(r => setTimeout(r, 30));
+        wc.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' } as any);
+      }
+      console.log(`[Lumo] Native typed ${text.length} chars${pressEnter ? ' + Enter' : ''}`);
+    } catch (err: any) {
+      console.error('[Lumo] Native type failed:', err?.message);
     }
   });
 
