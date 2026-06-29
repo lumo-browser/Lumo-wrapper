@@ -91,7 +91,9 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
               <p className={`text-sm mb-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Choose a pre-built aesthetic or create your own.</p>
               
               <div className="grid grid-cols-2 gap-4 mb-8">
-                {THEMES.map(t => (
+                {[...THEMES, ...(localConfig.savedThemes || []).map((t: any) => ({
+                  id: t.id, label: t.label, color: '#3b82f6', preview: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', isSaved: true
+                }))].map(t => (
                   <button key={t.id} onClick={() => update({ theme: t.id, accentColor: t.color })}
                     className={`relative p-1 rounded-2xl border-2 transition-all ${localConfig.theme === t.id ? 'border-violet-500 scale-[1.02]' : 'border-transparent hover:border-white/20 hover:scale-[1.01]'}`}>
                     <div className="h-32 rounded-xl w-full" style={{ background: t.preview }} />
@@ -105,7 +107,11 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
                     )}
                     <div className="mt-3 px-2 flex items-center justify-between">
                       <span className={`text-sm font-bold ${text}`}>{t.label}</span>
-                      <div className="w-4 h-4 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: t.color }} />
+                      {t.isSaved ? (
+                        <Code2 className="w-4 h-4 text-white/50" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: t.color }} />
+                      )}
                     </div>
                   </button>
                 ))}
@@ -190,10 +196,25 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
                     Build your own dynamic wallpaper using HTML, CSS, and JS.
                   </p>
                 </div>
-                <button onClick={() => update({ theme: 'custom-code' })}
-                  className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${localConfig.theme === 'custom-code' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/50' : 'bg-violet-600 text-white hover:bg-violet-700'}`}>
-                  {localConfig.theme === 'custom-code' ? 'Active' : 'Apply Theme'}
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => {
+                    const name = prompt("Enter a name for this custom theme:");
+                    if (!name) return;
+                    const newTheme = {
+                      id: `saved-${Date.now()}`, label: name,
+                      customHtml: localConfig.customHtml, customCss: localConfig.customCss, customJs: localConfig.customJs
+                    };
+                    const saved = localConfig.savedThemes || [];
+                    update({ savedThemes: [...saved, newTheme], theme: newTheme.id });
+                  }}
+                    className={`px-4 py-2 rounded-xl font-bold text-xs transition-all border ${isDark ? 'border-white/10 text-white hover:bg-white/5' : 'border-gray-200 text-gray-800 hover:bg-gray-50'}`}>
+                    Save to Gallery
+                  </button>
+                  <button onClick={() => update({ theme: 'custom-code' })}
+                    className={`px-4 py-2 rounded-xl font-bold text-xs transition-all ${localConfig.theme === 'custom-code' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/50' : 'bg-violet-600 text-white hover:bg-violet-700'}`}>
+                    {localConfig.theme === 'custom-code' ? 'Active' : 'Apply Draft'}
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 flex-1 min-h-[400px]">

@@ -447,30 +447,49 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
       {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={themeIsDark} />}
       {config.theme === 'japan-cherry-blossom' && <JapanCherryBlossomTheme />}
       
-      {config.theme === 'custom-code' && (
-        <iframe
-          title="Custom Wallpaper"
-          srcDoc={`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <style>
-                  body { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; }
-                  ${config.customCss || ''}
-                </style>
-              </head>
-              <body>
-                ${config.customHtml || ''}
-                <script>
-                  ${config.customJs || ''}
-                </script>
-              </body>
-            </html>
-          `}
-          className="absolute inset-0 w-full h-full border-none z-0 pointer-events-none"
-          sandbox="allow-scripts allow-same-origin"
-        />
-      )}
+      {(() => {
+        const isSavedTheme = config.theme?.startsWith('saved-');
+        const isCustomCode = config.theme === 'custom-code';
+        if (!isCustomCode && !isSavedTheme) return null;
+        
+        let html = config.customHtml || '';
+        let css = config.customCss || '';
+        let js = config.customJs || '';
+        
+        if (isSavedTheme) {
+          const t = (config.savedThemes || []).find((s: any) => s.id === config.theme);
+          if (t) {
+            html = t.customHtml;
+            css = t.customCss;
+            js = t.customJs;
+          }
+        }
+
+        return (
+          <iframe
+            title="Custom Wallpaper"
+            srcDoc={`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <style>
+                    body { margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; }
+                    ${css}
+                  </style>
+                </head>
+                <body>
+                  ${html}
+                  <script>
+                    ${js}
+                  </script>
+                </body>
+              </html>
+            `}
+            className="absolute inset-0 w-full h-full border-none z-0 pointer-events-none"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        );
+      })()}
 
       {/* Subtle grid overlay */}
       <div className={`pointer-events-none absolute inset-0 ${themeIsDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}
