@@ -23,6 +23,17 @@ let clearOnExitEnabled = false;
 
 let mainWindow: BrowserWindow | null = null;
 
+const adBlockerCheck = (url: string) => {
+  const blocked = shouldBlock(url, adBlockerConfig);
+  adBlockerStats.record(blocked);
+  if (blocked) {
+    console.log(`[AdBlock] Blocked: ${url}`);
+  }
+  return blocked;
+};
+
+const getMainWindow = () => mainWindow;
+
 // Bypass Google's "unsupported browser" by globally spoofing a modern Chrome user agent
 app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
 
@@ -69,19 +80,6 @@ function createWindow(): void {
     });
   }
 
-  // ── Network Security & Ad Blocker Pipeline ──────────────────────────────────
-  // Both systems now share the onBeforeRequest hook in monitorNetworkRequests.
-  const adBlockerCheck = (url: string) => {
-    const blocked = shouldBlock(url, adBlockerConfig);
-    adBlockerStats.record(blocked);
-    if (blocked) {
-      console.log(`[AdBlock] Blocked: ${url}`);
-    }
-    return blocked;
-  };
-
-  const getMainWindow = () => mainWindow;
-  
   // Attach to default session (renderer) and webviews session
   monitorNetworkRequests(session.defaultSession, getMainWindow, 'default', adBlockerCheck);
   monitorNetworkRequests(session.fromPartition('persist:lumo-main'), getMainWindow, 'persist:lumo-main', adBlockerCheck);
