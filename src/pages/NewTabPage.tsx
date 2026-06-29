@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, Globe, Plus, X,
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag,
+  Layers, Sparkles, Command, Settings
 } from 'lucide-react';
 import { DashboardSettingsOverlay } from '../ui/components/DashboardSettingsOverlay';
 import { JapanCherryBlossomTheme } from '../ui/components/JapanCherryBlossomTheme';
