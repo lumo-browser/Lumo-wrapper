@@ -14,6 +14,7 @@ const THEMES = [
   { id: 'black-and-white', label: 'Monochrome', color: '#ffffff', preview: 'linear-gradient(135deg, #000000, #1a1a1a)' },
   { id: 'crimson-red', label: 'Crimson Red', color: '#ef4444', preview: 'linear-gradient(135deg, #450a0a, #7f1d1d)' },
   { id: 'pink-heart', label: 'Pink Heart', color: '#ec4899', preview: 'linear-gradient(135deg, #500724, #9d174d)' },
+  { id: 'japan-cherry-blossom', label: 'Cherry Blossom', color: '#fca5a5', preview: 'url(https://raw.githubusercontent.com/BlackStar1991/Pictures-for-sharing-/master/Japan/bg.png)' },
 ];
 
 export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDark }: DashboardSettingsOverlayProps) {

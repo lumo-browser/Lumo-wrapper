@@ -7,9 +7,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, Globe, Plus, X,
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag,
-  Layers, Sparkles, Command, Settings
 } from 'lucide-react';
 import { DashboardSettingsOverlay } from '../ui/components/DashboardSettingsOverlay';
+import { JapanCherryBlossomTheme } from '../ui/components/JapanCherryBlossomTheme';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ShortcutItem { id: string; label: string; url: string; icon: string; color: string; }
@@ -441,6 +441,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
       />
 
       {(!bgImage && (!config.theme || config.theme === 'custom')) && <AmbientOrbs isDark={isDark} />}
+      {config.theme === 'japan-cherry-blossom' && <JapanCherryBlossomTheme />}
 
       {/* Subtle grid overlay */}
       <div className={`pointer-events-none absolute inset-0 ${isDark ? 'opacity-[0.03]' : 'opacity-[0.05]'}`}
@@ -450,7 +451,8 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
         }} />
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14">
+      <div className="relative z-10 flex flex-col items-center gap-10 w-full max-w-2xl px-6 py-14"
+        style={{ textShadow: config.theme === 'japan-cherry-blossom' ? '0 2px 10px rgba(0,0,0,0.5)' : 'none' }}>
 
         {/* Logo mark */}
         <div className="flex items-center gap-2.5">
