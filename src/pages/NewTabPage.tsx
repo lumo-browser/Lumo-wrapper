@@ -438,8 +438,12 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
         onClose={() => setShowSettings(false)} 
         config={config}
         onSave={(newConf) => {
-          localStorage.setItem('Lumo-dashboard-config', JSON.stringify(newConf));
-          window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
+          try {
+            localStorage.setItem('Lumo-dashboard-config', JSON.stringify(newConf));
+            window.dispatchEvent(new Event('lumo:dashboard-config-updated'));
+          } catch (e) {
+            alert('Failed to save wallpaper. The image file might be too large (max 5MB limit). Please use a smaller file or paste a direct image URL instead.');
+          }
         }}
         isDark={themeIsDark} 
       />

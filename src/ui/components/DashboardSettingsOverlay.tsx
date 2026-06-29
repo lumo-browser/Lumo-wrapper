@@ -22,6 +22,7 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
   const [localConfig, setLocalConfig] = useState(config);
   const [isSaving, setIsSaving] = useState(false);
   const [themeName, setThemeName] = useState('');
+  const [fileError, setFileError] = useState('');
 
   if (!isOpen) return null;
 
@@ -35,6 +36,33 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
   const text = isDark ? 'text-white' : 'text-gray-900';
   const border = isDark ? 'border-white/10' : 'border-gray-200';
   const panelBg = isDark ? 'bg-white/5' : 'bg-white';
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileError('');
+
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.src = url;
+    img.onload = () => {
+      if (img.width < 1280 || img.height < 720) {
+        setFileError(`Image is ${img.width}x${img.height}. Minimum 1280x720 recommended for wallpapers.`);
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        update({ bgImage: evt.target?.result as string });
+      };
+      reader.onerror = () => setFileError('Failed to process image.');
+      reader.readAsDataURL(file);
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      setFileError('Invalid image file.');
+      URL.revokeObjectURL(url);
+    };
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex animate-fade-in backdrop-blur-md bg-black/60">
@@ -120,10 +148,19 @@ export function DashboardSettingsOverlay({ isOpen, onClose, config, onSave, isDa
               </div>
 
               <div className={`p-5 rounded-2xl border ${border} ${panelBg}`}>
-                <h4 className={`text-sm font-bold mb-4 ${text}`}>Custom Wallpaper</h4>
-                <div className="flex gap-3">
+                <h4 className={`text-sm font-bold mb-2 ${text}`}>Custom Wallpaper</h4>
+                <p className={`text-xs mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Upload a local image/GIF or paste a URL.</p>
+                
+                {fileError && <p className="text-red-500 text-xs mb-3 font-bold">{fileError}</p>}
+                
+                <div className="flex gap-3 items-center">
+                  <label className={`cursor-pointer px-4 py-3 rounded-xl text-sm font-bold transition-all border ${isDark ? 'border-white/10 text-white hover:bg-white/5' : 'border-gray-200 text-gray-800 hover:bg-gray-50'}`}>
+                    Upload File
+                    <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                  </label>
+                  <span className={`text-xs font-bold ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>OR</span>
                   <input type="text" value={localConfig.bgImage || ''} onChange={e => update({ bgImage: e.target.value })}
-                    placeholder="Paste direct image URL (e.g. Unsplash)"
+                    placeholder="Paste direct URL..."
                     className={`flex-1 px-4 py-3 rounded-xl text-sm outline-none border transition-colors ${isDark ? 'bg-black/20 border-white/10 text-white placeholder-gray-500 focus:border-violet-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-violet-500'}`} />
                   {localConfig.bgImage && (
                     <button onClick={() => update({ bgImage: '' })} className="px-4 py-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 text-sm font-bold transition-colors">
