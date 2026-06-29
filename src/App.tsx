@@ -1686,6 +1686,7 @@ Example response format:
                         setHistoryEntries([]);
                         setBookmarkEntries([]);
                       }}
+                      onNavigate={navigate}
                       historyCount={historyEntries.length}
                       bookmarkCount={bookmarkEntries.length}
                     />

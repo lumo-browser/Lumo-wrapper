@@ -33,6 +33,7 @@ import {
   RefreshCw,
   Settings,
   User,
+  Key,
   Download as DownloadIcon,
   Cpu as CpuIcon,
   Languages,
@@ -120,6 +121,7 @@ interface SettingsPageProps {
   activeProfileId: string;
   onUpdateSettings: (updates: Partial<BrowserSettings>) => void;
   onClearBrowsingData: () => void;
+  onNavigate: (url: string) => void;
   historyCount: number;
   bookmarkCount: number;
 }
@@ -204,12 +206,13 @@ export function SettingsPage({
   activeProfileId,
   onUpdateSettings,
   onClearBrowsingData,
+  onNavigate,
   historyCount,
   bookmarkCount,
 }: SettingsPageProps): React.ReactElement {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [localFontSize, setLocalFontSize] = useState(settings.fontSize);
-  const [activeTab, setActiveTab] = useState<'profiles' | 'general' | 'home' | 'search' | 'privacy' | 'downloads' | 'system' | 'languages' | 'sync' | 'about'>('general');
+  const [activeTab, setActiveTab] = useState<'profiles' | 'general' | 'home' | 'search' | 'privacy' | 'passwords' | 'downloads' | 'system' | 'languages' | 'sync' | 'about'>('general');
 
   useEffect(() => {
     setLocalFontSize(settings.fontSize);
@@ -235,6 +238,7 @@ export function SettingsPage({
             <SidebarButton icon={<Home />} label="Home" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
             <SidebarButton icon={<Search />} label="Search Engine" active={activeTab === 'search'} onClick={() => setActiveTab('search')} />
             <SidebarButton icon={<Shield />} label="Privacy & Security" active={activeTab === 'privacy'} onClick={() => setActiveTab('privacy')} />
+            <SidebarButton icon={<Key />} label="Passwords" active={activeTab === 'passwords'} onClick={() => setActiveTab('passwords')} />
             <SidebarButton icon={<DownloadIcon />} label="Downloads" active={activeTab === 'downloads'} onClick={() => setActiveTab('downloads')} />
             <SidebarButton icon={<CpuIcon />} label="System & Performance" active={activeTab === 'system'} onClick={() => setActiveTab('system')} />
             <SidebarButton icon={<Languages />} label="Languages" active={activeTab === 'languages'} onClick={() => setActiveTab('languages')} />
@@ -272,6 +276,19 @@ export function SettingsPage({
               bookmarkCount={bookmarkCount}
               onClearBrowsingData={onClearBrowsingData}
             />
+          )}
+
+          {activeTab === 'passwords' && (
+            <SettingSection title="Passwords" icon={<Key className="w-4 h-4" />}>
+              <SettingRow label="Manage saved passwords" description="View, edit, and manage your saved passwords">
+                <button
+                  onClick={() => onNavigate('lumo://passwords')}
+                  className="px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                >
+                  Open Password Manager
+                </button>
+              </SettingRow>
+            </SettingSection>
           )}
 
           {activeTab === 'downloads' && (
