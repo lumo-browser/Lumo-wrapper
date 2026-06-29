@@ -83,6 +83,36 @@ export interface BrowserSettings {
     location: boolean;
     notifications: boolean;
   };
+  // Tracking Protection
+  trackingLevel: 'standard' | 'strict' | 'custom';
+  blockCryptominers: boolean;
+  blockFingerprinters: boolean;
+  blockSocialTrackers: boolean;
+  totalCookieProtection: boolean;
+  // Privacy
+  doNotSell: boolean;
+  // Passwords
+  askSavePasswords: boolean;
+  autofillPasswords: boolean;
+  suggestStrongPasswords: boolean;
+  breachAlerts: boolean;
+  primaryPassword: boolean;
+  // History
+  historyMode: 'remember' | 'never' | 'custom';
+  // Permissions extras
+  autoplayPerm: 'ask' | 'allow' | 'block';
+  // Security
+  blockDangerous: boolean;
+  blockDangerousDownloads: boolean;
+  warnUnwanted: boolean;
+  httpsOnly: boolean;
+  // DNS
+  dnsMode: 'off' | 'default' | 'increased' | 'max';
+  dnsProvider: string;
+  // Data Collection
+  sendTelemetry: boolean;
+  sendCrashReports: boolean;
+  adMeasurement: boolean;
 }
 
 interface SettingsPageProps {

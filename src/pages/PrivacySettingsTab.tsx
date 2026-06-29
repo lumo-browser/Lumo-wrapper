@@ -79,47 +79,6 @@ interface Props {
 }
 
 export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, bookmarkCount, onClearBrowsingData }: Props) {
-  // Tracking Protection
-  const [trackingLevel, setTrackingLevel] = useState<'standard' | 'strict' | 'custom'>('standard');
-  const [blockCryptominers, setBlockCryptominers] = useState(true);
-  const [blockFingerprinters, setBlockFingerprinters] = useState(true);
-  const [blockSocialTrackers, setBlockSocialTrackers] = useState(true);
-  const [totalCookieProtection, setTotalCookieProtection] = useState(true);
-
-  // Website preferences
-  const [doNotSell, setDoNotSell] = useState(true);
-
-  // Cookies
-  const [deleteCookiesOnClose, setDeleteCookiesOnClose] = useState(settings.clearOnExit);
-
-  // Passwords
-  const [askSavePasswords, setAskSavePasswords] = useState(true);
-  const [autofillPasswords, setAutofillPasswords] = useState(true);
-  const [suggestStrongPasswords, setSuggestStrongPasswords] = useState(true);
-  const [breachAlerts, setBreachAlerts] = useState(true);
-  const [primaryPassword, setPrimaryPassword] = useState(false);
-
-  // History
-  const [historyMode, setHistoryMode] = useState<'remember' | 'never' | 'custom'>('remember');
-
-  const [autoplayPerm, setAutoplayPerm] = useState<PermissionState>('ask');
-  const [blockPopupsGlobal, setBlockPopupsGlobal] = useState(settings.blockPopups);
-
-  // Security
-  const [blockDangerous, setBlockDangerous] = useState(true);
-  const [blockDownloads, setBlockDownloads] = useState(true);
-  const [warnUnwanted, setWarnUnwanted] = useState(true);
-  const [httpsOnly, setHttpsOnly] = useState(false);
-
-  // DNS over HTTPS
-  const [dnsMode, setDnsMode] = useState<'off' | 'default' | 'increased' | 'max'>('off');
-  const [dnsProvider, setDnsProvider] = useState('Cloudflare');
-
-  // Data collection
-  const [sendTelemetry, setSendTelemetry] = useState(false);
-  const [sendCrashReports, setSendCrashReports] = useState(false);
-  const [adMeasurement, setAdMeasurement] = useState(false);
-
   // Confirm modal
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -143,16 +102,16 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
           {trackingOptions.map(opt => (
             <button
               key={opt.id}
-              onClick={() => setTrackingLevel(opt.id)}
+              onClick={() => onUpdateSettings({ trackingLevel: opt.id })}
               className={`flex flex-col gap-1 p-3 rounded-xl border-2 text-left transition-all ${
-                trackingLevel === opt.id
+                settings.trackingLevel === opt.id
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
                   : 'border-gray-100 dark:border-[#333] hover:border-gray-300 dark:hover:border-[#444]'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-bold ${trackingLevel === opt.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>{opt.label}</span>
-                {trackingLevel === opt.id && <Check className="w-3 h-3 text-blue-500" />}
+                <span className={`text-xs font-bold ${settings.trackingLevel === opt.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>{opt.label}</span>
+                {settings.trackingLevel === opt.id && <Check className="w-3 h-3 text-blue-500" />}
               </div>
               <span className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{opt.desc}</span>
             </button>
@@ -171,16 +130,16 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
           </div>
         </div>
 
-        {trackingLevel === 'custom' && (
+        {settings.trackingLevel === 'custom' && (
           <>
-            <Row label="Block Social Media Trackers"><Toggle enabled={blockSocialTrackers} onChange={setBlockSocialTrackers} /></Row>
-            <Row label="Block Cryptominers"><Toggle enabled={blockCryptominers} onChange={setBlockCryptominers} /></Row>
-            <Row label="Block Fingerprinters"><Toggle enabled={blockFingerprinters} onChange={setBlockFingerprinters} /></Row>
+            <Row label="Block Social Media Trackers"><Toggle enabled={settings.blockSocialTrackers} onChange={v => onUpdateSettings({ blockSocialTrackers: v })} /></Row>
+            <Row label="Block Cryptominers"><Toggle enabled={settings.blockCryptominers} onChange={v => onUpdateSettings({ blockCryptominers: v })} /></Row>
+            <Row label="Block Fingerprinters"><Toggle enabled={settings.blockFingerprinters} onChange={v => onUpdateSettings({ blockFingerprinters: v })} /></Row>
           </>
         )}
 
         <Row label="Total Cookie Protection" description="Contains cookies to the site you're on, so trackers can't use them to follow you between sites.">
-          <Toggle enabled={totalCookieProtection} onChange={setTotalCookieProtection} />
+          <Toggle enabled={settings.totalCookieProtection} onChange={v => onUpdateSettings({ totalCookieProtection: v })} />
         </Row>
       </Section>
 
@@ -190,20 +149,20 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
           <Toggle enabled={settings.blockAds} onChange={v => onUpdateSettings({ blockAds: v })} />
         </Row>
         <Row label="Block Pop-up Windows" description="Prevent websites from opening pop-up windows">
-          <Toggle enabled={blockPopupsGlobal} onChange={v => { setBlockPopupsGlobal(v); onUpdateSettings({ blockPopups: v }); }} />
+          <Toggle enabled={settings.blockPopups} onChange={v => onUpdateSettings({ blockPopups: v })} />
         </Row>
         <Row label="Send Do Not Track" description="Request sites not to track your browsing activity">
           <Toggle enabled={settings.doNotTrack} onChange={v => onUpdateSettings({ doNotTrack: v })} />
         </Row>
         <Row label="Tell websites not to sell or share my data" description="Sends a GPC (Global Privacy Control) signal to websites">
-          <Toggle enabled={doNotSell} onChange={setDoNotSell} />
+          <Toggle enabled={settings.doNotSell} onChange={v => onUpdateSettings({ doNotSell: v })} />
         </Row>
       </Section>
 
       {/* ── Cookies & Site Data ── */}
       <Section title="Cookies & Site Data" icon={<Cookie className="w-4 h-4" />}>
         <Row label="Delete cookies and site data when Lumo is closed">
-          <Toggle enabled={deleteCookiesOnClose} onChange={v => { setDeleteCookiesOnClose(v); onUpdateSettings({ clearOnExit: v }); }} />
+          <Toggle enabled={settings.clearOnExit} onChange={v => onUpdateSettings({ clearOnExit: v })} />
         </Row>
         <div className="px-4 py-3.5">
           <button
@@ -224,14 +183,14 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
 
       {/* ── Passwords ── */}
       <Section title="Passwords" icon={<Lock className="w-4 h-4" />}>
-        <Row label="Ask to save passwords"><Toggle enabled={askSavePasswords} onChange={setAskSavePasswords} /></Row>
-        <Row label="Fill usernames and passwords automatically"><Toggle enabled={autofillPasswords} onChange={setAutofillPasswords} /></Row>
-        <Row label="Suggest strong passwords"><Toggle enabled={suggestStrongPasswords} onChange={setSuggestStrongPasswords} /></Row>
+        <Row label="Ask to save passwords"><Toggle enabled={settings.askSavePasswords} onChange={v => onUpdateSettings({ askSavePasswords: v })} /></Row>
+        <Row label="Fill usernames and passwords automatically"><Toggle enabled={settings.autofillPasswords} onChange={v => onUpdateSettings({ autofillPasswords: v })} /></Row>
+        <Row label="Suggest strong passwords"><Toggle enabled={settings.suggestStrongPasswords} onChange={v => onUpdateSettings({ suggestStrongPasswords: v })} /></Row>
         <Row label="Show alerts about passwords for breached websites" description="Notifies you if your saved passwords appear in known data breaches">
-          <Toggle enabled={breachAlerts} onChange={setBreachAlerts} />
+          <Toggle enabled={settings.breachAlerts} onChange={v => onUpdateSettings({ breachAlerts: v })} />
         </Row>
         <Row label="Use a Primary Password" description="Require a password before Lumo fills in saved credentials">
-          <Toggle enabled={primaryPassword} onChange={setPrimaryPassword} />
+          <Toggle enabled={settings.primaryPassword} onChange={v => onUpdateSettings({ primaryPassword: v })} />
         </Row>
       </Section>
 
@@ -245,10 +204,10 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
             ['custom',   'Use custom settings for history'],
           ] as const).map(([val, lbl]) => (
             <label key={val} className="flex items-center gap-2.5 py-1.5 cursor-pointer">
-              <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${historyMode === val ? 'border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
-                {historyMode === val && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+              <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${settings.historyMode === val ? 'border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
+                {settings.historyMode === val && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
               </span>
-              <input type="radio" className="hidden" checked={historyMode === val} onChange={() => setHistoryMode(val)} />
+              <input type="radio" className="hidden" checked={settings.historyMode === val} onChange={() => onUpdateSettings({ historyMode: val })} />
               <span className="text-sm text-gray-800 dark:text-gray-200">{lbl}</span>
             </label>
           ))}
@@ -269,22 +228,22 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
         <Row label="Notifications" description="Permission to send desktop notifications">
           <Toggle enabled={settings.permissions.notifications} onChange={v => onUpdateSettings({ permissions: { ...settings.permissions, notifications: v } })} />
         </Row>
-        <Row label="Autoplay" description="Automatically play video and audio"><PermissionSelect value={autoplayPerm} onChange={setAutoplayPerm} /></Row>
+        <Row label="Autoplay" description="Automatically play video and audio"><PermissionSelect value={settings.autoplayPerm} onChange={v => onUpdateSettings({ autoplayPerm: v })} /></Row>
       </Section>
 
       {/* ── Security ── */}
       <Section title="Security" icon={<AlertTriangle className="w-4 h-4" />}>
         <Row label="Block dangerous and deceptive content" description="Protects against phishing and malware sites">
-          <Toggle enabled={blockDangerous} onChange={setBlockDangerous} />
+          <Toggle enabled={settings.blockDangerous} onChange={v => onUpdateSettings({ blockDangerous: v })} />
         </Row>
         <Row label="Block dangerous downloads" description="Prevents downloading known malware files">
-          <Toggle enabled={blockDownloads} onChange={setBlockDownloads} />
+          <Toggle enabled={settings.blockDangerousDownloads} onChange={v => onUpdateSettings({ blockDangerousDownloads: v })} />
         </Row>
         <Row label="Warn about unwanted and uncommon software">
-          <Toggle enabled={warnUnwanted} onChange={setWarnUnwanted} />
+          <Toggle enabled={settings.warnUnwanted} onChange={v => onUpdateSettings({ warnUnwanted: v })} />
         </Row>
         <Row label="HTTPS-Only Mode" description="Only allows secure connections. Lumo will ask before connecting insecurely.">
-          <Toggle enabled={httpsOnly} onChange={setHttpsOnly} />
+          <Toggle enabled={settings.httpsOnly} onChange={v => onUpdateSettings({ httpsOnly: v })} />
         </Row>
       </Section>
 
@@ -301,10 +260,10 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
             ['max',       'Max Protection',      'Lumo will always use secure DNS'],
           ] as const).map(([val, lbl, desc]) => (
             <label key={val} className="flex items-start gap-2.5 py-2 cursor-pointer">
-              <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${dnsMode === val ? 'border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
-                {dnsMode === val && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+              <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${settings.dnsMode === val ? 'border-blue-600' : 'border-gray-300 dark:border-gray-600'}`}>
+                {settings.dnsMode === val && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
               </span>
-              <input type="radio" className="hidden" checked={dnsMode === val} onChange={() => setDnsMode(val)} />
+              <input type="radio" className="hidden" checked={settings.dnsMode === val} onChange={() => onUpdateSettings({ dnsMode: val })} />
               <div>
                 <p className="text-sm text-gray-800 dark:text-gray-200 font-medium">{lbl}</p>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500">{desc}</p>
@@ -312,11 +271,11 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
             </label>
           ))}
         </div>
-        {dnsMode !== 'off' && dnsMode !== 'default' && (
+        {settings.dnsMode !== 'off' && settings.dnsMode !== 'default' && (
           <Row label="DNS Provider">
             <select
-              value={dnsProvider}
-              onChange={e => setDnsProvider(e.target.value)}
+              value={settings.dnsProvider}
+              onChange={e => onUpdateSettings({ dnsProvider: e.target.value })}
               className="text-xs rounded-md px-2 py-1.5 bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-500"
             >
               {['Cloudflare','Cloudflare (Malware)','Google','NextDNS','Custom'].map(p => (
@@ -333,13 +292,13 @@ export function PrivacySettingsTab({ settings, onUpdateSettings, historyCount, b
           We collect only the minimal data necessary to improve Lumo for everyone.
         </p>
         <Row label="Send technical and interaction data" description="Helps improve Lumo features, performance, and stability">
-          <Toggle enabled={sendTelemetry} onChange={setSendTelemetry} />
+          <Toggle enabled={settings.sendTelemetry} onChange={v => onUpdateSettings({ sendTelemetry: v })} />
         </Row>
         <Row label="Automatically send crash reports" description="Helps diagnose and fix issues. Reports may include personal data.">
-          <Toggle enabled={sendCrashReports} onChange={setSendCrashReports} />
+          <Toggle enabled={settings.sendCrashReports} onChange={v => onUpdateSettings({ sendCrashReports: v })} />
         </Row>
         <Row label="Allow privacy-preserving ad measurement" description="Helps sites understand ad performance without collecting data about you">
-          <Toggle enabled={adMeasurement} onChange={setAdMeasurement} />
+          <Toggle enabled={settings.adMeasurement} onChange={v => onUpdateSettings({ adMeasurement: v })} />
         </Row>
       </Section>
 

@@ -64,13 +64,15 @@ interface WebviewTabProps {
   isDark: boolean;
   zeroTrustMode: boolean;
   activeProfileId: string;
+  blockPopups: boolean;
+  permissions: { camera: boolean; microphone: boolean; location: boolean; notifications: boolean };
   onTitleChange: (title: string) => void;
   onLoadingChange: (loading: boolean) => void;
   onUrlChange: (url: string) => void;
   onNavStateChange: (canGoBack: boolean, canGoForward: boolean) => void;
 }
 
-function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
+function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange }: WebviewTabProps) {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
   const ztRef = useRef(zeroTrustMode);
@@ -297,18 +299,39 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, onTitl
     wv.addEventListener('dom-ready', onDomReady);
     wv.addEventListener('context-menu', onContextMenu);
 
-    // ZT-mode: monitor partition and block popup windows
+    // ZT-mode: monitor partition
     if (zeroTrustMode) {
       window.electron?.monitorTabPartition(`tab-${tabId}`);
+    }
+
+    // Block popups when setting is enabled or ZT mode is active
+    if (zeroTrustMode || blockPopups) {
       const onNewWindow = (e: any) => {
         e.preventDefault();
-        console.log(`[ZT] Blocked new window from isolated tab ${tabId}`);
+        console.log(`[${zeroTrustMode ? 'ZT' : 'Popups'}] Blocked new window from tab ${tabId}`);
       };
       wv.addEventListener('new-window', onNewWindow);
       wv.addEventListener('destroyed', () => {
         wv.removeEventListener('new-window', onNewWindow);
       });
     }
+
+    // Permission requests (camera, mic, location, notifications)
+    const onPermissionRequest = (e: any) => {
+      const permMap: Record<string, keyof typeof permissions> = {
+        media: 'camera',
+        mediaKeySystem: 'camera',
+        geolocation: 'location',
+        notifications: 'notifications',
+      };
+      const settingKey = permMap[e.permission];
+      if (settingKey && !permissions[settingKey]) {
+        e.request.deny();
+      } else {
+        e.request.grant();
+      }
+    };
+    wv.addEventListener('permission-request', onPermissionRequest);
 
     return () => {
       wv.removeEventListener('did-start-loading', onStartLoad);
@@ -318,8 +341,9 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, onTitl
       wv.removeEventListener('did-navigate-in-page', onNavigated);
       wv.removeEventListener('dom-ready',         onDomReady);
       wv.removeEventListener('context-menu',      onContextMenu);
+      wv.removeEventListener('permission-request', onPermissionRequest);
     };
-  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, zeroTrustMode]);
+  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, zeroTrustMode, blockPopups, permissions]);
 
   return (
     <webview
@@ -421,7 +445,16 @@ export default function App(): React.ReactElement {
     };
   }, []);
   // Tabs
-  const [tabs, setTabs] = useState<BrowserTab[]>(INITIAL_TABS);
+  const [tabs, setTabs] = useState<BrowserTab[]>(() => {
+    try {
+      const saved = localStorage.getItem(`lumo-tabs-${activeProfileId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return INITIAL_TABS;
+  });
   const [, setRecentlyClosedTabs] = useState<BrowserTab[]>([]);
   const activeTab = tabs.find((t) => t.isActive) ?? tabs[0];
 
@@ -532,6 +565,28 @@ export default function App(): React.ReactElement {
         location: false,
         notifications: false,
       },
+      trackingLevel: 'standard',
+      blockCryptominers: true,
+      blockFingerprinters: true,
+      blockSocialTrackers: true,
+      totalCookieProtection: true,
+      doNotSell: true,
+      askSavePasswords: true,
+      autofillPasswords: true,
+      suggestStrongPasswords: true,
+      breachAlerts: true,
+      primaryPassword: false,
+      historyMode: 'remember',
+      autoplayPerm: 'ask',
+      blockDangerous: true,
+      blockDangerousDownloads: true,
+      warnUnwanted: true,
+      httpsOnly: false,
+      dnsMode: 'off',
+      dnsProvider: 'Cloudflare',
+      sendTelemetry: false,
+      sendCrashReports: false,
+      adMeasurement: false,
     };
     try { 
       const parsed = JSON.parse(localStorage.getItem(`lumo-settings-${activeProfileId}`) || '{}');
@@ -547,6 +602,15 @@ export default function App(): React.ReactElement {
       setDownloadItems(JSON.parse(localStorage.getItem(`lumo-downloads-${activeProfileId}`) || '[]'));
       const parsedSettings = JSON.parse(localStorage.getItem(`lumo-settings-${activeProfileId}`) || '{}');
       setSettings(s => ({ ...s, ...parsedSettings }));
+      // Restore tabs for this profile
+      const savedTabs = localStorage.getItem(`lumo-tabs-${activeProfileId}`);
+      if (savedTabs) {
+        const parsed = JSON.parse(savedTabs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed[0] = { ...parsed[0], isActive: true };
+          setTabs(parsed);
+        }
+      }
     } catch (e) {
       console.warn('Failed to load profile state', e);
     }
@@ -715,6 +779,8 @@ export default function App(): React.ReactElement {
     if (window.electron?.send) {
       window.electron.send('lumo:set-ad-blocker', settings.blockAds);
       window.electron.send('lumo:set-theme', settings.theme);
+      // Monitor the active profile's partition for ad blocking and downloads
+      window.electron.send('lumo:monitor-profile-partition', activeProfileId);
     }
 
     // Restore user
@@ -740,6 +806,22 @@ export default function App(): React.ReactElement {
     }
   }, [historyEntries, isDisposable, activeProfileId]);
   
+  useEffect(() => {
+    if (!isDisposable) {
+      try {
+        const serializable = tabs.map(({ isActive, ...rest }) => rest);
+        localStorage.setItem(`lumo-tabs-${activeProfileId}`, JSON.stringify(serializable));
+      } catch { /* ignore quota errors */ }
+    }
+  }, [tabs, isDisposable, activeProfileId]);
+
+  // Sync clearOnExit to main process for before-quit enforcement
+  useEffect(() => {
+    if (window.electron?.send) {
+      window.electron.send('lumo:set-clear-on-exit', settings.clearOnExit);
+    }
+  }, [settings.clearOnExit]);
+
   useEffect(() => { 
     const { openRouterApiKey, ...safeSettings } = settings;
     localStorage.setItem(`lumo-settings-${activeProfileId}`, JSON.stringify(safeSettings)); 
@@ -1570,6 +1652,8 @@ Example response format:
                     isDark={isDark}
                     zeroTrustMode={zeroTrustMode}
                     activeProfileId={activeProfileId}
+                    blockPopups={settings.blockPopups}
+                    permissions={settings.permissions}
                     onTitleChange={(title) =>
                       setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, title } : t))
                     }

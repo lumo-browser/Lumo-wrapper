@@ -17,6 +17,9 @@ import { validateScript, checkScriptInjectionRate } from './agent-guard';
 let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
 const adBlockerStats = new AdBlockerStats();
 
+// ── Clear-on-Exit State (set from renderer) ──────────────────────────────────
+let clearOnExitEnabled = false;
+
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -1089,6 +1092,12 @@ app.on('ready', () => {
     }
   });
 
+  // ── Clear-on-Exit ───────────────────────────────────────────────────────────
+  guardedOn('lumo:set-clear-on-exit', (_event, enabled: boolean) => {
+    clearOnExitEnabled = enabled;
+    console.log(`[Lumo] Clear-on-exit set to ${enabled}`);
+  });
+
   // ── Profile Partition Management ──────────────────────────────────────────
   guardedOn('lumo:monitor-profile-partition', (_event, profileId: string) => {
     const partitionId = `persist:lumo-profile-${profileId}`;
@@ -1141,7 +1150,24 @@ app.on('activate', () => {
   }
 });
 
-app.on('before-quit', () => {
+let isClearingOnExit = false;
+
+app.on('before-quit', async (event) => {
   console.log('[Lumo] App quitting');
   globalShortcut.unregisterAll();
+
+  if (clearOnExitEnabled && !isClearingOnExit) {
+    event.preventDefault();
+    isClearingOnExit = true;
+    try {
+      await Promise.all([
+        session.defaultSession.clearStorageData(),
+        session.fromPartition('persist:lumo-main').clearStorageData(),
+      ]);
+      console.log('[Lumo] Cleared all session data (clearOnExit)');
+    } catch (err) {
+      console.error('[Lumo] Failed to clear session data on quit:', err);
+    }
+    app.exit();
+  }
 });
