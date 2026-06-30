@@ -400,7 +400,7 @@ app.on('ready', () => {
       if (wc.isDevToolsOpened()) {
         wc.closeDevTools();
       } else {
-        wc.openDevTools({ mode: 'detach' });
+        wc.openDevTools({ mode: 'bottom' });
       }
     });
 
@@ -408,7 +408,24 @@ app.on('ready', () => {
     guardedOn('lumo:inspect-element', (_event, x: number, y: number) => {
       if (!mainWindow) return;
       const wc = mainWindow.webContents;
+      wc.openDevTools({ mode: 'bottom' });
       wc.inspectElement(x, y);
+    });
+
+    // Inspect element in a webview by webContentsId
+    guardedOn('lumo:inspect-webview', (_event, { webContentsId, x, y }: { webContentsId: number; x: number; y: number }) => {
+      try {
+        const wc = webContents.fromId(webContentsId);
+        if (!wc) return;
+        if (wc.isDevToolsOpened()) {
+          wc.closeDevTools();
+        } else {
+          wc.openDevTools({ mode: 'bottom' });
+          if (x !== undefined && y !== undefined) {
+            wc.inspectElement(x, y);
+          }
+        }
+      } catch { /* ignore */ }
     });
 
     guardedOn('lumo:save-screenshot', async (_event, webContentsId: number) => {
@@ -1292,6 +1309,12 @@ app.on('ready', () => {
     globalShortcut.register('CommandOrControl+J', () => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('lumo:shortcut', 'toggle-downloads');
+      }
+    });
+    // Ctrl+Shift+I — toggle docked DevTools on active webview (Firefox-like inspector)
+    globalShortcut.register('CommandOrControl+Shift+I', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('lumo:shortcut', 'toggle-inspector');
       }
     });
     console.log('[Lumo] Global shortcuts registered');

@@ -74,9 +74,10 @@ interface WebviewTabProps {
   onUrlChange: (url: string) => void;
   onNavStateChange: (canGoBack: boolean, canGoForward: boolean) => void;
   onPasswordCaptured: (entry: { url: string; username: string; password: string }) => void;
+  onNewTab: (url?: string) => void;
 }
 
-function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, askSavePasswords, autofillPasswords, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured }: WebviewTabProps) {
+function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, askSavePasswords, autofillPasswords, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured, onNewTab }: WebviewTabProps) {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
   const ztRef = useRef(zeroTrustMode);
@@ -394,17 +395,28 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
       window.electron?.monitorTabPartition(`tab-${tabId}`);
     }
 
-    // Block popups when setting is enabled or ZT mode is active
-    if (zeroTrustMode || blockPopups) {
-      const onNewWindow = (e: any) => {
+    // Handle new-window events: Ctrl+click / Shift+click → open in new tab
+    const onNewWindow = (e: any) => {
+      const targetUrl = e.url;
+      if (!targetUrl || targetUrl === 'about:blank') return;
+
+      if (zeroTrustMode || blockPopups) {
+        if (e.disposition === 'new-window' || e.disposition === 'foreground-tab') {
+          e.preventDefault();
+          onNewTab(targetUrl);
+        } else {
+          e.preventDefault();
+          console.log(`[${zeroTrustMode ? 'ZT' : 'Popups'}] Blocked popup: ${targetUrl}`);
+        }
+      } else {
         e.preventDefault();
-        console.log(`[${zeroTrustMode ? 'ZT' : 'Popups'}] Blocked new window from tab ${tabId}`);
-      };
-      wv.addEventListener('new-window', onNewWindow);
-      wv.addEventListener('destroyed', () => {
-        wv.removeEventListener('new-window', onNewWindow);
-      });
-    }
+        onNewTab(targetUrl);
+      }
+    };
+    wv.addEventListener('new-window', onNewWindow);
+    wv.addEventListener('destroyed', () => {
+      wv.removeEventListener('new-window', onNewWindow);
+    });
 
     // Permission requests (camera, mic, location, notifications)
     const onPermissionRequest = (e: any) => {
@@ -434,7 +446,7 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
       wv.removeEventListener('permission-request', onPermissionRequest);
       wv.removeEventListener('console-message', onConsoleMessage);
     };
-  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, zeroTrustMode, blockPopups, permissions, askSavePasswords, autofillPasswords, onPasswordCaptured]);
+  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, zeroTrustMode, blockPopups, permissions, askSavePasswords, autofillPasswords, onPasswordCaptured, onNewTab]);
 
   return (
     <webview
@@ -613,17 +625,25 @@ export default function App(): React.ReactElement {
     if (!electron?.on) return;
     const unsub = electron.on('lumo:shortcut', (_: unknown, action: string) => {
       if (action === 'toggle-downloads') {
-        // Use functional form so we always read latest activeTab URL
         setTabs(prev => {
           const active = prev.find(t => t.isActive);
           if (active?.url === 'lumo://downloads') {
-            // Navigate back — re-use the navigate function via a custom event
             window.dispatchEvent(new CustomEvent('lumo:go-back'));
           } else {
             window.dispatchEvent(new CustomEvent('lumo:open-page', { detail: 'lumo://downloads' }));
           }
           return prev;
         });
+      } else if (action === 'toggle-inspector') {
+        const active = tabs.find(t => t.isActive);
+        if (!active) return;
+        const wv = document.getElementById('webview-' + active.id) as any;
+        if (!wv || typeof wv.isDevToolsOpened !== 'function') return;
+        if (wv.isDevToolsOpened()) {
+          wv.closeDevTools();
+        } else {
+          wv.openDevTools({ mode: 'bottom' });
+        }
       }
     });
     return () => unsub?.();
@@ -1764,6 +1784,7 @@ Example response format:
                     onNavStateChange={(canBack, canForward) =>
                       setTabs((prev) => prev.map((t) => t.id === tab.id ? { ...t, canGoBack: canBack, canGoForward: canForward } : t))
                     }
+                    onNewTab={(url) => addTab(url)}
                     onPasswordCaptured={async (cred) => {
                       if (window.electron?.vaultSave && settings.askSavePasswords) {
                         try {
@@ -1913,7 +1934,7 @@ Example response format:
 
             items.push({ id: 's3', label: '', isSeparator: true });
 
-            // Inspect — label reflects current state
+            // Inspect — opens docked DevTools (Firefox-like panel at bottom)
             items.push({
               id: 'inspect',
               label: isDevToolsOpen ? 'Close DevTools' : 'Inspect Element',
@@ -1921,7 +1942,14 @@ Example response format:
               shortcut: 'Ctrl+Shift+I',
               onClick: () => {
                 if (isWebviewTab) {
-                  isDevToolsOpen ? wv.closeDevTools() : wv.inspectElement(contextMenu.params?.x ?? 0, contextMenu.params?.y ?? 0);
+                  if (isDevToolsOpen) {
+                    wv.closeDevTools();
+                  } else {
+                    wv.openDevTools({ mode: 'bottom' });
+                    if (contextMenu.params?.x !== undefined && contextMenu.params?.y !== undefined) {
+                      wv.inspectElement(contextMenu.params.x, contextMenu.params.y);
+                    }
+                  }
                 } else {
                   window.electron?.send?.('lumo:toggle-devtools');
                 }

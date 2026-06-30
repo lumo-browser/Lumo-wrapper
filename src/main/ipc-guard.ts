@@ -27,6 +27,7 @@ const IPC_PERMISSIONS: Record<string, IpcPermission> = {
   'lumo:get-ad-blocker-stats': 'SESSION',
   'lumo:reset-ad-blocker-stats': 'SESSION',
   'lumo:inspect-element': 'SESSION',
+  'lumo:inspect-webview': 'SESSION',
   'lumo:save-screenshot': 'SESSION',
   'lumo:print-page': 'SESSION',
   'lumo:set-download-path': 'SESSION',
