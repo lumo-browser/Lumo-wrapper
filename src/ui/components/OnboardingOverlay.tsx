@@ -2,10 +2,10 @@
  * OnboardingOverlay.tsx — Lumo Browser First-Launch Welcome Page
  * Renders at lumo://welcome · No emojis · Professional animations
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Globe, Download, Sparkles, ChevronRight, ChevronLeft,
-  Shield, Search, CheckCircle2, ArrowRight, Zap, Lock, Cpu, Monitor,
+  Globe, Sparkles, ChevronRight, ChevronLeft,
+  Shield, Search, CheckCircle2, ArrowRight, Zap, Lock,
 } from 'lucide-react';
 
 export interface OnboardingPrefs {
@@ -35,27 +35,6 @@ const CSS = `
   animation: shimmer 4s linear infinite;
 }
 `;
-
-// ── Browser SVG logos (no emoji) ─────────────────────────────────────────────
-const BrowserIcon = ({ id, size = 28 }: { id: string; size?: number }) => {
-  const s = size;
-  if (id === 'chrome') return <svg width={s} height={s} viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#fff"/><circle cx="16" cy="16" r="8" fill="#4285F4"/><path d="M16 8h14.5A16 16 0 0 1 16 32V24a8 8 0 0 0 6.93-4z" fill="#EA4335"/><path d="M16 8H1.5A16 16 0 0 0 9.07 28L13 21.4A8 8 0 0 1 16 8z" fill="#FBBC05"/><path d="M16 8a8 8 0 0 1 6.93 4H30.5a16 16 0 0 0-14.5-4z" fill="#34A853"/><circle cx="16" cy="16" r="4.5" fill="#fff"/></svg>;
-  if (id === 'firefox') return <svg width={s} height={s} viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#FF6611"/><circle cx="16" cy="16" r="9" fill="#FFD700"/><circle cx="16" cy="16" r="5" fill="#FF6611"/></svg>;
-  if (id === 'edge') return <svg width={s} height={s} viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#0078D7"/><path d="M8 20c0-5.5 4-10 10-10 3 0 5.5 1 7 3H16c-3.3 0-6 2.7-6 6s2.7 6 6 6c2 0 3.8-.9 5-2.3C19.5 24.5 16 25 12 23 9.6 21.8 8 20.9 8 20z" fill="#fff"/></svg>;
-  if (id === 'safari') return <svg width={s} height={s} viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#1C8EF9"/><circle cx="16" cy="16" r="10" fill="none" stroke="#fff" strokeWidth="1.5"/><polygon points="16,8 18,14 16,16 14,14" fill="#FF3B30"/><polygon points="16,24 14,18 16,16 18,18" fill="#fff" opacity="0.8"/></svg>;
-  if (id === 'brave') return <svg width={s} height={s} viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#FB542B"/><path d="M16 6 l8 4 -1 10-7 6-7-6-1-10z" fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round"/><circle cx="16" cy="16" r="3" fill="#fff"/></svg>;
-  if (id === 'opera') return <svg width={s} height={s} viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#FF1B2D"/><ellipse cx="16" cy="16" rx="6" ry="9" fill="none" stroke="#fff" strokeWidth="2.5"/></svg>;
-  return <Monitor size={s} className="text-gray-400" />;
-};
-
-const BROWSERS = [
-  { id: 'chrome',  name: 'Chrome'  },
-  { id: 'firefox', name: 'Firefox' },
-  { id: 'edge',    name: 'Edge'    },
-  { id: 'safari',  name: 'Safari'  },
-  { id: 'brave',   name: 'Brave'   },
-  { id: 'opera',   name: 'Opera'   },
-];
 
 const SEARCH_ENGINES = [
   { id: 'google',     name: 'Google',       desc: 'Most popular'  },

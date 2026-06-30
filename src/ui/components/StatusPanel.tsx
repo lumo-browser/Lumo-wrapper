@@ -3,10 +3,7 @@
  * Shows execution history and browser statistics
  */
 
-import React, { useState, useEffect } from 'react';
-import { logger } from '@utils/logger';
-
-const SCOPE = 'StatusPanel';
+import React, { useState } from 'react';
 
 interface ExecutionRecord {
   id: string;
@@ -19,7 +16,7 @@ interface ExecutionRecord {
 }
 
 export function StatusPanel(): React.ReactElement {
-  const [history, setHistory] = useState<ExecutionRecord[]>([
+  const [history] = useState<ExecutionRecord[]>([
     {
       id: '1',
       goal: 'Navigate to homepage',
@@ -40,7 +37,7 @@ export function StatusPanel(): React.ReactElement {
     },
   ]);
 
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     totalExecutions: 2,
     successRate: 100,
     avgConfidence: 91.5,

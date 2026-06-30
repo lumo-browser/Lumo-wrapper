@@ -73,7 +73,7 @@ export class ErrorDetectionService {
   /**
    * Check for dependency errors
    */
-  private checkDependencies(plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
+  private checkDependencies(_plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
     const errors: DetectedError[] = [];
 
     if (!actions || actions.length === 0) {
@@ -131,7 +131,7 @@ export class ErrorDetectionService {
   /**
    * Check for parameter errors
    */
-  private checkParameters(plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
+  private checkParameters(_plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
     const errors: DetectedError[] = [];
 
     if (!actions) {
@@ -183,7 +183,7 @@ export class ErrorDetectionService {
   /**
    * Check for risk level issues
    */
-  private checkRiskLevel(plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
+  private checkRiskLevel(_plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
     const errors: DetectedError[] = [];
 
     if (!actions) {
@@ -286,7 +286,7 @@ export class ErrorDetectionService {
   /**
    * Check for resource usage issues
    */
-  private checkResourceUsage(plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
+  private checkResourceUsage(_plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
     const errors: DetectedError[] = [];
 
     if (!actions) {
@@ -331,7 +331,7 @@ export class ErrorDetectionService {
   /**
    * Check for timeout issues
    */
-  private checkTimeout(plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
+  private checkTimeout(_plan: WorkflowPlan, actions?: SequencedAction[]): DetectedError[] {
     const errors: DetectedError[] = [];
 
     if (!actions) {
@@ -372,7 +372,7 @@ export class ErrorDetectionService {
    */
   private calculateRiskScore(
     errors: DetectedError[],
-    plan: WorkflowPlan,
+    _plan: WorkflowPlan,
     actions?: SequencedAction[]
   ): number {
     let score = 0;
@@ -400,7 +400,7 @@ export class ErrorDetectionService {
   /**
    * Generate recommendations based on detected errors
    */
-  private generateRecommendations(errors: DetectedError[], plan: WorkflowPlan): string[] {
+  private generateRecommendations(errors: DetectedError[], _plan: WorkflowPlan): string[] {
     const recommendations: string[] = [];
 
     // Group errors by category

@@ -3,8 +3,15 @@ import {
   X, Settings, RefreshCw, LogOut, Shield, 
   Plus, Monitor, HardDrive, Key, Cloud, 
   UserPlus, Fingerprint, Lock, Camera, 
-  MoreHorizontal, Tag
+  MoreHorizontal
 } from 'lucide-react';
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
 
 export interface BrowserProfile {
   id: string;

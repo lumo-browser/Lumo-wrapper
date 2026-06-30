@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { BrowserSettings, SettingSection, SettingRow } from './SettingsPage';
-import { User, Plus, X, Trash2, Camera, Tag, Monitor, Cloud, Lock, Shield, MoreHorizontal, UserPlus } from 'lucide-react';
+import { BrowserSettings, SettingSection } from './SettingsPage';
+import { User, Plus, X, Trash2, Camera, Monitor, Cloud, UserPlus } from 'lucide-react';
 
 export function ProfileSettingsTab({
   settings,
@@ -111,7 +111,7 @@ export function ProfileSettingsTab({
             const isActive = profile.id === activeProfileId;
             const image = profile.avatarUrl || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(profile.name)}&backgroundColor=b6e3f4`;
             const title = profile.id === '1' || profile.id === 'default' ? 'Primary Workspace' : 'Secondary Profile';
-            const isSecure = true; 
+
             const tags = ['User'];
             const tabs = Math.floor(Math.random() * 20) + 1;
             const syncStr = 'Synced';

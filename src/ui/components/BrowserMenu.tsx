@@ -6,7 +6,6 @@
 
 import React from 'react';
 import {
-  X,
   BookOpen,
   Clock,
   Download,
@@ -17,8 +16,6 @@ import {
   ZoomOut,
   Moon,
   Sun,
-  LogIn,
-  EyeOff,
   Plus,
   Ghost,
   User,
@@ -51,8 +48,6 @@ interface MenuItem {
 
 export function BrowserMenu({
   isDark,
-  isLoggedIn,
-  userEmail,
   onClose,
   onToggleTheme,
   onOpenAccount,

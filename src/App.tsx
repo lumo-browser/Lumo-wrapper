@@ -583,7 +583,7 @@ export default function App(): React.ReactElement {
   });
 
   // Download items — shared state so toolbar badge can show count
-  const [downloadItems, setDownloadItems] = useState<any[]>(() => {
+  const [, setDownloadItems] = useState<any[]>(() => {
     try {
       const parsed = JSON.parse(localStorage.getItem(`lumo-downloads-${activeProfileId}`) || '[]');
       return Array.isArray(parsed) ? parsed : [];
@@ -1230,16 +1230,6 @@ export default function App(): React.ReactElement {
   };
 
   const isBookmarked = bookmarkEntries.some((b) => b.url === activeTab?.url);
-
-  // ── Account ───────────────────────────────────────────────────────────────
-  const handleLogin = (user: UserAccount) => {
-    setCurrentUser(user);
-    localStorage.setItem('lumo-user', JSON.stringify(user));
-  };
-  const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('lumo-user');
-  };
 
   // ── Menu Actions ──────────────────────────────────────────────────────────
   const handleZoomIn = useCallback(() => {

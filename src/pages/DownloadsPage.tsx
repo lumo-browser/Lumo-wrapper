@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Download, X, Folder, File, Film, Music, Image as ImageIcon,
+  Download, X, File, Film, Music, Image as ImageIcon,
   Archive, Code2, FileText, CheckCircle2, AlertCircle, Loader2,
   Trash2, FolderOpen, ExternalLink,
 } from 'lucide-react';
@@ -85,7 +85,7 @@ interface DownloadsPageProps {
   onNavigate?: (url: string) => void;
 }
 
-export function DownloadsPage({ onNavigate }: DownloadsPageProps): React.ReactElement {
+export function DownloadsPage({ onNavigate: _onNavigate }: DownloadsPageProps): React.ReactElement {
   const [downloads, setDownloads] = useState<DownloadItem[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('lumo-downloads') ?? '[]');

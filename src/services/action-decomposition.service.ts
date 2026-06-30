@@ -5,8 +5,7 @@
  */
 
 import { Logger } from '@utils/logger';
-import { DecomposedAction } from './agents/planner-agent';
-import { ParsedGoal } from './goal-parsing.service';
+import { DecomposedAction, ParsedGoal } from './agents/planner-agent';
 
 export enum DecompositionStrategy {
   LINEAR = 'linear', // Simple sequential steps
@@ -136,41 +135,6 @@ const ACTION_TEMPLATES: Record<string, ActionTemplate[]> = {
   ]
 };
 
-/**
- * Decomposition strategy definitions
- */
-const STRATEGY_DEFINITIONS: Record<DecompositionStrategy, StrategyDefinition> = {
-  [DecompositionStrategy.LINEAR]: {
-    type: DecompositionStrategy.LINEAR,
-    description: 'Sequential execution of actions',
-    maxActions: 5,
-    parallelizable: false
-  },
-  [DecompositionStrategy.HIERARCHICAL]: {
-    type: DecompositionStrategy.HIERARCHICAL,
-    description: 'Nested goal decomposition',
-    maxActions: 15,
-    parallelizable: false
-  },
-  [DecompositionStrategy.DATA_FLOW]: {
-    type: DecompositionStrategy.DATA_FLOW,
-    description: 'Data dependency-based decomposition',
-    maxActions: 10,
-    parallelizable: true
-  },
-  [DecompositionStrategy.PARALLEL]: {
-    type: DecompositionStrategy.PARALLEL,
-    description: 'Parallel independent actions',
-    maxActions: 8,
-    parallelizable: true
-  },
-  [DecompositionStrategy.CONDITIONAL]: {
-    type: DecompositionStrategy.CONDITIONAL,
-    description: 'Actions with conditional branches',
-    maxActions: 12,
-    parallelizable: false
-  }
-};
 
 /**
  * Service for intelligent action decomposition
@@ -355,7 +319,7 @@ export class ActionDecompositionService {
   /**
    * Data flow decomposition - based on data dependencies
    */
-  private decomposeDataFlow(goal: ParsedGoal): DecomposedAction[] {
+  private decomposeDataFlow(_goal: ParsedGoal): DecomposedAction[] {
     const actions: DecomposedAction[] = [];
     const baseId = this.generateId();
 
@@ -395,7 +359,7 @@ export class ActionDecompositionService {
   /**
    * Parallel decomposition - independent parallel actions
    */
-  private decomposeParallel(goal: ParsedGoal): DecomposedAction[] {
+  private decomposeParallel(_goal: ParsedGoal): DecomposedAction[] {
     const actions: DecomposedAction[] = [];
     const baseId = this.generateId();
 
@@ -440,7 +404,7 @@ export class ActionDecompositionService {
   /**
    * Conditional decomposition - with branching logic
    */
-  private decomposeConditional(goal: ParsedGoal): DecomposedAction[] {
+  private decomposeConditional(_goal: ParsedGoal): DecomposedAction[] {
     const actions: DecomposedAction[] = [];
     const baseId = this.generateId();
 

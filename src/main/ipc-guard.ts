@@ -6,7 +6,7 @@
  * In zero-trust mode: blocks unauthorized calls.
  */
 
-import { ipcMain, BrowserWindow, WebContents, app } from 'electron';
+import { ipcMain, app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
@@ -154,7 +154,7 @@ function checkPermission(
   return { allowed: true };
 }
 
-function logViolation(channel: string, reason: string): void {
+function logViolation(_channel: string, reason: string): void {
   console.warn(`${LOG_PREFIX} ⚠ Violation: ${reason}`);
 }
 

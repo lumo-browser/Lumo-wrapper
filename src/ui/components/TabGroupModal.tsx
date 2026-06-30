@@ -106,7 +106,6 @@ export function TabGroupModal({
 
           {/* Groups */}
           {!isLoading && !error && groups.map((group) => {
-            const palette = GROUP_COLOR_PALETTE.find(c => c.hex === group.colorHex) ?? GROUP_COLOR_PALETTE[0];
             return (
               <div
                 key={group.id}

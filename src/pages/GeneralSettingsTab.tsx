@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Power, LayoutGrid, PanelLeft, Languages, HardDrive,
-  Zap, Wifi, Check, Cpu, Sun, Moon, Monitor, Type,
+  Zap, Check, Cpu, Sun, Moon, Monitor,
   FolderOpen, Globe, ChevronRight, RotateCcw, AlertCircle,
 } from 'lucide-react';
 import { BrowserSettings } from './SettingsPage';

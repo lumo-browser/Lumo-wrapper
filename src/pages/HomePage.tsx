@@ -4,8 +4,7 @@
  */
 
 import React from 'react';
-import { Zap, Cog, Settings } from 'lucide-react';
-import clsx from 'clsx';
+import { Zap, Cog } from 'lucide-react';
 import { useHome } from '@hooks/useHome';
 import {
   SearchBar,

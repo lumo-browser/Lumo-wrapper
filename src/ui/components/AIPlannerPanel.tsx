@@ -3,7 +3,7 @@
  * Main interface for interacting with the PlannerAgent
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { PlannerAgent, type PlannerOutput } from '@services/agents';
 import { logger } from '@utils/logger';
 

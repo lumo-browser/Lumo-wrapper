@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Puzzle, Trash2, Power, ExternalLink, Shield, Moon, Key, Cpu, Settings } from 'lucide-react';
+import { Search, Puzzle, ExternalLink, Shield, Moon, Key, Cpu } from 'lucide-react';
 
 interface ExtensionData {
   id: string;

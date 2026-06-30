@@ -52,7 +52,7 @@ function trimConversationHistory(history: any[], maxLen: number): any[] {
   return history.slice(Math.max(0, history.length - Math.floor(maxLen / 2)));
 }
 
-function hasDangerousAction(toolName: string, args: Record<string, any>): boolean {
+function hasDangerousAction(_toolName: string, args: Record<string, any>): boolean {
   if (!args) return false;
   const argStr = (JSON.stringify(args) || '').toLowerCase();
   return DANGEROUS_ACTIONS.some(action => argStr.includes(action));

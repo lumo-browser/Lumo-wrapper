@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import type { HomePageData, Task, AIProvider, QuickAction, Workflow } from '../../types/home.types';
+import type { HomePageData, Task, AIProvider } from '../../types/home.types';
 import { logger } from '@utils/logger';
 
 interface ApiResponse<T> {
@@ -10,10 +10,9 @@ interface ApiResponse<T> {
 
 class ApiService {
   client: AxiosInstance;
-  private baseURL: string;
 
   constructor(baseURL: string = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001') {
-    this.baseURL = baseURL;
+
     this.client = axios.create({
       baseURL: `${baseURL}/api`,
       timeout: 10000,

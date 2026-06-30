@@ -278,8 +278,6 @@ export class ConfidenceEvaluationService {
 
     // 5 minutes is optimal, scale from there
     const optimalTime = 300000; // 5 minutes
-    const ratio = Math.min(totalTime / optimalTime, 2);
-
     let score = 100;
 
     // If too fast (< 1s), might be unrealistic

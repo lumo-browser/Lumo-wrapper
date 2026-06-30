@@ -17,7 +17,7 @@ const DEFAULT_TABS: AISpaceTab[] = [
 
 export const useAISpaceStore = create<AISpaceStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       tabs: DEFAULT_TABS,
       activeTabId: 'tab-Lumo-main',
 

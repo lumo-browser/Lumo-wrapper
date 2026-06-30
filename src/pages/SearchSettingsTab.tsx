@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { Check, Search, ExternalLink, Plus, Trash2, TrendingUp, BookOpen, Clock, Globe, Zap, ChevronRight } from 'lucide-react';
+import { Check, Search, Plus, Trash2, TrendingUp, Globe, Zap } from 'lucide-react';
 import { BrowserSettings, SearchEngine, SEARCH_ENGINES } from './SettingsPage';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

@@ -7,7 +7,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
-  RotateCcw,
   X as XIcon,
   ShieldCheck,
   Shield,
@@ -15,24 +14,15 @@ import {
   Star,
   StarOff,
   Puzzle,
-  User,
+  RotateCcw,
   Sparkles,
   MoreHorizontal,
-  Sun,
-  Moon,
-  RefreshCcw,
   Cpu,
   Home,
   Download,
   Globe,
   Languages,
   EyeOff,
-  Lock,
-  Server,
-  FileText,
-  ExternalLink,
-  Terminal,
-  ShieldAlert,
 } from 'lucide-react';
 import { SecurityDashboard } from './SecurityDashboard';
 
@@ -73,9 +63,6 @@ export function BrowserToolbar({
   canGoForward,
   isLoading,
   isSecure,
-  isDark,
-  isLoggedIn,
-  userEmail,
   isBookmarked,
   isAISidebarOpen,
   isAgentOpen,
@@ -84,9 +71,7 @@ export function BrowserToolbar({
   onRefresh,
   onStop,
   onNavigate,
-  onToggleTheme,
   onToggleExtensions,
-  onOpenAccount,
   onToggleAI,
   onToggleAgent,
   onToggleBookmark,
@@ -108,19 +93,6 @@ export function BrowserToolbar({
   const searchCache = useRef(new Map<string, string[]>());
   const abortControllerRef = useRef<AbortController | null>(null);
   const securityDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Helper to extract domain for OSINT/Recon
-  const getDomain = (rawUrl: string): string => {
-    try {
-      if (!rawUrl || rawUrl.toLowerCase().startsWith('lumo://')) return '';
-      const parsed = new URL(rawUrl);
-      return parsed.hostname;
-    } catch {
-      return '';
-    }
-  };
-
-  const domain = getDomain(url);
 
   // Close security dropdown on click outside
   useEffect(() => {

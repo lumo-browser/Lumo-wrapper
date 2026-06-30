@@ -12,24 +12,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Plus,
-  Pin,
-  PinOff,
   Sparkles,
-  Bot,
   User,
   Send,
   Loader2,
-  Copy,
-  ChevronDown,
-  FileText,
-  Search,
-  Zap,
-  BookOpen,
 } from 'lucide-react';
 import { useAISpaceStore } from '../../store/ai-space.store';
-import { AI_PROVIDERS, type AIProviderId } from '../../types/ai-space.types';
+import { AI_PROVIDERS } from '../../types/ai-space.types';
 import { PlannerAgent } from '@services/agents';
-import { logger } from '@utils/logger';
+
 
 interface Message {
   id: string;
@@ -39,12 +30,6 @@ interface Message {
   isLoading?: boolean;
 }
 
-const QUICK_PROMPTS = [
-  { icon: FileText, label: 'Summarize', prompt: 'Summarize the main content of the current page.' },
-  { icon: Search,   label: 'Research',  prompt: 'Research this topic and provide a structured report.' },
-  { icon: Zap,      label: 'Plan task', prompt: 'Help me plan and automate a browser task step by step.' },
-  { icon: BookOpen, label: 'Key points', prompt: 'Extract the key facts and data from the current page.' },
-];
 
 interface AISidebarProps {
   isOpen: boolean;
@@ -55,7 +40,7 @@ interface AISidebarProps {
 }
 
 export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarProps): React.ReactElement | null {
-  const { tabs, activeTabId, addTab, removeTab, setActiveTab, togglePin } = useAISpaceStore();
+  const { tabs, activeTabId, addTab, removeTab, setActiveTab } = useAISpaceStore();
   const [showAddMenu, setShowAddMenu] = useState(false);
 
   if (!isOpen) return null;

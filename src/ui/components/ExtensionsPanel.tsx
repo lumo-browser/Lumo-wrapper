@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Puzzle, MoreVertical, Pin, Settings, X, Shield, Moon, Key, Cpu } from 'lucide-react';
+import { MoreVertical, Pin, Settings, X, Shield, Moon, Key, Cpu } from 'lucide-react';
 
 interface Extension {
   id: string;

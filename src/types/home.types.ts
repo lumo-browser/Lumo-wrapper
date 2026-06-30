@@ -44,3 +44,27 @@ export interface SuggestedAction {
   category: string;
   icon: string;
 }
+
+export interface HomePageData {
+  tasks: RecentTask[];
+  actions: QuickAction[];
+  providers: AIProvider[];
+  status: string;
+}
+
+export interface Task {
+  id: string;
+  goal: string;
+  status: 'completed' | 'failed' | 'in-progress' | 'pending';
+  timestamp: Date;
+  result?: string;
+  confidence_score?: number;
+}
+
+export interface Workflow {
+  id: string;
+  name: string;
+  description: string;
+  steps: string[];
+  status: 'active' | 'inactive';
+}

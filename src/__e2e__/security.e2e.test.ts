@@ -27,9 +27,9 @@ test.describe('Zero-Trust Security Architecture E2E', () => {
 
   test('Scenario 1: Malicious Network Request is Blocked', async () => {
     // Navigate to security dashboard
-    await window.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('lumo:open-page', { detail: 'lumo://security' }));
-    });
+    await window.evaluate((url: string) => {
+      (window as any).dispatchEvent(new CustomEvent('lumo:open-page', { detail: url }));
+    }, 'lumo://security');
     
     // Wait for the dashboard to render
     await expect(window.locator('text=Live Security Telemetry Console')).toBeVisible();
@@ -53,12 +53,12 @@ test.describe('Zero-Trust Security Architecture E2E', () => {
 
   test('Scenario 2: Clipboard Hijacking is Prevented', async () => {
     // Navigate to security dashboard
-    await window.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('lumo:open-page', { detail: 'lumo://security' }));
-    });
+    await window.evaluate((url: string) => {
+      (window as any).dispatchEvent(new CustomEvent('lumo:open-page', { detail: url }));
+    }, 'lumo://security');
 
     // Attempt to write crypto wallet address via clipboard API
-    const clipboardResult = await window.evaluate(async () => {
+    await window.evaluate(async () => {
       try {
         await navigator.clipboard.writeText('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh');
         return 'written';

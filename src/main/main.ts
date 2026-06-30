@@ -3,7 +3,7 @@
  * Self-contained — no shared imports from renderer code
  */
 
-import { app, BrowserWindow, Menu, MenuItem, session, ipcMain, nativeTheme, safeStorage, shell, globalShortcut, webContents } from 'electron';
+import { app, BrowserWindow, Menu, session, nativeTheme, safeStorage, shell, globalShortcut, webContents } from 'electron';
 import https from 'https';
 import path from 'path';
 import fs from 'fs';
@@ -11,7 +11,7 @@ import axios from 'axios';
 import { shouldBlock, AdBlockerStats, AdBlockerConfig, DEFAULT_CONFIG } from './adBlocker';
 import { monitorNetworkRequests, registerSecurityIPC } from './securityMonitor';
 import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
-import { validateScript, checkScriptInjectionRate } from './agent-guard';
+import { validateScript } from './agent-guard';
 
 // ── Ad Blocker State ──────────────────────────────────────────────────────────
 let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
@@ -71,7 +71,7 @@ function createWindow(): void {
 
   // If dev server unavailable, fall back to built files
   if (isDev) {
-    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    mainWindow.webContents.on('did-fail-load', (_event, _errorCode, errorDescription) => {
       if (url === devUrl) {
         console.log(`[Lumo] Dev server unavailable (${errorDescription}), falling back to built files`);
         url = prodUrl;
@@ -104,11 +104,11 @@ function createWindow(): void {
     console.error('[Lumo] Renderer process unresponsive');
   });
 
-  mainWindow.webContents.on('preload-error', (event, preloadPath, error) => {
+  mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
     console.error('[Lumo] Preload error:', preloadPath, error);
   });
 
-  mainWindow.webContents.on('render-process-gone', (event, details) => {
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
     console.error('[Lumo] Render process gone:', details);
   });
 
@@ -227,51 +227,6 @@ function viewDownloadIsolated(filePath: string, mimeType: string): void {
   }
 }
 
-function createMenu(): void {
-  const template: Electron.MenuItemConstructorOptions[] = [
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'Exit',
-          accelerator: 'CmdOrCtrl+Q',
-          click: (): void => {
-            app.quit();
-          },
-        },
-      ],
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { label: 'Undo', accelerator: 'CmdOrCtrl+Z', role: 'undo' },
-        { label: 'Redo', accelerator: 'CmdOrCtrl+Y', role: 'redo' },
-        { type: 'separator' },
-        { label: 'Cut', accelerator: 'CmdOrCtrl+X', role: 'cut' },
-        { label: 'Copy', accelerator: 'CmdOrCtrl+C', role: 'copy' },
-        { label: 'Paste', accelerator: 'CmdOrCtrl+V', role: 'paste' },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' },
-      ],
-    },
-  ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
-}
-
 app.on('ready', () => {
   console.log('[Lumo] App ready');
 
@@ -279,12 +234,12 @@ app.on('ready', () => {
   registerSecurityIPC(() => mainWindow);
 
   // Handle ad blocker toggle + config from renderer
-    guardedOn('lumo:set-ad-blocker', (event, enabled: boolean) => {
+    guardedOn('lumo:set-ad-blocker', (_event, enabled: boolean) => {
       console.log(`[Lumo] Ad blocker ${enabled ? 'enabled' : 'disabled'}`);
       adBlockerConfig = { ...adBlockerConfig, enabled };
     });
 
-    guardedOn('lumo:set-ad-blocker-config', (event, config: Partial<AdBlockerConfig>) => {
+    guardedOn('lumo:set-ad-blocker-config', (_event, config: Partial<AdBlockerConfig>) => {
       adBlockerConfig = { ...adBlockerConfig, ...config };
       console.log('[Lumo] Ad blocker config updated:', adBlockerConfig);
     });
@@ -298,13 +253,13 @@ app.on('ready', () => {
     });
 
     // Handle global theme changes from the renderer
-    guardedOn('lumo:set-theme', (event, theme: 'dark' | 'light' | 'system') => {
+    guardedOn('lumo:set-theme', (_event, theme: 'dark' | 'light' | 'system') => {
       console.log(`[Lumo] Global theme set to ${theme}`);
       nativeTheme.themeSource = theme;
     });
 
     // Default zoom — apply to the persist:lumo-main session
-    guardedOn('lumo:set-default-zoom', (event, factor: number) => {
+    guardedOn('lumo:set-default-zoom', (_event, factor: number) => {
       console.log(`[Lumo] Default zoom set to ${factor}`);
       // Zoom is applied per-webContents by the renderer; stored for new tabs
     });
@@ -373,7 +328,7 @@ app.on('ready', () => {
     });
 
     // Spell check
-    guardedOn('lumo:set-spell-check', (event, enabled: boolean) => {
+    guardedOn('lumo:set-spell-check', (_event, enabled: boolean) => {
       if (session.defaultSession) {
         session.defaultSession.setSpellCheckerEnabled(enabled);
       }
@@ -381,13 +336,13 @@ app.on('ready', () => {
       console.log(`[Lumo] Spell check ${enabled ? 'enabled' : 'disabled'}`);
     });
 
-    guardedOn('lumo:set-hardware-acceleration', (event, enabled: boolean) => {
+    guardedOn('lumo:set-hardware-acceleration', (_event, enabled: boolean) => {
       // Note: Hardware acceleration can typically only be disabled before app is ready.
       // A full implementation would persist this preference and read it on next boot.
       console.log('Hardware acceleration set to', enabled, '(requires restart)');
     });
 
-    guardedOn('lumo:set-memory-saver', (event, enabled: boolean) => {
+    guardedOn('lumo:set-memory-saver', (_event, enabled: boolean) => {
       // Memory saver implementation placeholder. A full implementation would
       // suspend background WebContents using webContents.backgroundThrottling
       console.log('Memory saver set to', enabled);
@@ -454,7 +409,7 @@ app.on('ready', () => {
     });
 
     // Download path + alwaysAsk
-    guardedOn('lumo:set-download-path', (event, { path: dlPath, alwaysAsk }: { path: string; alwaysAsk: boolean }) => {
+    guardedOn('lumo:set-download-path', (_event, { path: dlPath, alwaysAsk }: { path: string; alwaysAsk: boolean }) => {
       const handleDownload = (_event: Electron.Event, item: Electron.DownloadItem) => {
         if (alwaysAsk) {
           // Let Electron show the save dialog (default behavior)
@@ -561,7 +516,7 @@ app.on('ready', () => {
     });
 
     // Proxy settings
-    guardedOn('lumo:set-proxy', (event, { type, host, port }: { type: string; host: string; port: string }) => {
+    guardedOn('lumo:set-proxy', (_event, { type, host, port }: { type: string; host: string; port: string }) => {
       let proxyRules = '';
       if (type === 'none') {
         proxyRules = 'direct://';
@@ -576,7 +531,7 @@ app.on('ready', () => {
     });
 
     // Private session proxy settings
-    guardedOn('lumo:set-private-proxy', (event, { enabled, partitionId, type, host, port }: { enabled: boolean; partitionId: string; type?: string; host?: string; port?: string }) => {
+    guardedOn('lumo:set-private-proxy', (_event, { enabled, partitionId, type, host, port }: { enabled: boolean; partitionId: string; type?: string; host?: string; port?: string }) => {
       if (!partitionId) return;
       const sess = session.fromPartition(partitionId);
       if (!enabled) {
@@ -597,7 +552,7 @@ app.on('ready', () => {
     });
 
     // Test proxy connectivity
-    guardedHandle('lumo:test-proxy', async (event, { type, host, port }: { type: string; host: string; port: string }) => {
+    guardedHandle('lumo:test-proxy', async (_event, { type, host, port }: { type: string; host: string; port: string }) => {
       if (type === 'none') return true;
       if (!host || !port) throw new Error('No host/port configured');
       // Quick TCP check using Node net
@@ -613,7 +568,7 @@ app.on('ready', () => {
     });
 
     // Resolve DNS records for domain
-    guardedHandle('lumo:resolve-dns', async (event, { domain }: { domain: string }) => {
+    guardedHandle('lumo:resolve-dns', async (_event, { domain }: { domain: string }) => {
       const dns = require('dns').promises;
       const results: Record<string, any> = {};
       try {
@@ -668,7 +623,7 @@ app.on('ready', () => {
     };
 
     // Resolve WHOIS info for domain
-    guardedHandle('lumo:resolve-whois', async (event, { domain }: { domain: string }) => {
+    guardedHandle('lumo:resolve-whois', async (_event, { domain }: { domain: string }) => {
       const apexDomain = getApexDomain(domain);
       return new Promise<string>((resolve) => {
         const net = require('net');
@@ -709,7 +664,7 @@ app.on('ready', () => {
     });
 
     // Fetch site security headers
-    guardedHandle('lumo:resolve-headers', async (event, { url }: { url: string }) => {
+    guardedHandle('lumo:resolve-headers', async (_event, { url }: { url: string }) => {
       try {
         const response = await fetch(url, { method: 'HEAD', redirect: 'follow' });
         const headers: Record<string, string> = {};
@@ -723,7 +678,7 @@ app.on('ready', () => {
     });
 
     // Resolve SSL certificate details using tls socket connection
-    guardedHandle('lumo:resolve-certificates', async (event, { host }: { host: string }) => {
+    guardedHandle('lumo:resolve-certificates', async (_event, { host }: { host: string }) => {
       return new Promise((resolve) => {
         const tls = require('tls');
         let completed = false;
@@ -764,7 +719,7 @@ app.on('ready', () => {
     });
 
     // Detect technologies used on target site
-    guardedHandle('lumo:detect-tech', async (event, { url }: { url: string }) => {
+    guardedHandle('lumo:detect-tech', async (_event, { url }: { url: string }) => {
       try {
         if (!url || url.toLowerCase().startsWith('lumo://')) {
           return {
@@ -902,7 +857,7 @@ app.on('ready', () => {
     });
 
     // Check Reputation and threat intelligence
-    guardedHandle('lumo:threat-intel', async (event, { domain }: { domain: string }) => {
+    guardedHandle('lumo:threat-intel', async (_event, { domain }: { domain: string }) => {
       const isSuspiciousTLD = ['.zip', '.mov', '.ru', '.su', '.click', '.gq'].some(tld => domain.endsWith(tld));
       const reputationScore = isSuspiciousTLD ? 65 : 98;
       const threats = isSuspiciousTLD ? ['High Risk TLD Policy Violation'] : [];
@@ -928,7 +883,7 @@ app.on('ready', () => {
     });
 
   // Securely save/load API keys
-    guardedHandle('lumo:save-key', (event, key: string) => {
+    guardedHandle('lumo:save-key', (_event, key: string) => {
       try {
         if (!key) return '';
         if (safeStorage.isEncryptionAvailable()) {
@@ -942,7 +897,7 @@ app.on('ready', () => {
       }
     });
 
-    guardedHandle('lumo:load-key', (event, base64Key: string) => {
+    guardedHandle('lumo:load-key', (_event, base64Key: string) => {
       try {
         if (!base64Key) return '';
         const buffer = Buffer.from(base64Key, 'base64');
@@ -1055,7 +1010,7 @@ app.on('ready', () => {
   const ALGORITHM = 'aes-256-gcm';
   const KEY_LENGTH = 32; // 256 bits
   const IV_LENGTH = 16;  // 128 bits
-  const TAG_LENGTH = 16; // 128 bits
+
   const KEY_STORE_FILE = path.join(app.getPath('userData'), '.vault-key.enc');
 
   function getOrCreateVaultKey(): Buffer | null {

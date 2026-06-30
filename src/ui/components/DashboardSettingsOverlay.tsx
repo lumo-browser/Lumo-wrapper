@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Image as ImageIcon, Layout, Zap, Edit2, Plus, Clock, Search, Link2, Sparkles, Move, Code2, Globe } from 'lucide-react';
+import { X, Check, Image as ImageIcon, Layout, Zap, Clock, Search, Link2, Sparkles, Code2, Globe } from 'lucide-react';
 
 interface DashboardSettingsOverlayProps {
   isOpen: boolean;

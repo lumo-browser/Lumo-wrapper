@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface BrainNetworkThemeProps {
   shortcuts?: Array<{ id: string; label: string; url: string; color: string }>;
 }

@@ -116,7 +116,7 @@ describe('GoalParsingService', () => {
 
     it('should detect strict vs soft constraints', () => {
       const strictResult = service.analyze('Must quickly click the save button');
-      const softResult = service.analyze('Prefer to use the new interface');
+      service.analyze('Prefer to use the new interface');
 
       const strictConstraint = strictResult.constraints.find((c) => c.strict === true);
       expect(strictConstraint).toBeDefined();
@@ -234,7 +234,7 @@ describe('GoalParsingService', () => {
     it('should handle URLs with various formats', () => {
       const result1 = service.analyze('Visit www.example.com');
       const result2 = service.analyze('Go to https://example.com/path?query=value');
-      const result3 = service.analyze('Check example.com for details');
+      service.analyze('Check example.com for details');
 
       expect(result1.entities.filter((e) => e.type === 'url').length).toBeGreaterThan(0);
       expect(result2.entities.filter((e) => e.type === 'url').length).toBeGreaterThan(0);

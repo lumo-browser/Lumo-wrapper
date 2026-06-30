@@ -4,9 +4,8 @@
  * sequencing steps, detecting errors, and providing confidence scoring
  */
 
-import { BaseAgent, AgentContext, AgentStatus, AgentMessage } from './base-agent';
-import { Validator } from '@utils/validators';
-import { GoalParsingService, AnalyzedGoal } from '../goal-parsing.service';
+import { BaseAgent, AgentStatus } from './base-agent';
+import { GoalParsingService } from '../goal-parsing.service';
 
 export interface ParsedGoal {
   originalGoal: string;
@@ -53,19 +52,27 @@ export interface PlannerOutput {
  * Planner Agent - Decomposes goals into actionable steps
  */
 export class PlannerAgent extends BaseAgent {
-  private validator: Validator;
   private goalParser: GoalParsingService;
 
   constructor() {
     super('planner', 'agent');
-    this.validator = new Validator();
     this.goalParser = new GoalParsingService();
   }
 
   /**
    * Main execute method - creates a plan from a goal
    */
-  async execute(): Promise<PlannerOutput> {
+  async execute(overrides?: { goal?: string; context?: Record<string, unknown> }): Promise<PlannerOutput> {
+    if (this.context && overrides) {
+      if (overrides.goal) {
+        if (!this.context.variables) this.context.variables = {};
+        this.context.variables.goal = overrides.goal;
+      }
+      if (overrides.context) {
+        if (!this.context.variables) this.context.variables = {};
+        Object.assign(this.context.variables, overrides.context as Record<string, unknown>);
+      }
+    }
     if (!this.validateContext()) {
       throw new Error('Planner agent context not initialized');
     }

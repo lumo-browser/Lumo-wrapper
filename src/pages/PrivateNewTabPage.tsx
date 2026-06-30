@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Globe, Plus, X,
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag,
-  Layers, Sparkles, EyeOff, Shield
+  EyeOff, Shield
 } from 'lucide-react';
 import { BrowserSettings, SEARCH_ENGINES } from './SettingsPage';
 

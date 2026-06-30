@@ -13,22 +13,11 @@ import { SystemSettingsTab } from './SystemSettingsTab';
 import { ProfileSettingsTab } from './ProfileSettingsTab';
 import { LanguageSettingsTab } from './LanguageSettingsTab';
 import {
-  Sun,
-  Moon,
-  Monitor,
   Search,
   Shield,
   Trash2,
-  Download,
   Info,
-  ChevronRight,
-  Check,
   Globe,
-  Eye,
-  EyeOff,
-  Cookie,
-  HardDrive,
-  Cpu,
   Home,
   RefreshCw,
   Settings,
@@ -134,11 +123,6 @@ const SEARCH_ENGINES: { id: SearchEngine; name: string; url: string; icon: strin
   { id: 'yahoo',       name: 'Yahoo',       url: 'https://search.yahoo.com/search?p=',        icon: 'Y' },
 ];
 
-const THEME_OPTIONS: { id: ThemeMode; name: string; icon: React.ReactNode }[] = [
-  { id: 'light',  name: 'Light',  icon: <Sun className="w-4 h-4" /> },
-  { id: 'dark',   name: 'Dark',   icon: <Moon className="w-4 h-4" /> },
-  { id: 'system', name: 'System', icon: <Monitor className="w-4 h-4" /> },
-];
 
 export function SettingSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -211,7 +195,7 @@ export function SettingsPage({
   bookmarkCount,
 }: SettingsPageProps): React.ReactElement {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [localFontSize, setLocalFontSize] = useState(settings.fontSize);
+  const [, setLocalFontSize] = useState(settings.fontSize);
   const [activeTab, setActiveTab] = useState<'profiles' | 'general' | 'home' | 'search' | 'privacy' | 'passwords' | 'downloads' | 'system' | 'languages' | 'sync' | 'about'>('general');
 
   useEffect(() => {

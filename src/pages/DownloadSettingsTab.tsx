@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserSettings, SettingSection, SettingRow, Toggle } from './SettingsPage';
 import { Download, FolderOpen } from 'lucide-react';
 

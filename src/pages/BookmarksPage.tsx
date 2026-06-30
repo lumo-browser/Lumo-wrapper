@@ -12,9 +12,7 @@ import {
   X,
   Grid,
   List,
-  Plus,
   Bookmark,
-  Globe,
 } from 'lucide-react';
 
 export interface BookmarkEntry {
@@ -68,7 +66,7 @@ function timeAgo(ts: number): string {
   }
 }
 
-export function BookmarksPage({ bookmarks, onNavigate, onDeleteBookmark, onClearAll }: BookmarksPageProps): React.ReactElement {
+export function BookmarksPage({ bookmarks, onNavigate, onDeleteBookmark }: BookmarksPageProps): React.ReactElement {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 

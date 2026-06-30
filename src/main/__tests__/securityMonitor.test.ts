@@ -21,7 +21,7 @@ describe('Security Monitor', () => {
   });
 
   it('should attach to onBeforeRequest', () => {
-    monitorNetworkRequests(mockSession as any, mockWindow as any);
+    monitorNetworkRequests(mockSession as any, mockWindow as any, 'test-session');
     expect(mockSession.webRequest.onBeforeRequest).toHaveBeenCalled();
   });
 });

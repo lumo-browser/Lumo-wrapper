@@ -3,11 +3,11 @@
  * Clean, glassmorphic new-tab dashboard with clock, search, shortcuts, and AI tips.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Globe, Plus, X,
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag,
-  Layers, Sparkles, Command, Settings
+  Layers, Sparkles, Settings
 } from 'lucide-react';
 import { DashboardSettingsOverlay } from '../ui/components/DashboardSettingsOverlay';
 import { JapanCherryBlossomTheme } from '../ui/components/JapanCherryBlossomTheme';
@@ -417,7 +417,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
   const config = useDashboardConfig();
   
   // Force light mode text (dark text) when bright themes are active
-  const [themeIsDark, setThemeIsDark] = useState(isDark);
+  const [themeIsDark] = useState(isDark);
   const [shortcuts, setShortcuts] = useState(() => {
     try { const s = localStorage.getItem('lumo-shortcuts-v2'); if (s) return JSON.parse(s); } catch {}
     return DEFAULT_SHORTCUTS;

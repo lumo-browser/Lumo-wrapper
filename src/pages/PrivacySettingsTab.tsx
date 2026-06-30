@@ -6,9 +6,9 @@
 
 import React, { useState } from 'react';
 import {
-  Shield, Cookie, Lock, Clock, MapPin, Camera, Mic, Bell,
-  Play, Trash2, ChevronRight, AlertTriangle, Globe, Wifi,
-  Database, Eye, EyeOff, Check, Info,
+  Shield, Cookie, Lock, Clock, Bell,
+  Trash2, ChevronRight, AlertTriangle, Wifi,
+  Database, Check,
 } from 'lucide-react';
 import { BrowserSettings } from './SettingsPage';
 
