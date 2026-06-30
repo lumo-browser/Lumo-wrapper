@@ -25,7 +25,7 @@ export interface ActionTemplate {
   riskLevel: 'low' | 'medium' | 'high';
 }
 
-export interface DecompositionStrategy {
+export interface StrategyDefinition {
   type: DecompositionStrategy;
   description: string;
   maxActions: number;
@@ -139,7 +139,7 @@ const ACTION_TEMPLATES: Record<string, ActionTemplate[]> = {
 /**
  * Decomposition strategy definitions
  */
-const STRATEGY_DEFINITIONS: Record<DecompositionStrategy, DecompositionStrategy> = {
+const STRATEGY_DEFINITIONS: Record<DecompositionStrategy, StrategyDefinition> = {
   [DecompositionStrategy.LINEAR]: {
     type: DecompositionStrategy.LINEAR,
     description: 'Sequential execution of actions',
@@ -186,8 +186,7 @@ export class ActionDecompositionService {
    * Decompose a goal into actions using appropriate strategy
    */
   public decompose(goal: ParsedGoal, strategy?: DecompositionStrategy): DecomposedAction[] {
-    this.logger.debug('Decomposing goal', {
-      scope: 'ActionDecompositionService',
+    this.logger.debug('ActionDecompositionService', 'Decomposing goal', {
       objective: goal.mainObjective,
       strategy
     });

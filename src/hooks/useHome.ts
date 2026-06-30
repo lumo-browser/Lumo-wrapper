@@ -3,14 +3,14 @@
  */
 
 import { useEffect } from 'react';
-import { useHomeStore } from '@store/home.store';
+import { useHomeStore, HomeStore } from '@store/home.store';
 import { HomeService } from '@services/home/home.service';
 import { Logger } from '@utils/logger';
 
-const logger = new Logger('useHome');
+const logger = Logger.getInstance();
 const SCOPE = 'useHome';
 
-export function useHome(): ReturnType<typeof useHomeStore> & { initialize: () => Promise<void> } {
+export function useHome(): HomeStore & { initialize: () => Promise<void> } {
   const store = useHomeStore();
 
   const initialize = async (): Promise<void> => {

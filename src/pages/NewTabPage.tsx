@@ -16,7 +16,7 @@ import { BrainNetworkTheme } from '../ui/components/BrainNetworkTheme';
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ShortcutItem { id: string; label: string; url: string; icon: string; color: string; }
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   Youtube, Github, TrendingUp, Newspaper, Code2, ShoppingBag, Globe,
 };
 
@@ -356,7 +356,7 @@ function AmbientOrbs({ isDark }: { isDark: boolean }) {
 interface NewTabPageProps { onNavigate: (url: string) => void; isDark?: boolean; }
 
 
-function hexToRgb(hex) {
+function hexToRgb(hex: string) {
   const c = (hex || '').replace('#', '');
   if (c.length !== 6) return '139,92,246';
   const r = parseInt(c.substring(0, 2), 16);
@@ -366,7 +366,19 @@ function hexToRgb(hex) {
 }
 
 function useDashboardConfig() {
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<{
+    theme: string;
+    accentColor: string;
+    bgImage: string;
+    showClock: boolean;
+    showSearch: boolean;
+    showShortcuts: boolean;
+    showAITips: boolean;
+    customHtml?: string;
+    customCss?: string;
+    customJs?: string;
+    savedThemes?: Array<{ id: string; customHtml: string; customCss: string; customJs: string }>;
+  }>({
     theme: 'custom',
     accentColor: '#8b5cf6',
     bgImage: '',

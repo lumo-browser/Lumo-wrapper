@@ -6,7 +6,7 @@
 import React from 'react';
 import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import clsx from 'clsx';
-import { RecentTask } from '@types/home.types';
+import { RecentTask } from '../../../types/home.types';
 
 interface RecentTasksProps {
   tasks: RecentTask[];

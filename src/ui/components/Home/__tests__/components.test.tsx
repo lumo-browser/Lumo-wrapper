@@ -10,7 +10,7 @@ import { QuickActions } from '../QuickActions';
 import { AIStatusWidget } from '../AIStatusWidget';
 import { ProviderStatus } from '../ProviderStatus';
 import { WorkflowShortcuts } from '../WorkflowShortcuts';
-import { RecentTask, QuickAction, AIProvider } from '@types/home.types';
+import type { RecentTask, QuickAction, AIProvider } from '../../../../types/home.types';
 
 // ===== SearchBar Tests =====
 describe('SearchBar', () => {

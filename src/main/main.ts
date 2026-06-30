@@ -797,7 +797,7 @@ app.on('ready', () => {
         };
 
         // 1. Infrastructure (Servers, proxies, engines)
-        const server = (headers['server'] || '').toLowerCase();
+        const server = String(headers['server'] || '').toLowerCase();
         if (server.includes('nginx')) tech.infrastructure.push('Nginx');
         if (server.includes('apache')) tech.infrastructure.push('Apache');
         if (server.includes('iis') || server.includes('microsoft-iis')) tech.infrastructure.push('IIS');

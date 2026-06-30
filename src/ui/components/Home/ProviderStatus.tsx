@@ -6,7 +6,7 @@
 import React from 'react';
 import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
-import { AIProvider } from '@types/home.types';
+import { AIProvider } from '../../../types/home.types';
 
 interface ProviderStatusProps {
   providers: AIProvider[];

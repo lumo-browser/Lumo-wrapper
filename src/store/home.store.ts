@@ -3,9 +3,9 @@
  */
 
 import { create } from 'zustand';
-import { HomeState, RecentTask, QuickAction, AIProvider } from '@types/home.types';
+import { HomeState, RecentTask, QuickAction, AIProvider } from '../types/home.types';
 
-interface HomeStore extends HomeState {
+export interface HomeStore extends HomeState {
   setRecentTasks: (tasks: RecentTask[]) => void;
   addRecentTask: (task: RecentTask) => void;
   setSuggestedActions: (actions: QuickAction[]) => void;

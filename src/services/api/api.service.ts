@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { HomePageData, Task, AIProvider, QuickAction, Workflow } from '@types/home.types';
+import type { HomePageData, Task, AIProvider, QuickAction, Workflow } from '../../types/home.types';
 import { logger } from '@utils/logger';
 
 interface ApiResponse<T> {
@@ -9,10 +9,10 @@ interface ApiResponse<T> {
 }
 
 class ApiService {
-  private client: AxiosInstance;
+  client: AxiosInstance;
   private baseURL: string;
 
-  constructor(baseURL: string = import.meta.env.VITE_API_URL || 'http://localhost:3001') {
+  constructor(baseURL: string = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001') {
     this.baseURL = baseURL;
     this.client = axios.create({
       baseURL: `${baseURL}/api`,
@@ -39,10 +39,10 @@ class ApiService {
   async getHomeData(): Promise<HomePageData> {
     try {
       const response = await this.client.get<ApiResponse<HomePageData>>('/home/data');
-      logger.info('HomePageData fetched successfully');
+      logger.info('ApiService', 'HomePageData fetched successfully');
       return response.data.data;
     } catch (error) {
-      logger.error('Failed to fetch home data:', error);
+      logger.error('ApiService', 'Failed to fetch home data', error);
       throw error;
     }
   }
@@ -50,10 +50,10 @@ class ApiService {
   async search(query: string): Promise<Task> {
     try {
       const response = await this.client.post<ApiResponse<Task>>('/home/search', { query });
-      logger.info(`Search initiated: ${query}`);
+      logger.info('ApiService', `Search initiated: ${query}`);
       return response.data.data;
     } catch (error) {
-      logger.error('Search failed:', error);
+      logger.error('ApiService', 'Search failed', error);
       throw error;
     }
   }
@@ -63,10 +63,10 @@ class ApiService {
       const response = await this.client.post<ApiResponse<{ taskId: string; executed: boolean }>>(
         `/home/action/${actionId}/execute`
       );
-      logger.info(`Action executed: ${actionId}`);
+      logger.info('ApiService', `Action executed: ${actionId}`);
       return response.data.data;
     } catch (error) {
-      logger.error('Action execution failed:', error);
+      logger.error('ApiService', 'Action execution failed', error);
       throw error;
     }
   }
@@ -76,10 +76,10 @@ class ApiService {
       const response = await this.client.post<ApiResponse<{ workflowId: string; executed: boolean }>>(
         `/home/workflow/${workflowId}/execute`
       );
-      logger.info(`Workflow executed: ${workflowId}`);
+      logger.info('ApiService', `Workflow executed: ${workflowId}`);
       return response.data.data;
     } catch (error) {
-      logger.error('Workflow execution failed:', error);
+      logger.error('ApiService', 'Workflow execution failed', error);
       throw error;
     }
   }
@@ -88,10 +88,10 @@ class ApiService {
   async getTaskList(limit: number = 10): Promise<Task[]> {
     try {
       const response = await this.client.get<ApiResponse<Task[]>>('/tasks', { params: { limit } });
-      logger.info(`${response.data.data.length} tasks fetched`);
+      logger.info('ApiService', `${response.data.data.length} tasks fetched`);
       return response.data.data;
     } catch (error) {
-      logger.error('Failed to fetch tasks:', error);
+      logger.error('ApiService', 'Failed to fetch tasks', error);
       throw error;
     }
   }
@@ -99,10 +99,10 @@ class ApiService {
   async getTask(taskId: string): Promise<Task> {
     try {
       const response = await this.client.get<ApiResponse<Task>>(`/tasks/${taskId}`);
-      logger.info(`Task fetched: ${taskId}`);
+      logger.info('ApiService', `Task fetched: ${taskId}`);
       return response.data.data;
     } catch (error) {
-      logger.error('Failed to fetch task:', error);
+      logger.error('ApiService', 'Failed to fetch task', error);
       throw error;
     }
   }
@@ -110,10 +110,10 @@ class ApiService {
   async createTask(goal: string, status: string = 'in-progress'): Promise<Task> {
     try {
       const response = await this.client.post<ApiResponse<Task>>('/tasks', { goal, status });
-      logger.info(`Task created: ${response.data.data.id}`);
+      logger.info('ApiService', `Task created: ${response.data.data.id}`);
       return response.data.data;
     } catch (error) {
-      logger.error('Failed to create task:', error);
+      logger.error('ApiService', 'Failed to create task', error);
       throw error;
     }
   }
@@ -124,10 +124,10 @@ class ApiService {
   ): Promise<Partial<Task>> {
     try {
       const response = await this.client.patch<ApiResponse<Partial<Task>>>(`/tasks/${taskId}`, updates);
-      logger.info(`Task updated: ${taskId}`);
+      logger.info('ApiService', `Task updated: ${taskId}`);
       return response.data.data;
     } catch (error) {
-      logger.error('Failed to update task:', error);
+      logger.error('ApiService', 'Failed to update task', error);
       throw error;
     }
   }
@@ -135,9 +135,9 @@ class ApiService {
   async deleteTask(taskId: string): Promise<void> {
     try {
       await this.client.delete(`/tasks/${taskId}`);
-      logger.info(`Task deleted: ${taskId}`);
+      logger.info('ApiService', `Task deleted: ${taskId}`);
     } catch (error) {
-      logger.error('Failed to delete task:', error);
+      logger.error('ApiService', 'Failed to delete task', error);
       throw error;
     }
   }
@@ -146,10 +146,10 @@ class ApiService {
   async getProviders(): Promise<AIProvider[]> {
     try {
       const response = await this.client.get<ApiResponse<AIProvider[]>>('/providers');
-      logger.info(`${response.data.data.length} providers fetched`);
+      logger.info('ApiService', `${response.data.data.length} providers fetched`);
       return response.data.data;
     } catch (error) {
-      logger.error('Failed to fetch providers:', error);
+      logger.error('ApiService', 'Failed to fetch providers', error);
       throw error;
     }
   }
@@ -162,10 +162,10 @@ class ApiService {
         model,
         api_key,
       });
-      logger.info(`Provider added: ${name}`);
+      logger.info('ApiService', `Provider added: ${name}`);
       return response.data.data;
     } catch (error) {
-      logger.error('Failed to add provider:', error);
+      logger.error('ApiService', 'Failed to add provider', error);
       throw error;
     }
   }
@@ -179,10 +179,10 @@ class ApiService {
         `/providers/${providerId}/status`,
         { status }
       );
-      logger.info(`Provider status updated: ${providerId} -> ${status}`);
+      logger.info('ApiService', `Provider status updated: ${providerId} -> ${status}`);
       return response.data.data;
     } catch (error) {
-      logger.error('Failed to update provider status:', error);
+      logger.error('ApiService', 'Failed to update provider status', error);
       throw error;
     }
   }
@@ -190,9 +190,9 @@ class ApiService {
   async deleteProvider(providerId: string): Promise<void> {
     try {
       await this.client.delete(`/providers/${providerId}`);
-      logger.info(`Provider deleted: ${providerId}`);
+      logger.info('ApiService', `Provider deleted: ${providerId}`);
     } catch (error) {
-      logger.error('Failed to delete provider:', error);
+      logger.error('ApiService', 'Failed to delete provider', error);
       throw error;
     }
   }
@@ -203,7 +203,7 @@ class ApiService {
       const response = await this.client.get<{ status: string; timestamp: string }>('/health');
       return response.data;
     } catch (error) {
-      logger.error('Health check failed:', error);
+      logger.error('ApiService', 'Health check failed', error);
       throw error;
     }
   }

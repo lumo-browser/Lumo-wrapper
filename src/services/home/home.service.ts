@@ -4,10 +4,10 @@
  */
 
 import { Logger } from '@utils/logger';
-import { RecentTask, QuickAction, AIProvider } from '@types/home.types';
+import type { RecentTask, QuickAction, AIProvider } from '../../types/home.types';
 import { apiService } from '@services/api/api.service';
 
-const logger = new Logger('HomeService');
+const logger = Logger.getInstance();
 const SCOPE = 'HomeService';
 
 export class HomeService {

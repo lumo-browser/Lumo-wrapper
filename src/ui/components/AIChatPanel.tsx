@@ -97,16 +97,16 @@ export function AIChatPanel({ isOpen, onClose, isLoggedIn, onRequestLogin }: AIC
       await planner.initialize({
         conversationId: `chat-${Date.now()}`,
         sessionId: `session-${Date.now()}`,
-        pageContext: { url: window.location.href, title: document.title },
+        pageContext: { url: window.location.href, title: document.title, content: document.title },
         previousResults: [],
         variables: {},
       });
 
       const result = await planner.execute({ goal: text, context: { currentPage: window.location.href } });
 
-      const steps = result.plan.map((a, i) => `${i + 1}. **${a.type.toUpperCase()}** — ${a.description ?? ''}`).join('\n');
-      const summary = result.plan.length > 0
-        ? `I have analyzed your request and created a ${result.plan.length}-step plan:\n\n${steps}\n\nEstimated time: ${(result.estimatedDuration / 1000).toFixed(1)}s  |  Confidence: ${result.confidence}%`
+      const steps = result.plan.actions.map((a, i) => `${i + 1}. **${a.type.toUpperCase()}** — ${a.description ?? ''}`).join('\n');
+      const summary = result.plan.actions.length > 0
+        ? `I have analyzed your request and created a ${result.plan.actions.length}-step plan:\n\n${steps}\n\nEstimated time: ${(result.estimatedDuration / 1000).toFixed(1)}s  |  Confidence: ${result.confidence}%`
         : `I understand your request: "${text}". Let me help you with that. Could you provide more context or specify the website you want to work with?`;
 
       const assistantMsg: ChatMessage = {
@@ -115,7 +115,7 @@ export function AIChatPanel({ isOpen, onClose, isLoggedIn, onRequestLogin }: AIC
         content: summary,
         timestamp: new Date(),
         confidence: result.confidence,
-        planSteps: result.plan.length,
+        planSteps: result.plan.actions.length,
       };
 
       setMessages((prev) => prev.filter((m) => !m.isLoading).concat(assistantMsg));

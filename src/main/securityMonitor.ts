@@ -30,6 +30,7 @@ interface SecurityEvent {
   timestamp: string;
   source?: string;
   suspicious?: boolean;
+  mitigated?: boolean;
   detection?: DetectionResult;
 }
 

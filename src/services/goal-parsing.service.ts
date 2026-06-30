@@ -122,7 +122,7 @@ export class GoalParsingService {
    * Main analyze method - comprehensive goal analysis
    */
   public analyze(goal: string): AnalyzedGoal {
-    this.logger.debug('Analyzing goal', { scope: 'GoalParsingService', goal });
+    this.logger.debug('GoalParsingService', 'Analyzing goal', { goal });
 
     // Validate input
     try {
@@ -159,7 +159,7 @@ export class GoalParsingService {
    * Extract primary intent from goal
    */
   private extractIntent(goal: string): GoalIntent {
-    let bestMatch: { type: keyof typeof INTENT_KEYWORDS; confidence: number } = {
+    let bestMatch: { type: keyof typeof INTENT_KEYWORDS | 'unknown'; confidence: number } = {
       type: 'unknown',
       confidence: 0
     };

@@ -141,8 +141,8 @@ export function BrowserTabBar({
                 marginLeft: tab.isActive && !isFirst ? '-1px' : undefined,
                 marginRight: tab.isActive && !isLast ? '-1px' : undefined,
                 WebkitAppRegion: 'no-drag',
-                pointerEvents: 'auto' as any,
-              }}
+                pointerEvents: 'auto',
+              } as React.CSSProperties}
             >
               {/* Group color strip — shown at bottom of tab when grouped */}
               {tab.groupColor && (

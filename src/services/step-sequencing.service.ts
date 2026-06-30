@@ -66,16 +66,14 @@ export class StepSequencingService {
    * Sequence actions based on dependencies and constraints
    */
   public sequence(actions: DecomposedAction[], constraints?: SequencingConstraint[]): SequencedAction[] {
-    this.logger.debug('Sequencing actions', {
-      scope: 'StepSequencingService',
+    this.logger.debug('StepSequencingService', 'Sequencing actions', {
       actionCount: actions.length
     });
 
     // Validate dependencies
     const validation = this.validateDependencies(actions);
     if (!validation.valid) {
-      this.logger.warn('Dependency validation failed', {
-        scope: 'StepSequencingService',
+      this.logger.warn('StepSequencingService', 'Dependency validation failed', {
         errors: validation.errors
       });
     }
@@ -275,8 +273,7 @@ export class StepSequencingService {
     constraint: SequencingConstraint
   ): SequencedAction[] {
     // Re-sequence based on specified order
-    this.logger.debug('Applying ordering constraint', {
-      scope: 'StepSequencingService',
+    this.logger.debug('StepSequencingService', 'Applying ordering constraint', {
       constraint: constraint.description
     });
 
@@ -290,8 +287,7 @@ export class StepSequencingService {
     actions: SequencedAction[],
     constraint: SequencingConstraint
   ): SequencedAction[] {
-    this.logger.debug('Applying timing constraint', {
-      scope: 'StepSequencingService',
+    this.logger.debug('StepSequencingService', 'Applying timing constraint', {
       constraint: constraint.description
     });
 
@@ -314,8 +310,7 @@ export class StepSequencingService {
     actions: SequencedAction[],
     constraint: SequencingConstraint
   ): SequencedAction[] {
-    this.logger.debug('Applying resource constraint', {
-      scope: 'StepSequencingService',
+    this.logger.debug('StepSequencingService', 'Applying resource constraint', {
       constraint: constraint.description
     });
 
@@ -333,8 +328,7 @@ export class StepSequencingService {
     actions: SequencedAction[],
     constraint: SequencingConstraint
   ): SequencedAction[] {
-    this.logger.debug('Applying conditional constraint', {
-      scope: 'StepSequencingService',
+    this.logger.debug('StepSequencingService', 'Applying conditional constraint', {
       constraint: constraint.description
     });
 
@@ -345,9 +339,7 @@ export class StepSequencingService {
    * Calculate sequence statistics
    */
   public getStatistics(actions: SequencedAction[]): SequenceStatistics {
-    this.logger.debug('Calculating sequence statistics', {
-      scope: 'StepSequencingService'
-    });
+    this.logger.debug('StepSequencingService', 'Calculating sequence statistics');
 
     const stats: SequenceStatistics = {
       totalActions: actions.length,

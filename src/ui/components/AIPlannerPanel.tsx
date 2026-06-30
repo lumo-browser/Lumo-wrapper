@@ -43,6 +43,7 @@ export function AIPlannerPanel(): React.ReactElement {
         pageContext: {
           url: 'http://localhost:5173',
           title: 'Lumo Browser',
+          content: 'Lumo Browser',
         },
         previousResults: [],
         variables: {},
@@ -57,10 +58,10 @@ export function AIPlannerPanel(): React.ReactElement {
         ...s,
         isLoading: false,
         currentPlan: result,
-        successMessage: `Plan created with ${result.plan.length} steps (${result.confidence}% confidence)`,
+        successMessage: `Plan created with ${result.plan.actions.length} steps (${result.confidence}% confidence)`,
       }));
 
-      logger.info(SCOPE, 'Plan created successfully', { confidence: result.confidence, steps: result.plan.length });
+      logger.info(SCOPE, 'Plan created successfully', { confidence: result.confidence, steps: result.plan.actions.length });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create plan';
       setState((s) => ({ ...s, isLoading: false, error: errorMessage }));
@@ -163,10 +164,10 @@ export function AIPlannerPanel(): React.ReactElement {
             {/* Plan Steps */}
             <div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                Steps ({state.currentPlan.plan.length})
+                Steps ({state.currentPlan.plan.actions.length})
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {state.currentPlan.plan.map((action, idx) => (
+                {state.currentPlan.plan.actions.map((action, idx) => (
                   <div key={idx} className="p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs">
                     <p className="font-medium text-gray-900 dark:text-white">
                       {idx + 1}. {action.type.toUpperCase()}
@@ -174,8 +175,8 @@ export function AIPlannerPanel(): React.ReactElement {
                     {action.description && (
                       <p className="text-gray-600 dark:text-gray-400 mt-1">{action.description}</p>
                     )}
-                    {action.estimatedDuration && (
-                      <p className="text-gray-500 dark:text-gray-400 mt-1">{action.estimatedDuration}ms</p>
+                    {(action as any).estimatedDuration && (
+                      <p className="text-gray-500 dark:text-gray-400 mt-1">{(action as any).estimatedDuration}ms</p>
                     )}
                   </div>
                 ))}

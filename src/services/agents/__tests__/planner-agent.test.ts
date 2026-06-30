@@ -248,7 +248,7 @@ describe('PlannerAgent', () => {
       // Verify all dependencies exist as actions
       for (const action of actions) {
         for (const dep of action.dependencies || []) {
-          const depExists = actions.some((a) => a.id === dep);
+          const depExists = actions.some((a) => a.actionId === dep);
           if (!depExists) {
             // Dependency not found - should be in errors
             expect(output.errors.some((e) => e.includes(dep))).toBe(true);

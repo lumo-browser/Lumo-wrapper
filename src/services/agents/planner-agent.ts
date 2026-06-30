@@ -5,9 +5,7 @@
  */
 
 import { BaseAgent, AgentContext, AgentStatus, AgentMessage } from './base-agent';
-import { WorkflowPlan, WorkflowAction } from '@types';
 import { Validator } from '@utils/validators';
-import { APP_VERSION, SYSTEM_PROMPTS } from '@core/constants';
 import { GoalParsingService, AnalyzedGoal } from '../goal-parsing.service';
 
 export interface ParsedGoal {
@@ -34,8 +32,17 @@ export interface SequencedStep {
   rollbackAction?: DecomposedAction;
 }
 
+interface AgentPlan {
+  id: string;
+  goal: string;
+  actions: DecomposedAction[];
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PlannerOutput {
-  plan: WorkflowPlan;
+  plan: AgentPlan;
   confidence: number;
   errors: string[];
   warnings: string[];
@@ -96,7 +103,7 @@ export class PlannerAgent extends BaseAgent {
       const estimatedDuration = this.estimateDuration(steps);
 
       // Create final plan
-      const plan: WorkflowPlan = {
+      const plan: AgentPlan = {
         id: this.generatePlanId(),
         goal,
         actions: steps.map((s) => s.action),
@@ -125,7 +132,7 @@ export class PlannerAgent extends BaseAgent {
    * Parse user goal into structured format
    */
   private parseGoal(goal: string): ParsedGoal {
-    this.logger.debug('Parsing goal', { scope: 'Planner', goal });
+    this.logger.debug('Planner', 'Parsing goal', { goal });
 
     // Use GoalParsingService for advanced parsing
     const analyzed = this.goalParser.analyze(goal);
@@ -147,7 +154,7 @@ export class PlannerAgent extends BaseAgent {
    * Decompose goal into individual actions
    */
   private decomposeGoal(parsedGoal: ParsedGoal): DecomposedAction[] {
-    this.logger.debug('Decomposing goal', { scope: 'Planner', goal: parsedGoal.mainObjective });
+    this.logger.debug('Planner', 'Decomposing goal', { goal: parsedGoal.mainObjective });
 
     const actions: DecomposedAction[] = [];
     const baseId = this.generateId();
@@ -219,7 +226,7 @@ export class PlannerAgent extends BaseAgent {
    * Sequence actions based on dependencies
    */
   private sequenceActions(actions: DecomposedAction[]): SequencedStep[] {
-    this.logger.debug('Sequencing actions', { scope: 'Planner', count: actions.length });
+    this.logger.debug('Planner', 'Sequencing actions', { count: actions.length });
 
     // Sort by dependencies and priority
     const sorted = actions.sort((a, b) => {
@@ -240,7 +247,7 @@ export class PlannerAgent extends BaseAgent {
    * Detect errors in the plan
    */
   private detectErrors(steps: SequencedStep[]): string[] {
-    this.logger.debug('Detecting errors in plan', { scope: 'Planner', steps: steps.length });
+    this.logger.debug('Planner', 'Detecting errors in plan', { steps: steps.length });
 
     const errors: string[] = [];
 
@@ -267,7 +274,7 @@ export class PlannerAgent extends BaseAgent {
    * Detect warnings in the plan
    */
   private detectWarnings(steps: SequencedStep[]): string[] {
-    this.logger.debug('Detecting warnings in plan', { scope: 'Planner', steps: steps.length });
+    this.logger.debug('Planner', 'Detecting warnings in plan', { steps: steps.length });
 
     const warnings: string[] = [];
 

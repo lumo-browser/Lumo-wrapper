@@ -60,9 +60,7 @@ export class ConfidenceEvaluationService {
     validationReport: ValidationReport,
     goalComplexity: number
   ): ConfidenceResult {
-    this.logger.debug('Evaluating plan confidence', {
-      scope: 'ConfidenceEvaluationService'
-    });
+    this.logger.debug('ConfidenceEvaluationService', 'Evaluating plan confidence');
 
     // Calculate all factors
     const factors: ConfidenceFactors = {

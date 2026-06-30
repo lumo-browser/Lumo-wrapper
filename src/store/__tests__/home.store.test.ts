@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { useHomeStore } from '../home.store';
-import { RecentTask, QuickAction, AIProvider } from '@types/home.types';
+import type { RecentTask, QuickAction, AIProvider } from '../../types/home.types';
 
 describe('useHomeStore', () => {
   it('should have initial state', () => {

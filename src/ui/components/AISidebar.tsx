@@ -6,18 +6,7 @@
  * Providers run in webviews alongside the native Lumo Assistant.
  */
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      webview: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        src?: string;
-        allowpopups?: string;
-        partition?: string;
-        useragent?: string;
-      };
-    }
-  }
-}
+
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -205,14 +194,14 @@ function LumoAssistant({ currentUrl, pageTitle }: { currentUrl: string; pageTitl
       await planner.initialize({
         conversationId: `ai-${Date.now()}`,
         sessionId: `s-${Date.now()}`,
-        pageContext: { url: currentUrl, title: pageTitle },
+        pageContext: { url: currentUrl, title: pageTitle, content: pageTitle },
         previousResults: [],
         variables: {},
       });
 
       const result = await planner.execute({ goal: trimmed, context: { currentPage: currentUrl } });
-      const reply = result.plan.length > 0
-        ? `Here is my plan (${result.confidence}% confidence):\n\n${result.plan.map((a, i) => `${i + 1}. ${a.type.toUpperCase()}${a.description ? ` — ${a.description}` : ''}`).join('\n')}\n\nEstimated time: ${(result.estimatedDuration / 1000).toFixed(1)}s`
+      const reply = result.plan.actions.length > 0
+        ? `Here is my plan (${result.confidence}% confidence):\n\n${result.plan.actions.map((a, i) => `${i + 1}. ${a.type.toUpperCase()}${a.description ? ` — ${a.description}` : ''}`).join('\n')}\n\nEstimated time: ${(result.estimatedDuration / 1000).toFixed(1)}s`
         : `Understood. I can help with "${trimmed}". Please provide more details.`;
 
       setMessages((prev) => prev.filter((m) => !m.isLoading).concat({
@@ -295,7 +284,7 @@ function ProviderWebview({ provider }: { provider?: typeof AI_PROVIDERS[0] }) {
           className="w-full h-full relative z-10 border-none bg-transparent"
           title={provider.name}
           preload={window.electron?.webviewPreloadPath}
-          allowpopups="true"
+          allowpopups={true}
           partition={`persist:ai-${provider.id}`}
           useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         />

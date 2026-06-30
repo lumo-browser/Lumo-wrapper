@@ -17,7 +17,7 @@ import {
 } from '@ui/components/Home';
 import { Logger } from '@utils/logger';
 
-const logger = new Logger('HomePage');
+const logger = Logger.getInstance();
 const SCOPE = 'HomePage';
 
 export function HomePage(): React.ReactElement {

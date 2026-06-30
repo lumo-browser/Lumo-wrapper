@@ -5,7 +5,7 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { QuickAction } from '@types/home.types';
+import { QuickAction } from '../../../types/home.types';
 
 interface QuickActionsProps {
   actions: QuickAction[];

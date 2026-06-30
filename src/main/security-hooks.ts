@@ -9,6 +9,7 @@
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type SecurityEventType =
+  | 'network_request'
   | 'dom_mutation'
   | 'browser_api'
   | 'wasm_exec'
@@ -309,12 +310,12 @@ export function hookNetworkAPIs(reportEvent: ReportSecurityEvent): void {
     WebSocket.prototype.send = function (data: unknown): void {
       const size = typeof data === 'string' ? data.length : data instanceof Blob ? data.size : data instanceof ArrayBuffer ? data.byteLength : 0;
       reportEvent({
-        type: 'network_request',
+        type: 'network_request' as SecurityEventType,
         details: `WebSocket.send (${size} bytes) to ${this.url}`,
         source: window.location?.href,
         timestamp: new Date().toISOString(),
       });
-      return originalSend.call(this, data);
+      return originalSend.call(this, data as Parameters<typeof originalSend>[0]);
     };
   }
 
@@ -325,7 +326,7 @@ export function hookNetworkAPIs(reportEvent: ReportSecurityEvent): void {
       const urlStr = typeof url === 'string' ? url : url.href;
       const size = data ? (typeof data === 'string' ? data.length : data instanceof Blob ? data.size : data instanceof ArrayBuffer ? data.byteLength : 0) : 0;
       reportEvent({
-        type: 'network_request',
+        type: 'network_request' as SecurityEventType,
         details: `navigator.sendBeacon to ${urlStr}${size > 0 ? ` (${size} bytes)` : ''}`,
         source: window.location?.href,
         timestamp: new Date().toISOString(),

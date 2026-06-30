@@ -5,7 +5,7 @@
 
 import { Logger } from '@utils/logger';
 import { SequencedAction } from './step-sequencing.service';
-import { WorkflowPlan } from '@types';
+import type { WorkflowPlan } from '../types/index';
 
 export interface DetectedError {
   type: 'critical' | 'warning' | 'info';
@@ -39,8 +39,7 @@ export class ErrorDetectionService {
    * Validate a plan and detect errors
    */
   public validate(plan: WorkflowPlan, actions?: SequencedAction[]): ValidationReport {
-    this.logger.debug('Validating plan', {
-      scope: 'ErrorDetectionService',
+    this.logger.debug('ErrorDetectionService', 'Validating plan', {
       planId: plan.id
     });
 

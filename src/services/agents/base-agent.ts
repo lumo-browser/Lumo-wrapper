@@ -5,7 +5,7 @@
  */
 
 import { Logger } from '@utils/logger';
-import { Agent, WorkflowPlan, WorkflowAction } from '@types';
+import type { WorkflowAction } from '../../types/index';
 
 export enum AgentStatus {
   IDLE = 'idle',
@@ -55,8 +55,7 @@ export abstract class BaseAgent {
    */
   public initialize(context: AgentContext): void {
     this.context = context;
-    this.logger.info(`Agent ${this.agentId} initialized`, {
-      scope: 'Agent',
+    this.logger.info('Agent', `Agent ${this.agentId} initialized`, {
       agentId: this.agentId,
       conversationId: context.conversationId
     });
@@ -97,7 +96,7 @@ export abstract class BaseAgent {
   /**
    * Get agent metadata
    */
-  public getMetadata(): Agent {
+  public getMetadata(): { id: string; name: string; type: string; status: AgentStatus; createdAt: string } {
     return {
       id: this.agentId,
       name: this.agentId,
@@ -130,8 +129,7 @@ export abstract class BaseAgent {
   protected handleError(error: Error): void {
     this.status = AgentStatus.FAILED;
     this.addMessage('error', `${error.name}: ${error.message}`);
-    this.logger.error(`Agent ${this.agentId} failed`, {
-      scope: 'Agent',
+    this.logger.error('Agent', `Agent ${this.agentId} failed`, {
       error: error.message,
       stack: error.stack
     });
@@ -143,8 +141,7 @@ export abstract class BaseAgent {
   public reset(): void {
     this.status = AgentStatus.IDLE;
     this.clearMessages();
-    this.logger.debug(`Agent ${this.agentId} reset`, {
-      scope: 'Agent',
+    this.logger.debug('Agent', `Agent ${this.agentId} reset`, {
       agentId: this.agentId
     });
   }
