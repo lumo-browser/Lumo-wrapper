@@ -916,6 +916,8 @@ app.on('ready', () => {
     messages: Array<{ role: string; content: string }>;
     tools?: unknown[];
     tool_choice?: string;
+    aiProvider?: 'openrouter' | 'ollama';
+    ollamaUrl?: string;
   }) => {
     try {
       // Keep ONLY printable ASCII (0x20-0x7E). Node's http module rejects
@@ -923,9 +925,10 @@ app.on('ready', () => {
       // spaces, newlines, null bytes, and chars above 0x7F.
       const rawKey = (payload.apiKey || '').replace(/^Bearer\s+/i, '').trim();
       const apiKey = rawKey.replace(/[^\x20-\x7E]/g, '');
+      const isOllama = payload.aiProvider === 'ollama';
 
       // Debug: log any stripped chars so we can identify the source
-      if (apiKey.length !== rawKey.length) {
+      if (!isOllama && apiKey.length !== rawKey.length) {
         const badChars = [...rawKey]
           .filter(c => c.charCodeAt(0) < 0x20 || c.charCodeAt(0) > 0x7E)
           .map(c => 'U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0'))
@@ -933,12 +936,12 @@ app.on('ready', () => {
         console.warn('[Lumo] API key had invalid header chars stripped: ' + badChars);
       }
 
-      console.log('[Lumo] OpenRouter: model=' + payload.model + ' keyLen=' + apiKey.length + ' keyStart=' + apiKey.substring(0, 8) + '...');
+      console.log('[Lumo] AI Request: provider=' + (payload.aiProvider || 'openrouter') + ' model=' + payload.model);
 
-      if (!apiKey) {
+      if (!isOllama && !apiKey) {
         return { error: { message: 'Missing or invalid OpenRouter API key. Go to Settings and re-enter your key.' } };
       }
-      if (!apiKey.startsWith('sk-')) {
+      if (!isOllama && !apiKey.startsWith('sk-')) {
         console.warn('[Lumo] API key does not start with sk- — sending anyway');
       }
 
@@ -950,8 +953,31 @@ app.on('ready', () => {
       });
 
       const data = await new Promise<any>((resolve) => {
-        const req = https.request(
-          {
+        let reqOptions: any = {};
+        const httpMod = isOllama && payload.ollamaUrl?.startsWith('http://') ? require('http') : https;
+
+        if (isOllama) {
+          try {
+            const url = new URL(payload.ollamaUrl || 'http://localhost:11434');
+            reqOptions = {
+              hostname: url.hostname === 'localhost' ? '127.0.0.1' : url.hostname,
+              port: url.port || (url.protocol === 'https:' ? 443 : 80),
+              path: '/api/chat', // Ollama native chat endpoint or we can try to use /v1/chat/completions
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(body),
+              }
+            };
+            // Note: If using Ollama's native endpoint, it might not support OpenAI format exactly.
+            // But Ollama supports OpenAI compatibility at /v1/chat/completions
+            reqOptions.path = '/v1/chat/completions';
+          } catch (err: any) {
+             resolve({ error: { message: 'Invalid Ollama URL' } });
+             return;
+          }
+        } else {
+          reqOptions = {
             hostname: 'openrouter.ai',
             path: '/api/v1/chat/completions',
             method: 'POST',
@@ -962,11 +988,15 @@ app.on('ready', () => {
               'HTTP-Referer': 'https://lumo-browser.local',
               'X-Title': 'Lumo Browser',
             },
-          },
-          (res) => {
+          };
+        }
+
+        const req = httpMod.request(
+          reqOptions,
+          (res: any) => {
             let raw = '';
             res.setEncoding('utf8');
-            res.on('data', chunk => { raw += chunk; });
+            res.on('data', (chunk: any) => { raw += chunk; });
             res.on('end', () => {
               let parsed: any = null;
               try {
@@ -976,7 +1006,7 @@ app.on('ready', () => {
               }
 
               if ((res.statusCode || 500) >= 400) {
-                const message = parsed?.error?.message || parsed?.message || `OpenRouter request failed with status ${res.statusCode}`;
+                const message = parsed?.error?.message || parsed?.message || `AI API request failed with status ${res.statusCode}`;
                 resolve({ error: { message, status: res.statusCode } });
                 return;
               }
@@ -986,7 +1016,7 @@ app.on('ready', () => {
           }
         );
 
-        req.on('error', (err) => {
+        req.on('error', (err: any) => {
           resolve({ error: { message: err.message } });
         });
 

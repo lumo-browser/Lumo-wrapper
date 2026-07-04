@@ -42,6 +42,8 @@ export interface BrowserSettings {
   searchEngine: SearchEngine;
   fontSize: number; // 12–20
   openRouterApiKey: string;
+  aiProvider: 'openrouter' | 'ollama';
+  ollamaUrl: string;
   blockAds: boolean;
   blockPopups: boolean;
   doNotTrack: boolean;

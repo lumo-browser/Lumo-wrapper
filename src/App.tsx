@@ -655,6 +655,8 @@ export default function App(): React.ReactElement {
     const defaults: BrowserSettings = {
       theme: 'dark', searchEngine: 'google', fontSize: 14,
       openRouterApiKey: '',
+      aiProvider: 'openrouter',
+      ollamaUrl: 'http://localhost:11434',
       blockAds: true, blockPopups: true, doNotTrack: true, clearOnExit: false,
       profiles: [],
       currentProfileId: '',
@@ -1816,6 +1818,9 @@ Example response format:
               currentUrl={currentUrl}
               pageTitle={activeTab?.title ?? ''}
               width={sidebarWidth - 6}
+              openRouterApiKey={settings.openRouterApiKey}
+              aiProvider={settings.aiProvider}
+              ollamaUrl={settings.ollamaUrl}
             />
           </div>
         )}
@@ -1836,6 +1841,8 @@ Example response format:
               onClose={() => setShowAgent(false)}
               activeTab={activeTab}
               openRouterApiKey={settings.openRouterApiKey}
+              aiProvider={settings.aiProvider || 'openrouter'}
+              ollamaUrl={settings.ollamaUrl || 'http://localhost:11434'}
             />
           </div>
         )}

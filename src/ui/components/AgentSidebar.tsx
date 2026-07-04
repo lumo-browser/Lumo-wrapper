@@ -16,7 +16,7 @@ import {
 } from '../../agent';
 import type { TaskMemory } from '../../agent';
 
-interface AgentSidebarProps { onClose: () => void; activeTab: BrowserTab | null; openRouterApiKey: string; }
+interface AgentSidebarProps { onClose: () => void; activeTab: BrowserTab | null; openRouterApiKey: string; aiProvider: 'openrouter' | 'ollama'; ollamaUrl: string; }
 interface LogEntry { id: string; type: 'system'|'user'|'action'|'success'|'error'|'confirm'|'plan'|'compare'; message: string; }
 
 /** Truncate conversation history keeping tool_call/response pairs intact */
@@ -58,7 +58,7 @@ function hasDangerousAction(_toolName: string, args: Record<string, any>): boole
   return DANGEROUS_ACTIONS.some(action => argStr.includes(action));
 }
 
-export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSidebarProps): React.ReactElement {
+export function AgentSidebar({ onClose, activeTab, openRouterApiKey, aiProvider, ollamaUrl }: AgentSidebarProps): React.ReactElement {
   const [goal, setGoal] = useState('');
   const [selectedModel, setSelectedModel] = useState('google/gemini-2.0-flash-exp:free');
   const [visionMode, setVisionMode] = useState(false);
@@ -130,7 +130,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
 
   const startAgent = useCallback(async () => {
     const apiKey = normalizeApiKey(openRouterApiKey);
-    if (!apiKey) { addLog('error', 'Please set your OpenRouter API Key in Settings.'); return; }
+    if (aiProvider === 'openrouter' && !apiKey) { addLog('error', 'Please set your OpenRouter API Key in Settings.'); return; }
     if (!activeTab || !goal.trim()) return;
     const wv = findWebview();
     if (!wv) { addLog('error', 'Navigate to a real website first (e.g. google.com).'); return; }
@@ -217,6 +217,8 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
           messages: [{ role: 'system', content: systemPrompt }, ...conversationHistory],
           tools: AGENT_TOOLS,
           tool_choice: 'auto',
+          aiProvider,
+          ollamaUrl,
         });
 
         const data = apiResponse?.data;
@@ -330,7 +332,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
     if (iteration >= MAX_ITERATIONS) addLog('error', 'Reached maximum iterations (' + MAX_ITERATIONS + ').');
     setIsRunning(false);
     runningRef.current = false;
-  }, [openRouterApiKey, normalizeApiKey, activeTab, goal, selectedModel, visionMode, isPaused, findWebview, addLog, waitForConfirmation]);
+  }, [openRouterApiKey, aiProvider, ollamaUrl, normalizeApiKey, activeTab, goal, selectedModel, visionMode, isPaused, findWebview, addLog, waitForConfirmation]);
 
   const pauseAgent = useCallback(() => { runningRef.current = false; setIsRunning(false); setIsPaused(true); addLog('system', 'Agent paused.'); }, [addLog]);
   const stopAgent = useCallback(() => { runningRef.current = false; setIsRunning(false); setIsPaused(false); setAwaitingConfirmation(false); setMemory(null); addLog('system', 'Agent stopped.'); }, [addLog]);
@@ -510,6 +512,8 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
             <option value="qwen/qwen-2.5-72b-instruct:free">Qwen 2.5 72B (Free)</option>
             <option value="microsoft/phi-4-multimodal-instruct:free">Phi-4 Multimodal (Free)</option>
             <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+            <option value="tinylama">Ollama: TinyLlama</option>
+            <option value="llama3">Ollama: Llama 3</option>
           </optgroup>
           <optgroup label="Vision Models (Enhanced)">
             <option value="anthropic/claude-sonnet-4">Claude Sonnet 4 ✦ Vision</option>
@@ -517,6 +521,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
             <option value="openai/gpt-4o">GPT-4o ✦ Vision</option>
             <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Free) ✦ Vision</option>
             <option value="google/gemini-2.5-pro-exp-03-25:free">Gemini 2.5 Pro (Free) ✦ Vision</option>
+            <option value="llava">Ollama: LLaVA ✦ Vision</option>
           </optgroup>
         </select>
 
@@ -527,7 +532,7 @@ export function AgentSidebar({ onClose, activeTab, openRouterApiKey }: AgentSide
 
         <div className="flex gap-2">
           {!isRunning ? (
-            <button onClick={startAgent} disabled={!goal.trim() || !normalizeApiKey(openRouterApiKey) || awaitingConfirmation}
+            <button onClick={startAgent} disabled={!goal.trim() || (aiProvider === 'openrouter' && !normalizeApiKey(openRouterApiKey)) || awaitingConfirmation}
               className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50">
               <Play className="w-4 h-4 fill-current" />
               {isPaused ? 'Resume' : 'Run Agent'}

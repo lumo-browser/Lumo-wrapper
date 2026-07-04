@@ -464,20 +464,47 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
 
       {/* ── AI Auto-Agent ── */}
       <Section title="AI Auto-Agent" icon={<Cpu className="w-4 h-4" />}>
-        <Row label="OpenRouter API Key" description="Powers the Autonomous Agent — supports GPT-4o, Claude 3.5, Llama 3, Gemma 2">
-          <input
-            type="password"
-            value={settings.openRouterApiKey || ''}
-            onChange={e => onUpdateSettings({ openRouterApiKey: e.target.value })}
-            placeholder="sk-or-v1-..."
-            className="w-48 px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-          />
+        <Row label="AI Provider" description="Select which AI API the autonomous agent should use">
+          <select
+            value={settings.aiProvider || 'openrouter'}
+            onChange={e => onUpdateSettings({ aiProvider: e.target.value as 'openrouter' | 'ollama' })}
+            className="text-xs rounded-md px-2 py-1.5 bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-500"
+          >
+            <option value="openrouter">OpenRouter (Cloud)</option>
+            <option value="ollama">Ollama (Local)</option>
+          </select>
         </Row>
-        {settings.openRouterApiKey && (
-          <div className="px-4 py-2 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            <span className="text-[11px] text-green-600 dark:text-green-400">API key configured — AI Agent is ready</span>
-          </div>
+        
+        {(!settings.aiProvider || settings.aiProvider === 'openrouter') && (
+          <>
+            <Row label="OpenRouter API Key" description="Powers the Autonomous Agent — supports GPT-4o, Claude 3.5, Llama 3, Gemma 2">
+              <input
+                type="password"
+                value={settings.openRouterApiKey || ''}
+                onChange={e => onUpdateSettings({ openRouterApiKey: e.target.value })}
+                placeholder="sk-or-v1-..."
+                className="w-48 px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+              />
+            </Row>
+            {settings.openRouterApiKey && (
+              <div className="px-4 py-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <span className="text-[11px] text-green-600 dark:text-green-400">API key configured — AI Agent is ready</span>
+              </div>
+            )}
+          </>
+        )}
+
+        {settings.aiProvider === 'ollama' && (
+          <Row label="Ollama URL" description="URL for your local Ollama instance (default: http://localhost:11434)">
+            <input
+              type="text"
+              value={settings.ollamaUrl || 'http://localhost:11434'}
+              onChange={e => onUpdateSettings({ ollamaUrl: e.target.value })}
+              placeholder="http://localhost:11434"
+              className="w-48 px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-[#333] border border-gray-200 dark:border-[#444] text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+            />
+          </Row>
         )}
       </Section>
 

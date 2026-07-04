@@ -37,9 +37,12 @@ interface AISidebarProps {
   currentUrl: string;
   pageTitle: string;
   width?: number;
+  openRouterApiKey?: string;
+  aiProvider?: 'openrouter' | 'ollama';
+  ollamaUrl?: string;
 }
 
-export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarProps): React.ReactElement | null {
+export function AISidebar({ isOpen, onClose, currentUrl, pageTitle, openRouterApiKey, aiProvider, ollamaUrl }: AISidebarProps): React.ReactElement | null {
   const { tabs, activeTabId, addTab, removeTab, setActiveTab } = useAISpaceStore();
   const [showAddMenu, setShowAddMenu] = useState(false);
 
@@ -135,7 +138,7 @@ export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarP
       {/* ── Main Content Area ── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#2d2d2d]">
         {activeTab?.providerId === 'Lumo' ? (
-          <LumoAssistant currentUrl={currentUrl} pageTitle={pageTitle} />
+          <LumoAssistant currentUrl={currentUrl} pageTitle={pageTitle} openRouterApiKey={openRouterApiKey} aiProvider={aiProvider} ollamaUrl={ollamaUrl} />
         ) : (
           <ProviderWebview provider={activeProvider} />
         )}
@@ -145,7 +148,7 @@ export function AISidebar({ isOpen, onClose, currentUrl, pageTitle }: AISidebarP
 }
 
 // ── Native Lumo Assistant ──────────────────────────────────────────────────
-function LumoAssistant({ currentUrl, pageTitle }: { currentUrl: string; pageTitle: string }) {
+function LumoAssistant({ currentUrl, pageTitle, openRouterApiKey, aiProvider, ollamaUrl }: { currentUrl: string; pageTitle: string; openRouterApiKey?: string; aiProvider?: 'openrouter' | 'ollama'; ollamaUrl?: string; }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'greeting',
@@ -175,19 +178,30 @@ function LumoAssistant({ currentUrl, pageTitle }: { currentUrl: string; pageTitl
     setIsProcessing(true);
 
     try {
-      const planner = new PlannerAgent();
-      await planner.initialize({
-        conversationId: `ai-${Date.now()}`,
-        sessionId: `s-${Date.now()}`,
-        pageContext: { url: currentUrl, title: pageTitle, content: pageTitle },
-        previousResults: [],
-        variables: {},
-      });
+      let reply = '';
+      if (aiProvider === 'ollama' || (aiProvider === 'openrouter' && openRouterApiKey)) {
+        const response = await (window as any).electron?.invoke?.('lumo:openrouter-chat', {
+          apiKey: openRouterApiKey || '',
+          model: aiProvider === 'ollama' ? 'tinyllama' : 'google/gemini-2.0-flash-exp:free',
+          messages: [
+            { role: 'system', content: `You are Lumo Assistant, a helpful browser AI. The user is currently on: ${currentUrl} (${pageTitle}).` },
+            ...messages.filter(m => m.id !== 'greeting' && !m.isLoading).map(m => ({ role: m.role, content: m.content })),
+            { role: 'user', content: trimmed }
+          ],
+          aiProvider,
+          ollamaUrl
+        });
 
-      const result = await planner.execute({ goal: trimmed, context: { currentPage: currentUrl } });
-      const reply = result.plan.actions.length > 0
-        ? `Here is my plan (${result.confidence}% confidence):\n\n${result.plan.actions.map((a, i) => `${i + 1}. ${a.type.toUpperCase()}${a.description ? ` — ${a.description}` : ''}`).join('\n')}\n\nEstimated time: ${(result.estimatedDuration / 1000).toFixed(1)}s`
-        : `Understood. I can help with "${trimmed}". Please provide more details.`;
+        if (response?.data?.choices?.[0]?.message?.content) {
+          reply = response.data.choices[0].message.content;
+        } else if (response?.error) {
+          reply = 'Error: ' + response.error.message;
+        } else {
+          reply = 'I could not generate a response.';
+        }
+      } else {
+        reply = "Please configure your AI Provider in settings (OpenRouter API Key or Local Ollama).";
+      }
 
       setMessages((prev) => prev.filter((m) => !m.isLoading).concat({
         id: `a-${Date.now()}`, role: 'assistant', content: reply, timestamp: new Date(),
