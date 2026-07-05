@@ -509,14 +509,14 @@ export function BrowserToolbar({
       {/* ── Right Controls ── */}
       <div className="flex items-center gap-0.5">
         {/* Agent — Autonomous Browser Control */}
-        <NavBtn
+        {/* <NavBtn
           onClick={onToggleAgent}
           title="Lumo Agent (Ctrl+Shift+R)"
           id="btn-agent"
           active={isAgentOpen}
         >
           <Cpu className="w-4 h-4" />
-        </NavBtn>
+        </NavBtn> */}
 
         {/* AI Assistant — primary AI entry point */}
         <NavBtn

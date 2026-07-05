@@ -7,9 +7,11 @@
   },
   "files": [
     "dist/**/*",
-    "node_modules/**/*"
+    "node_modules/**/*",
+    "assets/logo.png"
   ],
   "win": {
+    "icon": "assets/logo.png",
     "target": [
       "nsis",
       "portable"
@@ -22,6 +24,7 @@
     "createStartMenuShortcut": true
   },
   "mac": {
+    "icon": "assets/logo.png",
     "target": [
       "dmg",
       "zip"
@@ -29,10 +32,12 @@
     "category": "public.app-category.utilities"
   },
   "linux": {
+    "icon": "assets/logo.png",
     "target": [
       "AppImage",
       "deb"
     ],
-    "category": "Utility"
+    "category": "Utility",
+    "maintainer": "Sai <sai@example.com>"
   }
 }
