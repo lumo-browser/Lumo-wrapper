@@ -56,6 +56,7 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     frame: false,
+    icon: path.join(app.getAppPath(), 'assets/logo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -132,6 +133,7 @@ function createDisposableWindow(): void {
     minWidth: 800,
     minHeight: 600,
     frame: false,
+    icon: path.join(app.getAppPath(), 'assets/logo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
