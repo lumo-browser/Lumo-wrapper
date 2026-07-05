@@ -1837,13 +1837,13 @@ Example response format:
               className="w-1.5 h-full cursor-col-resize hover:bg-purple-500/50 active:bg-purple-600/70 transition-colors flex-shrink-0"
               title="Drag to resize"
             />
-            <AgentSidebar
+            {/* <AgentSidebar
               onClose={() => setShowAgent(false)}
               activeTab={activeTab}
               openRouterApiKey={settings.openRouterApiKey}
               aiProvider={settings.aiProvider || 'openrouter'}
               ollamaUrl={settings.ollamaUrl || 'http://localhost:11434'}
-            />
+            /> */}
           </div>
         )}
 
