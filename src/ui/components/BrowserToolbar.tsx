@@ -27,6 +27,7 @@ import {
 import { SecurityDashboard } from './SecurityDashboard';
 
 interface BrowserToolbarProps {
+  tabId: string;
   url: string;
   canGoBack: boolean;
   canGoForward: boolean;
@@ -58,6 +59,7 @@ interface BrowserToolbarProps {
 }
 
 export function BrowserToolbar({
+  tabId,
   url,
   canGoBack,
   canGoForward,
@@ -93,6 +95,13 @@ export function BrowserToolbar({
   const searchCache = useRef(new Map<string, string[]>());
   const abortControllerRef = useRef<AbortController | null>(null);
   const securityDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Reset state when switching tabs
+  useEffect(() => {
+    setDraftUrl(url);
+    setIsFocused(false);
+    setShowSuggestions(false);
+  }, [tabId]);
 
   // Close security dropdown on click outside
   useEffect(() => {
