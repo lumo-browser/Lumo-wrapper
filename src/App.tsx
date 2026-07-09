@@ -1580,6 +1580,7 @@ Example response format:
       {/* ── Toolbar (always visible) ── */}
       <div className="relative flex-shrink-0" ref={menuRef}>
         <BrowserToolbar
+          tabId={activeTab?.id || ''}
           url={currentUrl}
           canGoBack={canGoBack}
           canGoForward={canGoForward}
