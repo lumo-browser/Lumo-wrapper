@@ -2,6 +2,7 @@
   "name": "lumo-browser",
   "version": "0.1.0",
   "description": "Lumo Browser - An AI-native, production-ready browser built with Chromium and Electron",
+  "author": "Sai",
   "main": "dist/main/main.js",
   "homepage": "./",
   "scripts": {
