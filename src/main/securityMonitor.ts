@@ -196,6 +196,9 @@ export interface AdBlockerResult {
 
 const injectedPages = new Set<number>();
 
+// Scripts pending injection — stored during onBeforeRequest, injected after page load
+const pendingScripts = new Map<number, string>();
+
 const RESOURCE_TYPE_MAP: Record<string, string> = {
   mainFrame: 'document',
   subFrame: 'subdocument',
@@ -209,6 +212,23 @@ const RESOURCE_TYPE_MAP: Record<string, string> = {
   ping: 'ping',
   other: 'other',
 };
+
+function injectAfterLoad(wcId: number, script: string, sessionLabel: string): void {
+  const { webContents } = require('electron');
+  const wc = webContents.fromId(wcId);
+  if (!wc || wc.isDestroyed()) return;
+
+  // Inject after the DOM is ready (not during onBeforeRequest which fires before page load)
+  const onDomReady = (): void => {
+    wc.removeListener('dom-ready', onDomReady);
+    if (injectedPages.has(wcId)) return;
+    injectedPages.add(wcId);
+    wc.executeJavaScript(script)
+      .then(() => console.log(`[${sessionLabel}] Injected YouTube patch script`))
+      .catch((err: unknown) => console.warn(`[${sessionLabel}] Failed to inject script:`, err));
+  };
+  wc.on('dom-ready', onDomReady);
+}
 
 export function monitorNetworkRequests(
   sess: Electron.Session,
@@ -224,18 +244,12 @@ export function monitorNetworkRequests(
         const resourceType = RESOURCE_TYPE_MAP[details.resourceType] ?? details.resourceType;
         const adResult = adBlockerCheck(details.url, resourceType);
 
-        // Inject YouTube patch script into the page (once per page load)
+        // Queue YouTube patch script for injection after page loads
         if (adResult.injectScript) {
           const wcId = details.webContentsId;
-          if (wcId && !injectedPages.has(wcId)) {
-            injectedPages.add(wcId);
-            const { webContents } = require('electron');
-            const wc = webContents.fromId(wcId);
-            if (wc && !wc.isDestroyed()) {
-              wc.executeJavaScript(adResult.injectScript)
-                .then(() => console.log(`[${sessionLabel}] Injected YouTube patch script`))
-                .catch((err: unknown) => console.warn(`[${sessionLabel}] Failed to inject script:`, err));
-            }
+          if (wcId && !injectedPages.has(wcId) && !pendingScripts.has(wcId)) {
+            pendingScripts.set(wcId, adResult.injectScript);
+            injectAfterLoad(wcId, adResult.injectScript, sessionLabel);
           }
         }
 
