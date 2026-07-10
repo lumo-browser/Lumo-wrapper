@@ -10,7 +10,7 @@ import fs from 'fs';
 import axios from 'axios';
 import { AdBlockerConfig, DEFAULT_CONFIG, AdBlockerStats } from './adBlocker';
 import { AdBlocker } from 'lumo-adblocker-rs';
-import { monitorNetworkRequests, registerSecurityIPC } from './securityMonitor';
+import { monitorNetworkRequests, registerSecurityIPC, AdBlockerResult } from './securityMonitor';
 import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
 import { validateScript } from './agent-guard';
 
@@ -30,14 +30,14 @@ let clearOnExitEnabled = false;
 
 let mainWindow: BrowserWindow | null = null;
 
-const adBlockerCheck = (url: string) => {
-  if (!adBlockerConfig.enabled) return false;
-  const result = adBlocker.check(url, 'https://lumo-browser.local', 'script');
+const adBlockerCheck = (url: string, resourceType: string): AdBlockerResult => {
+  if (!adBlockerConfig.enabled) return { blocked: false };
+  const result = adBlocker.check(url, 'https://lumo-browser.local', resourceType);
   adBlockerStats.record(result.blocked);
   if (result.blocked) {
     console.log(`[AdBlock] Blocked: ${url}`);
   }
-  return result.blocked;
+  return { blocked: result.blocked, injectScript: result.injectScript };
 };
 
 const getMainWindow = () => mainWindow;
