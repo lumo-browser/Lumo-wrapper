@@ -15,6 +15,7 @@ export { BrowserToolbar } from './BrowserToolbar';
 export { ExtensionsPanel } from './ExtensionsPanel';
 export { AccountModal } from './AccountModal';
 export type { UserAccount } from './AccountModal';
+export { ImportDataModal } from './ImportDataModal';
 
 // AI features
 export { AIChatPanel } from './AIChatPanel';

@@ -89,7 +89,17 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
   ztRef.current = zeroTrustMode;
   askSaveRef.current = askSavePasswords;
   autofillRef.current = autofillPasswords;
-  urlRef.current = url;
+
+  // React to external URL changes
+  useEffect(() => {
+    const wv = ref.current;
+    if (wv && url !== urlRef.current) {
+      urlRef.current = url;
+      if (typeof wv.loadURL === 'function') {
+        wv.loadURL(url).catch(() => {});
+      }
+    }
+  }, [url]);
 
   // Wire up webview events once on mount
   useEffect(() => {
@@ -100,6 +110,7 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
     const onStopLoad  = () => onLoadingChange(false);
     const onTitleUpd  = (e: any) => onTitleChange(e.title || '');
     const onNavigated = (e: any) => {
+      urlRef.current = e.url || '';
       onUrlChange(e.url || '');
       onLoadingChange(false);
       if (wv && typeof wv.canGoBack === 'function') {
@@ -1192,7 +1203,7 @@ export default function App(): React.ReactElement {
       return;
     }
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
-    if (wv && typeof wv.goBack === 'function') {
+    if (wv && typeof wv.goBack === 'function' && typeof wv.canGoBack === 'function' && wv.canGoBack()) {
       wv.goBack();
     } else {
       goBack();
@@ -1207,7 +1218,7 @@ export default function App(): React.ReactElement {
       return;
     }
     const wv = document.getElementById(`webview-${activeTab.id}`) as any;
-    if (wv && typeof wv.goForward === 'function') {
+    if (wv && typeof wv.goForward === 'function' && typeof wv.canGoForward === 'function' && wv.canGoForward()) {
       wv.goForward();
     } else {
       goForward();
@@ -1569,6 +1580,7 @@ Example response format:
       {/* ── Toolbar (always visible) ── */}
       <div className="relative flex-shrink-0" ref={menuRef}>
         <BrowserToolbar
+          tabId={activeTab?.id || ''}
           url={currentUrl}
           canGoBack={canGoBack}
           canGoForward={canGoForward}
