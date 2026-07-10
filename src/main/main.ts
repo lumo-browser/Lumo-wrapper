@@ -9,7 +9,7 @@ import path from 'path';
 import fs from 'fs';
 import axios from 'axios';
 import { AdBlockerConfig, DEFAULT_CONFIG, AdBlockerStats } from './adBlocker';
-import { AdBlocker, setupElectronInterceptor } from 'lumo-adblocker-rs';
+import { AdBlocker } from 'lumo-adblocker-rs';
 import { monitorNetworkRequests, registerSecurityIPC } from './securityMonitor';
 import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
 import { validateScript } from './agent-guard';
@@ -31,6 +31,7 @@ let clearOnExitEnabled = false;
 let mainWindow: BrowserWindow | null = null;
 
 const adBlockerCheck = (url: string) => {
+  if (!adBlockerConfig.enabled) return false;
   const result = adBlocker.check(url, 'https://lumo-browser.local', 'script');
   adBlockerStats.record(result.blocked);
   if (result.blocked) {
@@ -91,10 +92,6 @@ function createWindow(): void {
   // Attach to default session (renderer) and webviews session
   monitorNetworkRequests(session.defaultSession, getMainWindow, 'default', adBlockerCheck);
   monitorNetworkRequests(session.fromPartition('persist:lumo-main'), getMainWindow, 'persist:lumo-main', adBlockerCheck);
-
-  // Wire Rust ad-blocker interceptor for YouTube ad blocking (script injection)
-  setupElectronInterceptor(adBlocker, { session: session.defaultSession, logPrefix: '[Lumo:default]' });
-  setupElectronInterceptor(adBlocker, { session: session.fromPartition('persist:lumo-main'), logPrefix: '[Lumo:main]' });
 
   // Also monitor AI provider partitions (they use persist:ai-{id})
   const AI_PARTITIONS = ['ai-chatgpt', 'ai-claude', 'ai-gemini', 'ai-perplexity', 'ai-deepseek', 'ai-grok', 'ai-custom'];
@@ -163,6 +160,10 @@ function createDisposableWindow(): void {
     sess.webRequest.onBeforeRequest(
       { urls: ['<all_urls>'] },
       (details, callback) => {
+        if (!adBlockerConfig.enabled) {
+          callback({ cancel: false });
+          return;
+        }
         const result = adBlocker.check(details.url, 'https://lumo-browser.local', 'script');
         adBlockerStats.record(result.blocked);
         callback({ cancel: result.blocked });
@@ -175,7 +176,6 @@ function createDisposableWindow(): void {
   const ephemeralSession = session.fromPartition(partitionId);
   // ephemeralSession.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
   attachAdBlocker(ephemeralSession);
-  setupElectronInterceptor(adBlocker, { session: ephemeralSession, logPrefix: `[Lumo:disposable:${partitionId}]` });
   monitorNetworkRequests(ephemeralSession, getMainWindow, `disposable:${partitionId}`, adBlockerCheck);
 
   disposableWindow.loadURL(url);
