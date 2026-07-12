@@ -82,20 +82,6 @@ export function BrowserMenu({
 
   return (
     <div className="absolute right-2 top-full mt-1 w-56 dropdown-menu z-50 flex flex-col gap-0.5">
-      {/* Sync strip */}
-      <button
-        onClick={() => { onOpenAccount(); onClose(); }}
-        className="w-[calc(100%-8px)] flex items-center gap-3 px-3 py-2.5 hover:bg-gray-100/50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5 mb-1 rounded-t-lg mx-1 text-left"
-      >
-        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-          <Download className="w-4 h-4" />
-        </div>
-        <div className="text-left">
-          <p className="text-xs font-semibold text-gray-900 dark:text-white">Import Browser Data</p>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">Sync from Firefox or Chrome</p>
-        </div>
-      </button>
-
       {/* Menu items */}
       {items.map((item) => {
         const Icon = item.icon;
