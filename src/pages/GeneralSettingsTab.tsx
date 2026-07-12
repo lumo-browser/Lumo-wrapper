@@ -8,10 +8,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Power, LayoutGrid, PanelLeft, Languages, HardDrive,
   Zap, Check, Cpu, Sun, Moon, Monitor,
-  FolderOpen, Globe, ChevronRight, RotateCcw, AlertCircle,
+  FolderOpen, Globe, RotateCcw, AlertCircle,
 } from 'lucide-react';
 import { BrowserSettings } from './SettingsPage';
-import { ImportDataModal } from '../ui/components';
+
 
 // ── Persisted Settings Shape ──────────────────────────────────────────────────
 
@@ -141,7 +141,6 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
   const [gen, setGen] = useState<GeneralSettings>(loadSettings);
   const [downloadPathMsg, setDownloadPathMsg] = useState('');
   const [proxyTestMsg, setProxyTestMsg] = useState('');
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Persist on every change
   useEffect(() => { saveSettings(gen); }, [gen]);
@@ -265,14 +264,6 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
             />
           </div>
         )}
-        <Row label="Import Browser Data" description="Import bookmarks, passwords, history, and autofill data.">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-[#333] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] transition-colors"
-          >
-            Import <ChevronRight className="w-3 h-3" />
-          </button>
-        </Row>
       </Section>
 
       {/* ── Tabs ── */}
@@ -570,11 +561,6 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
           Reset General settings to defaults
         </button>
       </div>
-
-      <ImportDataModal 
-        isOpen={isImportModalOpen} 
-        onClose={() => setIsImportModalOpen(false)} 
-      />
     </div>
   );
 }
