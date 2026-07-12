@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  X, Download, Check, Monitor, Chrome, Globe, 
+  X, Download, Check, 
   Settings, Key, Bookmark, Clock
 } from 'lucide-react';
 
@@ -36,10 +36,10 @@ export function ImportDataModal({ isOpen, onClose }: ImportDataModalProps): Reac
   };
 
   const browsers = [
-    { id: 'chrome', name: 'Google Chrome', icon: <Chrome className="w-8 h-8" />, color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
-    { id: 'edge', name: 'Microsoft Edge', icon: <Globe className="w-8 h-8" />, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
-    { id: 'firefox', name: 'Mozilla Firefox', icon: <Globe className="w-8 h-8" />, color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
-    { id: 'safari', name: 'Safari', icon: <Globe className="w-8 h-8" />, color: 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400' },
+    { id: 'chrome', name: 'Google Chrome', logo: '/browser-logos/chrome.svg' },
+    { id: 'edge', name: 'Microsoft Edge', logo: '/browser-logos/edge.svg' },
+    { id: 'firefox', name: 'Mozilla Firefox', logo: '/browser-logos/firefox.svg' },
+    { id: 'safari', name: 'Safari', logo: '/browser-logos/safari.svg' },
   ];
 
   return (
@@ -79,8 +79,8 @@ export function ImportDataModal({ isOpen, onClose }: ImportDataModalProps): Reac
                     : 'border-gray-200 dark:border-[#3a3a3a] hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-[#242424]'
                 }`}
               >
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-transform ${selectedBrowser === b.id ? 'scale-110' : ''} ${b.color}`}>
-                  {b.icon}
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-transform ${selectedBrowser === b.id ? 'scale-110' : ''}`}>
+                  <img src={b.logo} alt={b.name} className="w-10 h-10 object-contain" />
                 </div>
                 <span className={`text-xs font-semibold text-center ${selectedBrowser === b.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
                   {b.name}
