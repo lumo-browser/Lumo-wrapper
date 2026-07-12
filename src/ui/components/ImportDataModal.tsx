@@ -80,7 +80,7 @@ export function ImportDataModal({ isOpen, onClose }: ImportDataModalProps): Reac
                 }`}
               >
                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-transform ${selectedBrowser === b.id ? 'scale-110' : ''}`}>
-                  <img src={b.logo} alt={b.name} className="w-10 h-10" />
+                  <img src={b.logo} alt={b.name} className="w-10 h-10 object-contain" />
                 </div>
                 <span className={`text-xs font-semibold text-center ${selectedBrowser === b.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>
                   {b.name}
