@@ -3,6 +3,10 @@ import {
   X, Download, Check, 
   Settings, Key, Bookmark, Clock
 } from 'lucide-react';
+import chromeLogo from '../../../assets/browser-logos/chrome.svg';
+import edgeLogo from '../../../assets/browser-logos/edge.svg';
+import firefoxLogo from '../../../assets/browser-logos/firefox.svg';
+import safariLogo from '../../../assets/browser-logos/safari.svg';
 
 interface ImportDataModalProps {
   isOpen: boolean;
@@ -36,10 +40,10 @@ export function ImportDataModal({ isOpen, onClose }: ImportDataModalProps): Reac
   };
 
   const browsers = [
-    { id: 'chrome', name: 'Google Chrome', logo: '/browser-logos/chrome.svg' },
-    { id: 'edge', name: 'Microsoft Edge', logo: '/browser-logos/edge.svg' },
-    { id: 'firefox', name: 'Mozilla Firefox', logo: '/browser-logos/firefox.svg' },
-    { id: 'safari', name: 'Safari', logo: '/browser-logos/safari.svg' },
+    { id: 'chrome', name: 'Google Chrome', logo: chromeLogo },
+    { id: 'edge', name: 'Microsoft Edge', logo: edgeLogo },
+    { id: 'firefox', name: 'Mozilla Firefox', logo: firefoxLogo },
+    { id: 'safari', name: 'Safari', logo: safariLogo },
   ];
 
   return (
