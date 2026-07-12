@@ -32,7 +32,7 @@
     "category": "public.app-category.utilities"
   },
   "linux": {
-    "icon": "assets/logo.png",
+    "icon": "assets/icons",
     "target": [
       "AppImage",
       "deb"
