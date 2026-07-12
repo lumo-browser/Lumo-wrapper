@@ -61,7 +61,7 @@ export function BrowserMenu({
 }: BrowserMenuProps): React.ReactElement {
   const items: MenuItem[] = [
     { id: 'new-tab',       icon: Plus,      label: 'New Tab',             shortcut: 'Ctrl+T', onClick: () => { onNewTab(); onClose(); } },
-    { id: 'new-disposable',icon: Ghost,     label: 'New Disposable Workspace', shortcut: 'Ctrl+Shift+N', onClick: () => { onNewDisposableWindow(); onClose(); }, separator: true },
+    { id: 'new-disposable',icon: Ghost,     label: 'Private Tab', shortcut: 'Ctrl+Shift+N', onClick: () => { onNewDisposableWindow(); onClose(); }, separator: true },
     { id: 'zoom-in',       icon: ZoomIn,    label: 'Zoom in',             shortcut: 'Ctrl++', onClick: () => { onZoomIn(); onClose(); } },
     { id: 'zoom-out',   icon: ZoomOut,   label: 'Zoom out',     shortcut: 'Ctrl+-', onClick: () => { onZoomOut(); onClose(); } },
     { id: 'switch-profile', icon: User, label: 'Switch Profile', onClick: () => { onOpenAccount(); onClose(); }, separator: true },
