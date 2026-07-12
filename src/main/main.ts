@@ -9,7 +9,7 @@ import path from 'path';
 import fs from 'fs';
 import axios from 'axios';
 import { AdBlockerConfig, DEFAULT_CONFIG, AdBlockerStats } from './adBlocker';
-import { AdBlocker } from 'lumo-adblocker-rs';
+import { shouldBlock as nativeShouldBlock } from 'lumo-adblocker-rs';
 import { monitorNetworkRequests, registerSecurityIPC, AdBlockerResult } from './securityMonitor';
 import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
 import { validateScript } from './agent-guard';
@@ -17,12 +17,6 @@ import { validateScript } from './agent-guard';
 // ── Ad Blocker State ──────────────────────────────────────────────────────────
 let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
 const adBlockerStats = new AdBlockerStats();
-
-// ── Rust Ad Blocker Engine ────────────────────────────────────────────────────
-const adBlocker = new AdBlocker({ refreshIntervalMs: 24 * 60 * 60 * 1000 });
-adBlocker.start().catch((err: unknown) => {
-  console.warn('[Lumo] AdBlocker start failed:', err);
-});
 
 // ── Clear-on-Exit State (set from renderer) ──────────────────────────────────
 let clearOnExitEnabled = false;
@@ -32,12 +26,18 @@ let mainWindow: BrowserWindow | null = null;
 
 const adBlockerCheck = (url: string, resourceType: string): AdBlockerResult => {
   if (!adBlockerConfig.enabled) return { blocked: false };
-  const result = adBlocker.check(url, 'https://lumo-browser.local', resourceType);
-  adBlockerStats.record(result.blocked);
-  if (result.blocked) {
-    console.log(`[AdBlock] Blocked: ${url}`);
+  try {
+    const result = nativeShouldBlock(url, 'https://lumo-browser.local', resourceType);
+    adBlockerStats.record(result.blocked);
+    if (result.blocked) {
+      console.log(`[AdBlock] Blocked: ${url}`);
+    }
+    return { blocked: result.blocked, injectScript: result.injectScript };
+  } catch (err) {
+    console.warn('[Lumo] AdBlocker check failed:', err);
+    adBlockerStats.record(false);
+    return { blocked: false };
   }
-  return { blocked: result.blocked, injectScript: result.injectScript };
 };
 
 const getMainWindow = () => mainWindow;
@@ -164,9 +164,15 @@ function createDisposableWindow(): void {
           callback({ cancel: false });
           return;
         }
-        const result = adBlocker.check(details.url, 'https://lumo-browser.local', 'script');
-        adBlockerStats.record(result.blocked);
-        callback({ cancel: result.blocked });
+        try {
+          const result = nativeShouldBlock(details.url, 'https://lumo-browser.local', details.resourceType);
+          adBlockerStats.record(result.blocked);
+          callback({ cancel: result.blocked });
+        } catch (err) {
+          console.warn('[Lumo] Disposable ad-block check failed:', err);
+          adBlockerStats.record(false);
+          callback({ cancel: false });
+        }
       }
     );
   };
