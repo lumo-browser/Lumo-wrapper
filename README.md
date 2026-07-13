@@ -754,5 +754,7 @@ Requires macOS host or `electron-builder` with Mac build tools.
 ---
 
 <p align="center">
-  Built with ❤️ by <a href="https://github.com/Rsaimukesh">Sai</a>
+  Built with ❤️ by <a href="https://github.com/lumo-browser">Team Lumo</a>
+  <p align="center">
+  developers  : <a href="https://github.com/Rsaimukesh">Saimukesh R</a> & <a href="https://github.com/cosmic-striker">cosmic-striker</a>   
 </p>
