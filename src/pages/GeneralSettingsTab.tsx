@@ -8,10 +8,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Power, LayoutGrid, PanelLeft, Languages, HardDrive,
   Zap, Check, Cpu, Sun, Moon, Monitor,
-  FolderOpen, Globe, ChevronRight, RotateCcw, AlertCircle,
+  FolderOpen, Globe, RotateCcw, AlertCircle,
+  Download, ArrowRight,
 } from 'lucide-react';
 import { BrowserSettings } from './SettingsPage';
-import { ImportDataModal } from '../ui/components';
+import { ImportDataModal } from '../ui/components/ImportDataModal';
+
 
 // ── Persisted Settings Shape ──────────────────────────────────────────────────
 
@@ -141,7 +143,7 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
   const [gen, setGen] = useState<GeneralSettings>(loadSettings);
   const [downloadPathMsg, setDownloadPathMsg] = useState('');
   const [proxyTestMsg, setProxyTestMsg] = useState('');
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Persist on every change
   useEffect(() => { saveSettings(gen); }, [gen]);
@@ -265,14 +267,6 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
             />
           </div>
         )}
-        <Row label="Import Browser Data" description="Import bookmarks, passwords, history, and autofill data.">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-[#333] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] transition-colors"
-          >
-            Import <ChevronRight className="w-3 h-3" />
-          </button>
-        </Row>
       </Section>
 
       {/* ── Tabs ── */}
@@ -560,6 +554,33 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
         )}
       </Section>
 
+      {/* ── Sync Browser Data ── */}
+      <Section title="Sync Browser Data" icon={<Download className="w-4 h-4" />}>
+        <div className="p-4">
+          <div
+            onClick={() => setShowImportModal(true)}
+            className="group cursor-pointer rounded-2xl border-2 border-dashed border-gray-200 dark:border-[#3a3a3a] hover:border-blue-400 dark:hover:border-blue-500 bg-gradient-to-br from-blue-50/50 to-purple-50/30 dark:from-blue-900/10 dark:to-purple-900/5 p-6 transition-all hover:shadow-lg hover:shadow-blue-500/5"
+          >
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform shadow-sm">
+                <Download className="w-7 h-7" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">Import from Another Browser</h3>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Bring your bookmarks, saved passwords, browsing history, and settings from Chrome, Firefox, Edge, or Safari.
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-white group-hover:translate-x-1 transition-transform shadow-md">
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <ImportDataModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} />
+
       {/* ── Reset ── */}
       <div className="flex justify-end mb-8">
         <button
@@ -570,11 +591,6 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
           Reset General settings to defaults
         </button>
       </div>
-
-      <ImportDataModal 
-        isOpen={isImportModalOpen} 
-        onClose={() => setIsImportModalOpen(false)} 
-      />
     </div>
   );
 }

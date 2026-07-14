@@ -189,18 +189,59 @@ function classifyResourceType(url: string): string {
  * Phase 3: Actively blocks malicious requests using onBeforeRequest,
  * while preserving ad-blocker functionality.
  */
+export interface AdBlockerResult {
+  blocked: boolean;
+  injectScript?: string;
+}
+
+const injectedPages = new Set<number>();
+
+const RESOURCE_TYPE_MAP: Record<string, string> = {
+  mainFrame: 'document',
+  subFrame: 'subdocument',
+  script: 'script',
+  image: 'image',
+  stylesheet: 'stylesheet',
+  xhr: 'xmlhttprequest',
+  font: 'font',
+  media: 'media',
+  webSocket: 'websocket',
+  ping: 'ping',
+  other: 'other',
+};
+
 export function monitorNetworkRequests(
   sess: Electron.Session,
   getMainWindow: () => BrowserWindow | null,
   sessionLabel: string,
-  adBlockerCheck?: (url: string) => boolean
+  adBlockerCheck?: (url: string, resourceType: string) => AdBlockerResult
 ): void {
   sess.webRequest.onBeforeRequest(
     { urls: ['<all_urls>'] },
     (details, callback) => {
       // 1. Ad Blocker Check (preserve existing functionality)
-      if (adBlockerCheck && adBlockerCheck(details.url)) {
-        return callback({ cancel: true });
+      if (adBlockerCheck) {
+        const resourceType = RESOURCE_TYPE_MAP[details.resourceType] ?? details.resourceType;
+        const adResult = adBlockerCheck(details.url, resourceType);
+
+        // Inject YouTube patch script into the page (once per page load)
+        if (adResult.injectScript) {
+          const wcId = details.webContentsId;
+          if (wcId && !injectedPages.has(wcId)) {
+            injectedPages.add(wcId);
+            const { webContents } = require('electron');
+            const wc = webContents.fromId(wcId);
+            if (wc && !wc.isDestroyed()) {
+              wc.executeJavaScript(adResult.injectScript)
+                .then(() => console.log(`[${sessionLabel}] Injected YouTube patch script`))
+                .catch((err: unknown) => console.warn(`[${sessionLabel}] Failed to inject script:`, err));
+            }
+          }
+        }
+
+        if (adResult.blocked) {
+          return callback({ cancel: true });
+        }
       }
 
       // 2. Phase 3 Security Mitigation Check
