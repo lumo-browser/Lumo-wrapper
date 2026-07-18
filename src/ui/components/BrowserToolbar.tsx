@@ -136,6 +136,16 @@ export function BrowserToolbar({
     };
   }, [showSecurityDropdown]);
 
+  // Handle Ctrl+L (focus address bar shortcut)
+  useEffect(() => {
+    const handleFocusRequest = () => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    };
+    window.addEventListener('lumo:focus-address-bar', handleFocusRequest);
+    return () => window.removeEventListener('lumo:focus-address-bar', handleFocusRequest);
+  }, []);
+
   // Fetch suggestions with debounce
   useEffect(() => {
     if (!isFocused || !draftUrl.trim() || draftUrl === url || isIncognito) {

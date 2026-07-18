@@ -128,11 +128,8 @@ function SearchWidget({ onNavigate, isDark }: { onNavigate: (url: string) => voi
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus(), 200);
-    // Listen for global focus event
-    const onFocus = () => inputRef.current?.focus();
-    window.addEventListener('lumo:focus-address-bar', onFocus);
-    return () => { clearTimeout(t); window.removeEventListener('lumo:focus-address-bar', onFocus); };
+    // Intentionally empty. We do not want this search bar stealing focus
+    // from the main address bar (BrowserToolbar) when opening a new tab.
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
