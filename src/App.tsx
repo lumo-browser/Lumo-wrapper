@@ -573,8 +573,12 @@ export default function App(): React.ReactElement {
   const activeTab = tabs.find((t) => t.isActive) ?? tabs[0];
 
   // Per-tab nav history
-  const [navHistories, setNavHistories] = useState<Record<string, NavHistory>>({
-    'tab-1': emptyHistory(),
+  const [navHistories, setNavHistories] = useState<Record<string, NavHistory>>(() => {
+    const h: Record<string, NavHistory> = {};
+    tabs.forEach((t) => {
+      h[t.id] = { stack: [t.url || 'lumo://newtab'], cursor: 0 };
+    });
+    return h;
   });
 
   // Bookmark state — rich entries with title and timestamp
@@ -1094,10 +1098,9 @@ export default function App(): React.ReactElement {
     setTabs((prev) => [...prev.map((x) => ({ ...x, isActive: false })), t]);
     setNavHistories((prev) => {
       const h = emptyHistory();
-      if (startUrl) {
-        h.stack.push(startUrl);
-        h.cursor = 0;
-      }
+      const urlToPush = startUrl || 'lumo://newtab';
+      h.stack.push(urlToPush);
+      h.cursor = 0;
       return { ...prev, [t.id]: h };
     });
   }, []);
@@ -1532,8 +1535,8 @@ Example response format:
 
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
-  const canGoBack    = activeTab?.canGoBack ?? (currentHistory.cursor > 0);
-  const canGoForward = activeTab?.canGoForward ?? (currentHistory.cursor < currentHistory.stack.length - 1);
+  const canGoBack    = (activeTab?.canGoBack === true) || (currentHistory.cursor > 0);
+  const canGoForward = (activeTab?.canGoForward === true) || (currentHistory.cursor < currentHistory.stack.length - 1);
   const isSecure     = currentUrl.startsWith('https://');
 
 
