@@ -98,7 +98,7 @@ export function BrowserToolbar({
 
   // Reset state when switching tabs
   useEffect(() => {
-    setDraftUrl(url);
+    setDraftUrl(url === 'lumo://newtab' ? '' : url);
     setShowSuggestions(false);
     
     if (url === 'lumo://newtab') {
@@ -311,7 +311,7 @@ export function BrowserToolbar({
 
   // Format URL for clean display when not focused (Safari-style)
   const getDisplayValue = () => {
-    if (isFocused) return draftUrl;
+    if (isFocused) return draftUrl === 'lumo://newtab' ? '' : draftUrl;
     if (!url || url === 'lumo://newtab') return '';
     
     try {
