@@ -1391,6 +1391,12 @@ Example response format:
     setTabGrouping(s => ({ ...s, isOpen: false }));
   }, []);
 
+  const currentUrl = activeTab?.url ?? '';
+  const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
+  const canGoBack    = (activeTab?.canGoBack === true) || (currentHistory.cursor > 0);
+  const canGoForward = (activeTab?.canGoForward === true) || (currentHistory.cursor < currentHistory.stack.length - 1);
+  const isSecure     = currentUrl.startsWith('https://');
+
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────
   useAppShortcuts({
     activeTab,
@@ -1412,12 +1418,6 @@ Example response format:
     setShowAI,
     setShowAgent,
   });
-
-  const currentUrl = activeTab?.url ?? '';
-  const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
-  const canGoBack    = (activeTab?.canGoBack === true) || (currentHistory.cursor > 0);
-  const canGoForward = (activeTab?.canGoForward === true) || (currentHistory.cursor < currentHistory.stack.length - 1);
-  const isSecure     = currentUrl.startsWith('https://');
 
 
   // Search engine URL from settings
