@@ -1008,34 +1008,49 @@ export default function App(): React.ReactElement {
       const lang = settings.uiLanguage.split('-')[0]; // e.g., 'en'
       const script = `
         (function() {
-          if (window._lumoTranslated) return;
+          if (window._lumoTranslated) {
+            // Already initialized, just trigger change again if possible
+            const select = document.querySelector('select.goog-te-combo');
+            if (select) {
+              select.value = '${lang}';
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return;
+          }
           window._lumoTranslated = true;
           
-          const script = document.createElement('script');
-          script.src = "https://translate.google.com/translate_a/element.js?cb=lumoTranslateInit";
-          document.head.appendChild(script);
-
           window.lumoTranslateInit = function() {
-            new google.translate.TranslateElement({
+            new window.google.translate.TranslateElement({
               pageLanguage: 'auto',
               includedLanguages: '${lang}',
-              layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+              layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
               autoDisplay: false
             }, 'lumo-translate-widget');
             
             // Wait for widget to load and trigger it
-            setTimeout(() => {
-              const select = document.querySelector('.goog-te-combo');
-              if (select) {
+            const check = setInterval(() => {
+              const select = document.querySelector('select.goog-te-combo') as HTMLSelectElement;
+              if (select && select.options && select.options.length > 0) {
+                clearInterval(check);
                 select.value = '${lang}';
-                select.dispatchEvent(new Event('change'));
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Keep hiding the google translate banner that appears at the top
+                setInterval(() => {
+                  const banner = document.querySelector('.goog-te-banner-frame') as HTMLElement;
+                  if (banner) banner.style.display = 'none';
+                  const skiptranslate = document.querySelector('body > .skiptranslate') as HTMLElement;
+                  if (skiptranslate) skiptranslate.style.display = 'none';
+                  document.body.style.top = '0px';
+                }, 500);
               }
-              // Hide the google translate banner that appears at the top
-              const banner = document.querySelector('.goog-te-banner-frame');
-              if (banner) banner.style.display = 'none';
-              document.body.style.top = '0px';
-            }, 1000);
+            }, 200);
+            setTimeout(() => clearInterval(check), 10000);
           };
+
+          const script = document.createElement('script');
+          script.src = "https://translate.google.com/translate_a/element.js?cb=lumoTranslateInit";
+          document.head.appendChild(script);
 
           const widgetDiv = document.createElement('div');
           widgetDiv.id = 'lumo-translate-widget';
