@@ -24,25 +24,25 @@ export function setupMainShortcuts(mainWindow: BrowserWindow | null) {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('lumo:shortcut', 'go-back');
         }
-        event.preventDefault();
+        _event.preventDefault();
       }
       if (input.alt && (input.key === 'ArrowRight' || input.code === 'ArrowRight') && input.type === 'keyDown') {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('lumo:shortcut', 'go-forward');
         }
-        event.preventDefault();
+        _event.preventDefault();
       }
       if ((input.control || input.meta) && (input.key.toLowerCase() === 'w' || input.code === 'KeyW') && input.type === 'keyDown') {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('lumo:shortcut', 'close-tab');
         }
-        event.preventDefault();
+        _event.preventDefault();
       }
       if ((input.control || input.meta) && (input.key.toLowerCase() === 't' || input.code === 'KeyT') && input.type === 'keyDown') {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('lumo:shortcut', 'new-tab');
         }
-        event.preventDefault();
+        _event.preventDefault();
       }
     });
   });
