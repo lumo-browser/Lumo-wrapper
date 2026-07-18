@@ -98,10 +98,11 @@ export function BrowserToolbar({
 
   // Reset state when switching tabs
   useEffect(() => {
-    setDraftUrl(url === 'lumo://newtab' ? '' : url);
+    const isNewTab = !url || url === 'lumo://newtab';
+    setDraftUrl(isNewTab ? '' : url);
     setShowSuggestions(false);
     
-    if (url === 'lumo://newtab') {
+    if (isNewTab) {
       setIsFocused(true);
       // Slight delay to ensure the input is mounted and ready
       setTimeout(() => {
@@ -321,8 +322,9 @@ export function BrowserToolbar({
 
   // Format URL for clean display when not focused (Safari-style)
   const getDisplayValue = () => {
-    if (isFocused) return draftUrl === 'lumo://newtab' ? '' : draftUrl;
-    if (!url || url === 'lumo://newtab') return '';
+    const isNewTab = !url || url === 'lumo://newtab';
+    if (isFocused) return (draftUrl === 'lumo://newtab' || !draftUrl) ? '' : draftUrl;
+    if (isNewTab) return '';
     
     try {
       const u = new URL(url);
