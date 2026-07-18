@@ -300,36 +300,6 @@ function AITipBanner({ isDark }: { isDark: boolean }) {
   );
 }
 
-// ── Keyboard Shortcuts Strip ──────────────────────────────────────────────────
-function ShortcutStrip({ isDark }: { isDark: boolean }) {
-  const items = [
-    { keys: ['Ctrl', 'T'], label: 'New Tab' },
-    { keys: ['Ctrl', 'L'], label: 'Address Bar' },
-    { keys: ['Ctrl', 'Tab'], label: 'Cycle Tabs' },
-    { keys: ['Ctrl', 'Shift', 'G'], label: 'AI Group Tabs' },
-    { keys: ['Ctrl', 'Shift', 'A'], label: 'AI Chat' },
-  ];
-  return (
-    <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
-      {items.map(({ keys, label }) => (
-        <div key={label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-          {keys.map((k, i) => (
-            <React.Fragment key={i}>
-              <kbd className={`px-1.5 py-0.5 text-[10px] font-mono font-bold rounded ${isDark ? 'text-white/70' : 'text-gray-600'}`}
-                style={{
-                  background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`
-                }}>{k}</kbd>
-              {i < keys.length - 1 && <span className={`text-[10px] ${isDark ? 'text-white/30' : 'text-gray-400'}`}>+</span>}
-            </React.Fragment>
-          ))}
-          <span className={`text-[10px] ml-1 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>{label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Ambient Orbs ──────────────────────────────────────────────────────────────
 function AmbientOrbs({ isDark }: { isDark: boolean }) {
   const opacity1 = isDark ? 0.2 : 0.1;
@@ -564,7 +534,6 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
           {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
           {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
           {config.showAITips !== false && <AITipBanner isDark={configThemeIsDark} />}
-          <ShortcutStrip isDark={configThemeIsDark} />
         </div>
       )}
 
