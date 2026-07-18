@@ -21,8 +21,8 @@ import { ExtensionsPanel } from '@ui/components/ExtensionsPanel';
 import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
 import { ContextMenu } from '@ui/components/ContextMenu';
 import { WelcomePage, type OnboardingPrefs } from '@ui/components/WelcomePage';
+import { useAppShortcuts } from './keybindings/useAppShortcuts';
 import { AISidebar } from '@ui/components/AISidebar';
-import { AgentSidebar } from '@ui/components/AgentSidebar';
 import { ComparePage } from '@ui/components/ComparePage';
 import { BrowserMenu } from '@ui/components/BrowserMenu';
 import { TabGroupModal, GROUP_COLOR_PALETTE, type TabGroup } from '@ui/components/TabGroupModal';
@@ -1392,166 +1392,26 @@ Example response format:
   }, []);
 
   // ── Keyboard Shortcuts ──────────────────────────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key.toLowerCase() === 't') {
-        if (e.shiftKey) {
-          // Reopen closed tab (Ctrl+Shift+T)
-          e.preventDefault();
-          setRecentlyClosedTabs(prev => {
-            if (prev.length === 0) return prev;
-            const toRestore = prev[prev.length - 1];
-            const remaining = prev.slice(0, -1);
-            setTabs(ts => [...ts.map(t => ({ ...t, isActive: false })), { ...toRestore, isActive: true, id: `tab-${Date.now()}` }]);
-            return remaining;
-          });
-        } else {
-          e.preventDefault();
-          addTab();
-        }
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'w') {
-        e.preventDefault();
-        if (activeTab) closeTab(activeTab.id);
-      } else if (e.ctrlKey && e.key === 'Tab') {
-        // Cycle tabs (Ctrl+Tab / Ctrl+Shift+Tab)
-        e.preventDefault();
-        setTabs(prev => {
-          const idx = prev.findIndex(t => t.isActive);
-          const nextIdx = e.shiftKey ? (idx - 1 + prev.length) % prev.length : (idx + 1) % prev.length;
-          return prev.map((t, i) => ({ ...t, isActive: i === nextIdx }));
-        });
-      } else if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
-        // Jump to tab (Ctrl+1...9)
-        e.preventDefault();
-        const idx = parseInt(e.key) - 1;
-        setTabs(prev => {
-          if (!prev[idx]) return prev;
-          return prev.map((t, i) => ({ ...t, isActive: i === idx }));
-        });
-      } else if ((e.ctrlKey && e.key.toLowerCase() === 'l') || (e.altKey && e.key.toLowerCase() === 'd')) {
-        // Focus address bar
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('lumo:focus-address-bar'));
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'f') {
-        // Find in page
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('lumo:find-in-page'));
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n') {
-        // Incognito (Coming soon alert)
-        e.preventDefault();
-        alert('Incognito mode is coming in the next Lumo update!');
-      } else if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
-        // This is now handled below with lumo://settings
-        e.preventDefault();
-        navigate('lumo://settings');
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
-        e.preventDefault();
-        setShowAI((v) => !v);
-        setShowAgent(false);
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') {
-        e.preventDefault();
-        setShowAgent(v => !v);
-        setShowAI(false);
-      } else if (e.key === 'F5' || (e.ctrlKey && e.key.toLowerCase() === 'r')) {
-        e.preventDefault();
-        handleRefresh();
-      } else if (e.key === 'Escape') {
-        handleStop();
-      } else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
-        e.preventDefault();
-        handleZoomIn();
-      } else if (e.ctrlKey && e.key === '-') {
-        e.preventDefault();
-        handleZoomOut();
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        navigate('lumo://bookmarks');
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'h') {
-        e.preventDefault();
-        navigate('lumo://history');
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'j') {
-        e.preventDefault();
-        e.stopPropagation();
-        // Toggle downloads page (Chrome-style Ctrl+J behaviour)
-        if (currentUrl === 'lumo://downloads') {
-          handleGoBack();
-        } else {
-          navigate('lumo://downloads');
-        }
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        handlePrint();
-      } else if (e.ctrlKey && e.key === ',') {
-        e.preventDefault();
-        navigate('lumo://settings');
-      } else if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
-        e.preventDefault();
-        navigate('lumo://settings');
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g') {
-        e.preventDefault();
-        groupTabsWithAI();
-      } else if (e.altKey && e.key.toLowerCase() === 'home') {
-        e.preventDefault();
-        navigate('lumo://newtab');
-      } else if (e.altKey && e.key === 'ArrowLeft') {
-        e.preventDefault();
-        handleGoBack();
-      } else if (e.altKey && e.key === 'ArrowRight') {
-        e.preventDefault();
-        handleGoForward();
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'd') {
-        e.preventDefault();
-        toggleBookmark();
-      } else if (e.ctrlKey && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        const wv = activeTab ? document.getElementById(`webview-${activeTab.id}`) as any : null;
-        if (wv?.getURL && wv?.downloadURL) {
-          wv.downloadURL(wv.getURL());
-        }
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'u') {
-        e.preventDefault();
-        if (activeTab?.url && !activeTab.url.startsWith('lumo://')) {
-          addTab('view-source:' + activeTab.url);
-        }
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i') {
-        e.preventDefault();
-        window.electron?.send?.('lumo:toggle-devtools');
-      } else if (e.key === 'F11') {
-        e.preventDefault();
-        const el = document.documentElement;
-        if (document.fullscreenElement) {
-          document.exitFullscreen();
-        } else {
-          el.requestFullscreen();
-        }
-      }
-    };
-
-    // Use capture phase so Lumo intercepts Ctrl+J/B/H/etc BEFORE the
-    // webview or OS (e.g. Brave/Chrome) can steal the shortcut.
-    window.addEventListener('keydown', handleKeyDown, true);
-
-    // Handlers for custom events dispatched by the global shortcut IPC listener
-    const onGoBack   = () => handleGoBack();
-    const onGoForward = () => handleGoForward();
-    const onOpenPage = (e: Event) => navigate((e as CustomEvent).detail as string);
-    const onCloseTab = () => { if (activeTab) closeTab(activeTab.id); };
-    const onNewTab   = () => addTab();
-    window.addEventListener('lumo:go-back',   onGoBack);
-    window.addEventListener('lumo:go-forward', onGoForward);
-    window.addEventListener('lumo:open-page', onOpenPage);
-    window.addEventListener('lumo:close-tab', onCloseTab);
-    window.addEventListener('lumo:new-tab',   onNewTab);
-
-    return () => {
-      window.removeEventListener('keydown',        handleKeyDown, true);
-      window.removeEventListener('lumo:go-back',   onGoBack);
-      window.removeEventListener('lumo:go-forward', onGoForward);
-      window.removeEventListener('lumo:open-page', onOpenPage);
-      window.removeEventListener('lumo:close-tab', onCloseTab);
-      window.removeEventListener('lumo:new-tab',   onNewTab);
-    };
-  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint, groupTabsWithAI, toggleBookmark]);
+  useAppShortcuts({
+    activeTab,
+    addTab,
+    closeTab,
+    navigate,
+    handleRefresh,
+    handleGoBack,
+    handleGoForward,
+    handleStop,
+    handleZoomIn,
+    handleZoomOut,
+    handlePrint,
+    groupTabsWithAI,
+    toggleBookmark,
+    setRecentlyClosedTabs,
+    setTabs,
+    currentUrl,
+    setShowAI,
+    setShowAgent,
+  });
 
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();

@@ -13,6 +13,7 @@ const nativeShouldBlock = (_url: string, _source: string, _resourceType: string)
 import { monitorNetworkRequests, registerSecurityIPC, AdBlockerResult } from './securityMonitor';
 import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
 import { validateScript } from './agent-guard';
+import { setupMainShortcuts } from '../keybindings/mainShortcuts';
 
 // ── Ad Blocker State ──────────────────────────────────────────────────────────
 let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
@@ -1306,57 +1307,7 @@ app.on('ready', () => {
   // Disable native menu bar completely
   Menu.setApplicationMenu(null);
 
-  // ── Global keyboard shortcuts ─────────────────────────────────────────────
-  // Register AFTER window creation. These fire at OS level, preventing
-  // other apps (e.g. Brave) from intercepting them while Lumo is focused.
-  app.whenReady().then(() => {
-    // Ctrl+J — toggle Downloads page (Chrome-compatible shortcut)
-    globalShortcut.register('CommandOrControl+J', () => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('lumo:shortcut', 'toggle-downloads');
-      }
-    });
-    // Ctrl+Shift+I — toggle docked DevTools on active webview (Firefox-like inspector)
-    globalShortcut.register('CommandOrControl+Shift+I', () => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('lumo:shortcut', 'toggle-inspector');
-      }
-    });
-    console.log('[Lumo] Global shortcuts registered');
-  });
-
-  // Intercept navigation shortcuts even when inside webviews
-  app.on('web-contents-created', (event, wc) => {
-    wc.on('before-input-event', (event, input) => {
-      // Only intercept for webviews (guest contents). The main window is handled natively by React.
-      if (wc.getType() !== 'webview') return;
-
-      if (input.alt && (input.key === 'ArrowLeft' || input.code === 'ArrowLeft') && input.type === 'keyDown') {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('lumo:shortcut', 'go-back');
-        }
-        event.preventDefault();
-      }
-      if (input.alt && (input.key === 'ArrowRight' || input.code === 'ArrowRight') && input.type === 'keyDown') {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('lumo:shortcut', 'go-forward');
-        }
-        event.preventDefault();
-      }
-      if ((input.control || input.meta) && (input.key.toLowerCase() === 'w' || input.code === 'KeyW') && input.type === 'keyDown') {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('lumo:shortcut', 'close-tab');
-        }
-        event.preventDefault();
-      }
-      if ((input.control || input.meta) && (input.key.toLowerCase() === 't' || input.code === 'KeyT') && input.type === 'keyDown') {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('lumo:shortcut', 'new-tab');
-        }
-        event.preventDefault();
-      }
-    });
-  });
+  setupMainShortcuts(mainWindow);
 });
 
 app.on('window-all-closed', () => {
