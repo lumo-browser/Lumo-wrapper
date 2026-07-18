@@ -438,7 +438,7 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
         }}
         className={`absolute bottom-6 right-6 z-50 p-2 rounded-full transition-all ${configThemeIsDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
       >
-        <Settings className="w-5 h-5" />
+        <Settings className="w-[22px] h-[22px]" />
       </button>
 
       <DashboardSettingsOverlay 
