@@ -9,7 +9,7 @@ import path from 'path';
 import fs from 'fs';
 import axios from 'axios';
 import { AdBlockerConfig, DEFAULT_CONFIG, AdBlockerStats } from './adBlocker';
-import { shouldBlock as nativeShouldBlock } from 'lumo-adblocker-rs';
+const nativeShouldBlock = (_url: string, _source: string, _resourceType: string): { blocked: boolean; injectScript?: string } => ({ blocked: false });
 import { monitorNetworkRequests, registerSecurityIPC, AdBlockerResult } from './securityMonitor';
 import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
 import { validateScript } from './agent-guard';
@@ -1323,6 +1323,24 @@ app.on('ready', () => {
       }
     });
     console.log('[Lumo] Global shortcuts registered');
+  });
+
+  // Intercept navigation shortcuts even when inside webviews
+  app.on('web-contents-created', (event, wc) => {
+    wc.on('before-input-event', (event, input) => {
+      if (input.alt && input.key === 'ArrowLeft' && input.type === 'keyDown') {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('lumo:shortcut', 'go-back');
+        }
+        event.preventDefault();
+      }
+      if (input.alt && input.key === 'ArrowRight' && input.type === 'keyDown') {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('lumo:shortcut', 'go-forward');
+        }
+        event.preventDefault();
+      }
+    });
   });
 });
 

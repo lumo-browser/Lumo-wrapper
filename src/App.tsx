@@ -655,6 +655,10 @@ export default function App(): React.ReactElement {
         } else {
           wv.openDevTools({ mode: 'bottom' });
         }
+      } else if (action === 'go-back') {
+        window.dispatchEvent(new CustomEvent('lumo:go-back'));
+      } else if (action === 'go-forward') {
+        window.dispatchEvent(new CustomEvent('lumo:go-forward'));
       }
     });
     return () => unsub?.();
@@ -1440,12 +1444,6 @@ Example response format:
       } else if (e.key === 'F5' || (e.ctrlKey && e.key.toLowerCase() === 'r')) {
         e.preventDefault();
         handleRefresh();
-      } else if (e.altKey && e.key === 'ArrowLeft') {
-        e.preventDefault();
-        handleGoBack();
-      } else if (e.altKey && e.key === 'ArrowRight') {
-        e.preventDefault();
-        handleGoForward();
       } else if (e.key === 'Escape') {
         handleStop();
       } else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
@@ -1518,13 +1516,16 @@ Example response format:
 
     // Handlers for custom events dispatched by the global shortcut IPC listener
     const onGoBack   = () => handleGoBack();
+    const onGoForward = () => handleGoForward();
     const onOpenPage = (e: Event) => navigate((e as CustomEvent).detail as string);
     window.addEventListener('lumo:go-back',   onGoBack);
+    window.addEventListener('lumo:go-forward', onGoForward);
     window.addEventListener('lumo:open-page', onOpenPage);
 
     return () => {
       window.removeEventListener('keydown',        handleKeyDown, true);
       window.removeEventListener('lumo:go-back',   onGoBack);
+      window.removeEventListener('lumo:go-forward', onGoForward);
       window.removeEventListener('lumo:open-page', onOpenPage);
     };
   }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint, groupTabsWithAI, toggleBookmark]);
