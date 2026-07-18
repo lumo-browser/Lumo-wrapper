@@ -1493,6 +1493,12 @@ Example response format:
       } else if (e.altKey && e.key.toLowerCase() === 'home') {
         e.preventDefault();
         navigate('lumo://newtab');
+      } else if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handleGoBack();
+      } else if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleGoForward();
       } else if (e.ctrlKey && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         toggleBookmark();
