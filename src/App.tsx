@@ -1798,13 +1798,11 @@ Example response format:
 
             const items: any[] = [];
 
-            // Navigation — only on real webview tabs
-            if (isWebviewTab) {
-              items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', onClick: () => wv?.goBack() });
-              items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', onClick: () => wv?.goForward() });
-              items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => wv?.reload() });
-              items.push({ id: 's1', label: '', isSeparator: true });
-            }
+            // Navigation — available everywhere
+            items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', disabled: !canGoBack, onClick: () => isWebviewTab ? wv?.goBack() : handleGoBack() });
+            items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', disabled: !canGoForward, onClick: () => isWebviewTab ? wv?.goForward() : handleGoForward() });
+            items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => isWebviewTab ? wv?.reload() : handleRefresh() });
+            items.push({ id: 's1', label: '', isSeparator: true });
 
             // Open link in new tab
             if (hasLink) {
