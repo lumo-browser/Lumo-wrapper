@@ -228,14 +228,26 @@ function ShortcutsWidget({ onNavigate, isDark }: { onNavigate: (url: string) => 
                   opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-md">
                 <X className="w-3 h-3" />
               </button>
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'shadow-lg' : 'shadow-sm'}
+              <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center overflow-hidden relative ${isDark ? 'shadow-lg' : 'shadow-sm'}
                 hover:scale-110 active:scale-95 transition-all duration-200`}
                 style={{
                   background: `${s.color}${isDark ? '22' : '15'}`,
                   border: `1px solid ${s.color}${isDark ? '55' : '33'}`,
                   boxShadow: `0 8px 24px ${s.color}${isDark ? '30' : '20'}`,
                 }}>
-                <Icon className="w-6 h-6" style={{ color: s.color }} />
+                <img 
+                  src={`https://www.google.com/s2/favicons?domain=${(function(){try{return new URL(s.url).hostname}catch{return s.url}})()}&sz=64`} 
+                  alt={s.label}
+                  className="w-8 h-8 object-contain z-10"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <div className="absolute inset-0 z-0 hidden items-center justify-center font-bold text-xl uppercase" style={{ color: s.color }}>
+                  {(function(){try{return new URL(s.url).hostname.replace('www.','')[0]}catch{return s.label[0]}})()}
+                </div>
               </div>
               <span className={`text-xs font-medium max-w-[64px] truncate text-center ${labelColor}`}>{s.label}</span>
             </div>
