@@ -551,10 +551,27 @@ export default function App(): React.ReactElement {
         tabId: e.detail.tabId
       });
     };
+
+    const globalContextHandler = (e: MouseEvent) => {
+      // Don't override if right-clicking in a webview
+      if ((e.target as HTMLElement)?.tagName === 'WEBVIEW') return;
+      
+      e.preventDefault();
+      setContextMenu({
+        show: true,
+        x: e.clientX,
+        y: e.clientY,
+        params: { linkURL: '', srcURL: '', selectionText: window.getSelection()?.toString() || '', x: e.clientX, y: e.clientY },
+        tabId: null // indicate this is not a webview
+      });
+    };
+
     // ContextMenu handles its own outside-click via capture-phase mousedown
     window.addEventListener('lumo:show-context-menu', handler);
+    window.addEventListener('contextmenu', globalContextHandler);
     return () => {
       window.removeEventListener('lumo:show-context-menu', handler);
+      window.removeEventListener('contextmenu', globalContextHandler);
     };
   }, []);
   // Tabs
@@ -1844,7 +1861,11 @@ Example response format:
                     }
                   }
                 } else {
-                  window.electron?.send?.('lumo:toggle-devtools');
+                  if (contextMenu.params?.x !== undefined && contextMenu.params?.y !== undefined) {
+                    (window as any).electron?.send?.('lumo:inspect-element', contextMenu.params.x, contextMenu.params.y);
+                  } else {
+                    (window as any).electron?.send?.('lumo:toggle-devtools');
+                  }
                 }
               }
             });
