@@ -1077,7 +1077,12 @@ export default function App(): React.ReactElement {
 
   const closeTab = useCallback((id: string) =>
     setTabs((prev) => {
-      if (prev.length === 1) return prev; // never close last tab
+      if (prev.length === 1) {
+        if (window.electron?.send) {
+          window.electron.send('lumo:window-close');
+        }
+        return prev;
+      }
       const idx = prev.findIndex((t) => t.id === id);
       const tabToClose = prev[idx];
       if (tabToClose) {
