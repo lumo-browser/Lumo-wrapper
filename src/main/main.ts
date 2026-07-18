@@ -1340,6 +1340,18 @@ app.on('ready', () => {
         }
         event.preventDefault();
       }
+      if ((input.control || input.meta) && input.key.toLowerCase() === 'w' && input.type === 'keyDown') {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('lumo:shortcut', 'close-tab');
+        }
+        event.preventDefault();
+      }
+      if ((input.control || input.meta) && input.key.toLowerCase() === 't' && input.type === 'keyDown') {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('lumo:shortcut', 'new-tab');
+        }
+        event.preventDefault();
+      }
     });
   });
 });

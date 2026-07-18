@@ -662,6 +662,10 @@ export default function App(): React.ReactElement {
         window.dispatchEvent(new CustomEvent('lumo:go-back'));
       } else if (action === 'go-forward') {
         window.dispatchEvent(new CustomEvent('lumo:go-forward'));
+      } else if (action === 'close-tab') {
+        window.dispatchEvent(new CustomEvent('lumo:close-tab'));
+      } else if (action === 'new-tab') {
+        window.dispatchEvent(new CustomEvent('lumo:new-tab'));
       }
     });
     return () => unsub?.();
@@ -1525,15 +1529,21 @@ Example response format:
     const onGoBack   = () => handleGoBack();
     const onGoForward = () => handleGoForward();
     const onOpenPage = (e: Event) => navigate((e as CustomEvent).detail as string);
+    const onCloseTab = () => { if (activeTab) closeTab(activeTab.id); };
+    const onNewTab   = () => addTab();
     window.addEventListener('lumo:go-back',   onGoBack);
     window.addEventListener('lumo:go-forward', onGoForward);
     window.addEventListener('lumo:open-page', onOpenPage);
+    window.addEventListener('lumo:close-tab', onCloseTab);
+    window.addEventListener('lumo:new-tab',   onNewTab);
 
     return () => {
       window.removeEventListener('keydown',        handleKeyDown, true);
       window.removeEventListener('lumo:go-back',   onGoBack);
       window.removeEventListener('lumo:go-forward', onGoForward);
       window.removeEventListener('lumo:open-page', onOpenPage);
+      window.removeEventListener('lumo:close-tab', onCloseTab);
+      window.removeEventListener('lumo:new-tab',   onNewTab);
     };
   }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint, groupTabsWithAI, toggleBookmark]);
 
