@@ -99,9 +99,27 @@ export function BrowserToolbar({
   // Reset state when switching tabs
   useEffect(() => {
     setDraftUrl(url);
-    setIsFocused(false);
     setShowSuggestions(false);
-  }, [tabId]);
+    
+    if (url === 'lumo://newtab') {
+      setIsFocused(true);
+      // Slight delay to ensure the input is mounted and ready
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.select();
+        }
+      }, 50);
+    } else {
+      setIsFocused(false);
+      // Blur so the webview can capture keyboard events if we just switched to an active tab
+      setTimeout(() => {
+        if (document.activeElement === inputRef.current) {
+          inputRef.current?.blur();
+        }
+      }, 10);
+    }
+  }, [tabId, url]);
 
   // Close security dropdown on click outside
   useEffect(() => {
