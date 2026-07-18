@@ -475,9 +475,8 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
 
 
 // ── Tab helpers ────────────────────────────────────────────────────────────
-let _tabId = 1;
 const mkTab = (overrides: Partial<BrowserTab> = {}): BrowserTab => ({
-  id: `tab-${++_tabId}`,
+  id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   title: 'New Tab',
   url: '',
   isActive: false,
