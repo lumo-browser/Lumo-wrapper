@@ -96,11 +96,17 @@ export function BrowserToolbar({
   const abortControllerRef = useRef<AbortController | null>(null);
   const securityDropdownRef = useRef<HTMLDivElement>(null);
 
+  const [translateState, setTranslateState] = useState<'idle' | 'loading' | 'translated'>('idle');
+  const [translateLang, setTranslateLang] = useState('en');
+  const [translateError, setTranslateError] = useState('');
+
   // Reset state when switching tabs
   useEffect(() => {
     const isNewTab = !url || url === 'lumo://newtab';
     setDraftUrl(isNewTab ? '' : url);
     setShowSuggestions(false);
+    setTranslateState('idle');
+    setTranslateError('');
     
     if (isNewTab) {
       setIsFocused(true);
@@ -145,6 +151,34 @@ export function BrowserToolbar({
     };
     window.addEventListener('lumo:focus-address-bar', handleFocusRequest);
     return () => window.removeEventListener('lumo:focus-address-bar', handleFocusRequest);
+  }, []);
+
+  // Handle Translation Events
+  useEffect(() => {
+    const handleStart = () => {
+      setTranslateState('loading');
+      setTranslateError('');
+    };
+    const handleSuccess = (e: any) => {
+      setTranslateState('translated');
+      setTranslateLang(e.detail);
+      setTranslateError('');
+    };
+    const handleError = (e: any) => {
+      setTranslateState('idle');
+      setTranslateError(e.detail);
+      setTimeout(() => setTranslateError(''), 3000);
+    };
+
+    window.addEventListener('lumo:translate-started', handleStart);
+    window.addEventListener('lumo:translate-success', handleSuccess);
+    window.addEventListener('lumo:translate-error', handleError);
+
+    return () => {
+      window.removeEventListener('lumo:translate-started', handleStart);
+      window.removeEventListener('lumo:translate-success', handleSuccess);
+      window.removeEventListener('lumo:translate-error', handleError);
+    };
   }, []);
 
   // Fetch suggestions with debounce
@@ -535,14 +569,28 @@ export function BrowserToolbar({
 
       {/* Translate page button — outside address bar, between address bar and right controls */}
       {!isFocused && !isNtpPage && offerTranslate && (
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent('lumo:translate-page'))}
-          className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-100 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#3a3a3a] active:bg-gray-200 dark:active:bg-[#444]"
-          title="Translate this page"
-        >
-          <Languages className="w-4 h-4" />
-        </button>
+        <div className="relative flex items-center">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('lumo:translate-page'))}
+            disabled={translateState === 'loading'}
+            className="h-8 px-2.5 rounded-full flex items-center gap-1.5 transition-all duration-100 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#3a3a3a] active:bg-gray-300 dark:active:bg-[#444] disabled:opacity-50"
+            title={translateState === 'translated' ? 'Back to English' : 'Translate to Hindi'}
+          >
+            <Languages className="w-4 h-4" />
+            <span className="text-xs font-medium truncate max-w-[120px]">
+              {translateState === 'loading' ? 'Translating...' : (translateState === 'translated' ? (translateLang === 'hi' ? 'Back to English' : 'Translate to Hindi') : 'Translate to Hindi')}
+            </span>
+            {translateState === 'loading' && (
+              <div className="w-3 h-3 ml-1 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            )}
+          </button>
+          {translateError && (
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-red-500 text-white text-xs rounded shadow-lg whitespace-nowrap z-50">
+              {translateError}
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Right Controls ── */}
