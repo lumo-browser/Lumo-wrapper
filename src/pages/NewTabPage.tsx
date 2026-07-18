@@ -280,25 +280,6 @@ function ShortcutsWidget({ onNavigate, isDark }: { onNavigate: (url: string) => 
   );
 }
 
-// ── AI Tip Banner ─────────────────────────────────────────────────────────────
-function AITipBanner({ isDark }: { isDark: boolean }) {
-  const [tip, setTip] = useState(() => AI_TIPS[Math.floor(Math.random() * AI_TIPS.length)]);
-  useEffect(() => {
-    const t = setInterval(() => setTip(AI_TIPS[Math.floor(Math.random() * AI_TIPS.length)]), 8000);
-    return () => clearInterval(t);
-  }, []);
-
-  const bg = isDark ? 'rgba(var(--lumo-accent-rgb),0.1)' : 'rgba(var(--lumo-accent-rgb),0.05)';
-  const border = isDark ? 'rgba(var(--lumo-accent-rgb),0.25)' : 'rgba(var(--lumo-accent-rgb),0.2)';
-
-  return (
-    <div className="flex items-center gap-3 px-5 py-3 rounded-2xl max-w-2xl mx-auto"
-      style={{ background: bg, border: `1px solid ${border}` }}>
-      <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: "var(--lumo-accent)" }} />
-      <p className={`text-xs font-medium ${isDark ? 'text-white/60' : 'text-gray-600'}`}>{tip}</p>
-    </div>
-  );
-}
 
 // ── Ambient Orbs ──────────────────────────────────────────────────────────────
 function AmbientOrbs({ isDark }: { isDark: boolean }) {
@@ -533,7 +514,6 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
           {config.showClock !== false && <ClockWidget isDark={configThemeIsDark} />}
           {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
           {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
-          {config.showAITips !== false && <AITipBanner isDark={configThemeIsDark} />}
         </div>
       )}
 
