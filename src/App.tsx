@@ -13,7 +13,12 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '@utils/logger';
-import { ArrowLeft, ArrowRight, RotateCw, Sparkles, Copy, Code, Printer, Camera, Download, FileText } from 'lucide-react';
+import { 
+  ArrowLeft, ArrowRight, RotateCw, Settings as SettingsIcon, LayoutGrid, Palette,
+  Code, Command, Maximize, X, User, Plus, Compass, ChevronDown, Download,
+  Printer, Camera, FileText, Copy, BookOpen, Clock, Heart, Sparkles, MonitorPlay,
+  Monitor, BrainCircuit, Globe, Type, Image as ImageIcon, Search
+} from 'lucide-react';
 
 import { BrowserTabBar, type BrowserTab } from '@ui/components/BrowserTabBar';
 import { BrowserToolbar } from '@ui/components/BrowserToolbar';
@@ -1795,14 +1800,18 @@ Example response format:
             const isDevToolsOpen = isWebviewTab ? !!(wv.isDevToolsOpened?.()) : false;
             const hasSelection = (contextMenu.params?.selectionText?.trim()?.length ?? 0) > 0;
             const hasLink = !!contextMenu.params?.linkURL;
+            const hasImage = !!contextMenu.params?.hasImageContents;
+            const isEditable = !!contextMenu.params?.isEditable;
 
             const items: any[] = [];
 
-            // Navigation — available everywhere
-            items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', disabled: !canGoBack, onClick: () => isWebviewTab ? wv?.goBack() : handleGoBack() });
-            items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', disabled: !canGoForward, onClick: () => isWebviewTab ? wv?.goForward() : handleGoForward() });
-            items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => isWebviewTab ? wv?.reload() : handleRefresh() });
-            items.push({ id: 's1', label: '', isSeparator: true });
+            // Navigation — available everywhere (hide if editing text, clicking link, or image)
+            if (!isEditable && !hasLink && !hasImage && !hasSelection) {
+              items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', disabled: !canGoBack, onClick: () => isWebviewTab ? wv?.goBack() : handleGoBack() });
+              items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', disabled: !canGoForward, onClick: () => isWebviewTab ? wv?.goForward() : handleGoForward() });
+              items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => isWebviewTab ? wv?.reload() : handleRefresh() });
+              items.push({ id: 's1', label: '', isSeparator: true });
+            }
 
             // Open link in new tab
             if (hasLink) {
@@ -1811,9 +1820,32 @@ Example response format:
               items.push({ id: 's-link', label: '', isSeparator: true });
             }
 
-            // Text selection actions
-            if (hasSelection) {
+            // Images
+            if (hasImage) {
+              items.push({ id: 'open-image', label: 'Open Image in New Tab', icon: <ImageIcon size={15} />, onClick: () => { addTab(contextMenu.params.srcURL); } });
+              items.push({ id: 'copy-image-address', label: 'Copy Image Address', icon: <Copy size={15} />, onClick: () => navigator.clipboard.writeText(contextMenu.params.srcURL) });
+              items.push({ id: 'save-image', label: 'Save Image As...', icon: <Download size={15} />, onClick: () => wv?.downloadURL(contextMenu.params.srcURL) });
+              items.push({ id: 's-image', label: '', isSeparator: true });
+            }
+
+            // Text box / Editable areas
+            if (isEditable) {
+              items.push({ id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => isWebviewTab ? wv?.undo() : document.execCommand('undo') });
+              items.push({ id: 'redo', label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => isWebviewTab ? wv?.redo() : document.execCommand('redo') });
+              items.push({ id: 's-edit1', label: '', isSeparator: true });
+              items.push({ id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', disabled: !hasSelection, onClick: () => isWebviewTab ? wv?.cut() : document.execCommand('cut') });
+              items.push({ id: 'copy', label: 'Copy', icon: <Copy size={15} />, shortcut: 'Ctrl+C', disabled: !hasSelection, onClick: () => isWebviewTab ? wv?.copy() : document.execCommand('copy') });
+              items.push({ id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', onClick: () => isWebviewTab ? wv?.paste() : document.execCommand('paste') });
+              items.push({ id: 'paste-plain', label: 'Paste and Match Style', shortcut: 'Ctrl+Shift+V', onClick: () => isWebviewTab ? wv?.pasteAndMatchStyle() : document.execCommand('insertText') });
+              items.push({ id: 's-edit2', label: '', isSeparator: true });
+              items.push({ id: 'select-all', label: 'Select All', shortcut: 'Ctrl+A', onClick: () => isWebviewTab ? wv?.selectAll() : document.execCommand('selectAll') });
+              items.push({ id: 's-edit3', label: '', isSeparator: true });
+            }
+
+            // Text selection actions (if not in an editable text box)
+            if (hasSelection && !isEditable) {
               items.push({ id: 'copy', label: 'Copy', icon: <Copy size={15} />, shortcut: 'Ctrl+C', onClick: () => isWebviewTab ? wv?.copy() : document.execCommand('copy') });
+              items.push({ id: 'search-web', label: `Search Web for "${contextMenu.params.selectionText.length > 15 ? contextMenu.params.selectionText.substring(0, 15) + '...' : contextMenu.params.selectionText}"`, icon: <Search size={15} />, onClick: () => { addTab(`https://www.google.com/search?q=${encodeURIComponent(contextMenu.params.selectionText)}`); } });
               items.push({ id: 'ai-sel', label: 'Ask AI About Selection', icon: <Sparkles size={15} />, onClick: () => setShowAgent(true) });
               items.push({ id: 's2', label: '', isSeparator: true });
             }
