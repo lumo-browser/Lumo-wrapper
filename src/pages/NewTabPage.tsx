@@ -228,7 +228,7 @@ function ShortcutsWidget({ onNavigate, isDark }: { onNavigate: (url: string) => 
                   opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-md">
                 <X className="w-3 h-3" />
               </button>
-              <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center overflow-hidden relative ${isDark ? 'shadow-lg' : 'shadow-sm'}
+              <div className={`w-16 h-16 rounded-2xl flex flex-col items-center justify-center overflow-hidden relative ${isDark ? 'shadow-lg' : 'shadow-sm'}
                 hover:scale-110 active:scale-95 transition-all duration-200`}
                 style={{
                   background: `${s.color}${isDark ? '22' : '15'}`,
@@ -238,14 +238,14 @@ function ShortcutsWidget({ onNavigate, isDark }: { onNavigate: (url: string) => 
                 <img 
                   src={`https://www.google.com/s2/favicons?domain=${(function(){try{return new URL(s.url).hostname}catch{return s.url}})()}&sz=64`} 
                   alt={s.label}
-                  className="w-8 h-8 object-contain z-10"
+                  className="w-10 h-10 object-contain z-10"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                     const fallback = e.currentTarget.nextElementSibling as HTMLElement;
                     if (fallback) fallback.style.display = 'flex';
                   }}
                 />
-                <div className="absolute inset-0 z-0 hidden items-center justify-center font-bold text-xl uppercase" style={{ color: s.color }}>
+                <div className="absolute inset-0 z-0 hidden items-center justify-center font-bold text-2xl uppercase" style={{ color: s.color }}>
                   {(function(){try{return new URL(s.url).hostname.replace('www.','')[0]}catch{return s.label[0]}})()}
                 </div>
               </div>
@@ -254,8 +254,8 @@ function ShortcutsWidget({ onNavigate, isDark }: { onNavigate: (url: string) => 
           );
         })}
         <button onClick={() => setIsAdding(true)} className="flex flex-col items-center gap-2.5 group">
-          <div className={`w-14 h-14 rounded-2xl border border-dashed flex items-center justify-center transition-all duration-200 ${addBorder}`}>
-            <Plus className={`w-5 h-5 transition-colors ${addIcon}`} />
+          <div className={`w-16 h-16 rounded-2xl border border-dashed flex items-center justify-center transition-all duration-200 ${addBorder}`}>
+            <Plus className={`w-6 h-6 transition-colors ${addIcon}`} />
           </div>
           <span className={`text-xs ${isDark ? 'text-white/30 group-hover:text-white/50' : 'text-gray-400 group-hover:text-gray-600'}`}>Add</span>
         </button>
