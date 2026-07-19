@@ -15,7 +15,7 @@
     "build:backend": "cd backend && npm run build",
     "build:frontend": "npm run build:vite && npm run build:electron",
     "build:vite": "vite build",
-    "build:electron": "npx esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main/main.js --external:electron --external:adblock-rs && npx esbuild src/main/preload.ts --bundle --platform=node --outfile=dist/main/preload.js --external:electron && npx esbuild src/main/webview-preload.ts --bundle --platform=node --outfile=dist/main/webview-preload.js --external:electron",
+    "build:electron": "npx esbuild src/main/main.ts --bundle --platform=node --outfile=dist/main/main.js --external:electron --external:adblock-rs --external:lumo-adblocker-rs && npx esbuild src/main/preload.ts --bundle --platform=node --outfile=dist/main/preload.js --external:electron && npx esbuild src/main/webview-preload.ts --bundle --platform=node --outfile=dist/main/webview-preload.js --external:electron",
     "package": "electron-builder",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "adblock-rs": "git+https://github.com/Rsaimukesh/adblock-rust.git",
+    "lumo-adblocker-rs": "file:../lumo-ad-blocker/lumo-adblocker-rs",
     "axios": "^1.6.1",
     "clsx": "^2.0.0",
     "lucide-react": "^0.294.0",
