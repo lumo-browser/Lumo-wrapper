@@ -81,11 +81,16 @@ export function HistoryPage({ entries, onNavigate, onDeleteEntry, onClearAll }: 
 
   const filtered = useMemo(() => {
     if (!entries || !Array.isArray(entries)) return [];
-    if (!search.trim()) return entries;
-    const q = search.toLowerCase();
-    return entries.filter(
-      (e) => (e?.title || '').toLowerCase().includes(q) || (e?.url || '').toLowerCase().includes(q)
-    );
+    let result = entries;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = entries.filter(
+        (e) => (e?.title || '').toLowerCase().includes(q) || (e?.url || '').toLowerCase().includes(q)
+      );
+    }
+    // Performance fix: Limit the DOM to 100 items at a time to prevent React from freezing 
+    // the renderer when thousands of history items are imported from Firefox/Chrome.
+    return result.slice(0, 100);
   }, [entries, search]);
 
   const grouped = useMemo(() => groupByDate(filtered), [filtered]);

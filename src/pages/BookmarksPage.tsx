@@ -71,11 +71,16 @@ export function BookmarksPage({ bookmarks, onNavigate, onDeleteBookmark }: Bookm
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return bookmarks;
-    const q = search.toLowerCase();
-    return bookmarks.filter(
-      (b) => b.title.toLowerCase().includes(q) || b.url.toLowerCase().includes(q)
-    );
+    let result = bookmarks;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = bookmarks.filter(
+        (b) => b.title.toLowerCase().includes(q) || b.url.toLowerCase().includes(q)
+      );
+    }
+    // Performance fix: Limit DOM rendering to 200 items to prevent React UI freezing
+    // when a massive bookmarks backup (thousands of items) is imported.
+    return result.slice(0, 200);
   }, [bookmarks, search]);
 
   return (
