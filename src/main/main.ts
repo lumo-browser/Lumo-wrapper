@@ -14,6 +14,7 @@ import { monitorNetworkRequests, registerSecurityIPC, AdBlockerResult } from './
 import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
 import { validateScript } from './agent-guard';
 import { setupMainShortcuts } from '../keybindings/mainShortcuts';
+import { registerImportHandlers } from './browserImporter';
 
 // ── Ad Blocker State ──────────────────────────────────────────────────────────
 let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
@@ -253,6 +254,9 @@ app.on('ready', () => {
 
   // ── Security Monitor IPC ────────────────────────────────────────────────────
   registerSecurityIPC(() => mainWindow);
+
+  // ── Browser Import IPC ──────────────────────────────────────────────────────
+  registerImportHandlers();
 
   // Handle ad blocker toggle + config from renderer
     guardedOn('lumo:set-ad-blocker', (_event, enabled: boolean) => {

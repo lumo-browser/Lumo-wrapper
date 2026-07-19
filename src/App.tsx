@@ -603,6 +603,15 @@ export default function App(): React.ReactElement {
     return h;
   });
 
+  // EMERGENCY FIX: Wipe corrupted localStorage arrays that are freezing the renderer.
+  // The previous bug wrote massive 50,000+ item arrays to these keys.
+  if (localStorage.getItem(`lumo-history-${activeProfileId}`)?.length! > 500000) {
+    localStorage.removeItem(`lumo-history-${activeProfileId}`);
+  }
+  if (localStorage.getItem(`lumo-bookmarks-${activeProfileId}`)?.length! > 500000) {
+    localStorage.removeItem(`lumo-bookmarks-${activeProfileId}`);
+  }
+
   // Bookmark state — rich entries with title and timestamp
   const [bookmarkEntries, setBookmarkEntries] = useState<BookmarkEntry[]>(() => {
     try {
@@ -917,6 +926,23 @@ export default function App(): React.ReactElement {
     window.addEventListener('lumo:switch-profile', handler);
     return () => window.removeEventListener('lumo:switch-profile', handler);
   }, [handleSwitchProfile]);
+
+  // ── React to browser data import (from ImportDataModal) ──────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { profileId } = (e as CustomEvent).detail || {};
+      if (profileId === activeProfileId) {
+        try {
+          const bm = JSON.parse(localStorage.getItem(`lumo-bookmarks-${activeProfileId}`) || '[]');
+          const hs = JSON.parse(localStorage.getItem(`lumo-history-${activeProfileId}`) || '[]');
+          setBookmarkEntries(Array.isArray(bm) ? bm : []);
+          setHistoryEntries(Array.isArray(hs) ? hs : []);
+        } catch { /* ignore parse errors */ }
+      }
+    };
+    window.addEventListener('lumo:data-imported', handler);
+    return () => window.removeEventListener('lumo:data-imported', handler);
+  }, [activeProfileId]);
 
   // Refs for outside-click dismissal
   const menuRef       = useRef<HTMLDivElement>(null);
