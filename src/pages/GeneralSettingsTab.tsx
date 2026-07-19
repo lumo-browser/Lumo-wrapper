@@ -136,10 +136,11 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
 
 interface Props {
   settings: BrowserSettings;
+  activeProfileId: string;
   onUpdateSettings: (u: Partial<BrowserSettings>) => void;
 }
 
-export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
+export function GeneralSettingsTab({ settings, activeProfileId, onUpdateSettings }: Props) {
   const [gen, setGen] = useState<GeneralSettings>(loadSettings);
   const [downloadPathMsg, setDownloadPathMsg] = useState('');
   const [proxyTestMsg, setProxyTestMsg] = useState('');
@@ -579,7 +580,7 @@ export function GeneralSettingsTab({ settings, onUpdateSettings }: Props) {
         </div>
       </Section>
 
-      <ImportDataModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} />
+      <ImportDataModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} activeProfileId={activeProfileId} />
 
       {/* ── Reset ── */}
       <div className="flex justify-end mb-8">

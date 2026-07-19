@@ -247,7 +247,7 @@ export function SettingsPage({
           )}
 
           {activeTab === 'general' && (
-            <GeneralSettingsTab settings={settings} onUpdateSettings={onUpdateSettings} />
+            <GeneralSettingsTab settings={settings} activeProfileId={activeProfileId} onUpdateSettings={onUpdateSettings} />
           )}
 
           {activeTab === 'search' && (

@@ -13,7 +13,12 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '@utils/logger';
-import { ArrowLeft, ArrowRight, RotateCw, Sparkles, Copy, Code, Printer, Camera, Download, FileText } from 'lucide-react';
+import { 
+  ArrowLeft, ArrowRight, RotateCw, Settings as SettingsIcon, LayoutGrid, Palette,
+  Code, Command, Maximize, X, User, Plus, Compass, ChevronDown, Download,
+  Printer, Camera, FileText, Copy, BookOpen, Clock, Heart, Sparkles, MonitorPlay,
+  Monitor, BrainCircuit, Globe, Type, Image as ImageIcon, Search
+} from 'lucide-react';
 
 import { BrowserTabBar, type BrowserTab } from '@ui/components/BrowserTabBar';
 import { BrowserToolbar } from '@ui/components/BrowserToolbar';
@@ -21,8 +26,9 @@ import { ExtensionsPanel } from '@ui/components/ExtensionsPanel';
 import { AccountModal, type UserAccount } from '@ui/components/AccountModal';
 import { ContextMenu } from '@ui/components/ContextMenu';
 import { WelcomePage, type OnboardingPrefs } from '@ui/components/WelcomePage';
+import { useAppShortcuts } from './keybindings/useAppShortcuts';
 import { AISidebar } from '@ui/components/AISidebar';
-import { AgentSidebar } from '@ui/components/AgentSidebar';
+import translateScript from './features/translate/injectTranslate.js?raw';
 import { ComparePage } from '@ui/components/ComparePage';
 import { BrowserMenu } from '@ui/components/BrowserMenu';
 import { TabGroupModal, GROUP_COLOR_PALETTE, type TabGroup } from '@ui/components/TabGroupModal';
@@ -475,9 +481,8 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
 
 
 // ── Tab helpers ────────────────────────────────────────────────────────────
-let _tabId = 1;
 const mkTab = (overrides: Partial<BrowserTab> = {}): BrowserTab => ({
-  id: `tab-${++_tabId}`,
+  id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   title: 'New Tab',
   url: '',
   isActive: false,
@@ -552,10 +557,27 @@ export default function App(): React.ReactElement {
         tabId: e.detail.tabId
       });
     };
+
+    const globalContextHandler = (e: MouseEvent) => {
+      // Don't override if right-clicking in a webview
+      if ((e.target as HTMLElement)?.tagName === 'WEBVIEW') return;
+      
+      e.preventDefault();
+      setContextMenu({
+        show: true,
+        x: e.clientX,
+        y: e.clientY,
+        params: { linkURL: '', srcURL: '', selectionText: window.getSelection()?.toString() || '', x: e.clientX, y: e.clientY },
+        tabId: null // indicate this is not a webview
+      });
+    };
+
     // ContextMenu handles its own outside-click via capture-phase mousedown
     window.addEventListener('lumo:show-context-menu', handler);
+    window.addEventListener('contextmenu', globalContextHandler);
     return () => {
       window.removeEventListener('lumo:show-context-menu', handler);
+      window.removeEventListener('contextmenu', globalContextHandler);
     };
   }, []);
   // Tabs
@@ -573,9 +595,22 @@ export default function App(): React.ReactElement {
   const activeTab = tabs.find((t) => t.isActive) ?? tabs[0];
 
   // Per-tab nav history
-  const [navHistories, setNavHistories] = useState<Record<string, NavHistory>>({
-    'tab-1': emptyHistory(),
+  const [navHistories, setNavHistories] = useState<Record<string, NavHistory>>(() => {
+    const h: Record<string, NavHistory> = {};
+    tabs.forEach((t) => {
+      h[t.id] = { stack: [t.url || 'lumo://newtab'], cursor: 0 };
+    });
+    return h;
   });
+
+  // EMERGENCY FIX: Wipe corrupted localStorage arrays that are freezing the renderer.
+  // The previous bug wrote massive 50,000+ item arrays to these keys.
+  if (localStorage.getItem(`lumo-history-${activeProfileId}`)?.length! > 500000) {
+    localStorage.removeItem(`lumo-history-${activeProfileId}`);
+  }
+  if (localStorage.getItem(`lumo-bookmarks-${activeProfileId}`)?.length! > 500000) {
+    localStorage.removeItem(`lumo-bookmarks-${activeProfileId}`);
+  }
 
   // Bookmark state — rich entries with title and timestamp
   const [bookmarkEntries, setBookmarkEntries] = useState<BookmarkEntry[]>(() => {
@@ -655,6 +690,14 @@ export default function App(): React.ReactElement {
         } else {
           wv.openDevTools({ mode: 'bottom' });
         }
+      } else if (action === 'go-back') {
+        window.dispatchEvent(new CustomEvent('lumo:go-back'));
+      } else if (action === 'go-forward') {
+        window.dispatchEvent(new CustomEvent('lumo:go-forward'));
+      } else if (action === 'close-tab') {
+        window.dispatchEvent(new CustomEvent('lumo:close-tab'));
+      } else if (action === 'new-tab') {
+        window.dispatchEvent(new CustomEvent('lumo:new-tab'));
       }
     });
     return () => unsub?.();
@@ -884,6 +927,23 @@ export default function App(): React.ReactElement {
     return () => window.removeEventListener('lumo:switch-profile', handler);
   }, [handleSwitchProfile]);
 
+  // ── React to browser data import (from ImportDataModal) ──────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { profileId } = (e as CustomEvent).detail || {};
+      if (profileId === activeProfileId) {
+        try {
+          const bm = JSON.parse(localStorage.getItem(`lumo-bookmarks-${activeProfileId}`) || '[]');
+          const hs = JSON.parse(localStorage.getItem(`lumo-history-${activeProfileId}`) || '[]');
+          setBookmarkEntries(Array.isArray(bm) ? bm : []);
+          setHistoryEntries(Array.isArray(hs) ? hs : []);
+        } catch { /* ignore parse errors */ }
+      }
+    };
+    window.addEventListener('lumo:data-imported', handler);
+    return () => window.removeEventListener('lumo:data-imported', handler);
+  }, [activeProfileId]);
+
   // Refs for outside-click dismissal
   const menuRef       = useRef<HTMLDivElement>(null);
   const extRef        = useRef<HTMLDivElement>(null);
@@ -972,45 +1032,16 @@ export default function App(): React.ReactElement {
       const tabId = activeTab?.id;
       const wv = document.getElementById(`webview-${tabId}`) as any;
       if (!wv) return;
-      const lang = settings.uiLanguage.split('-')[0]; // e.g., 'en'
-      const script = `
-        (function() {
-          if (window._lumoTranslated) return;
-          window._lumoTranslated = true;
-          
-          const script = document.createElement('script');
-          script.src = "https://translate.google.com/translate_a/element.js?cb=lumoTranslateInit";
-          document.head.appendChild(script);
 
-          window.lumoTranslateInit = function() {
-            new google.translate.TranslateElement({
-              pageLanguage: 'auto',
-              includedLanguages: '${lang}',
-              layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-              autoDisplay: false
-            }, 'lumo-translate-widget');
-            
-            // Wait for widget to load and trigger it
-            setTimeout(() => {
-              const select = document.querySelector('.goog-te-combo');
-              if (select) {
-                select.value = '${lang}';
-                select.dispatchEvent(new Event('change'));
-              }
-              // Hide the google translate banner that appears at the top
-              const banner = document.querySelector('.goog-te-banner-frame');
-              if (banner) banner.style.display = 'none';
-              document.body.style.top = '0px';
-            }, 1000);
-          };
-
-          const widgetDiv = document.createElement('div');
-          widgetDiv.id = 'lumo-translate-widget';
-          widgetDiv.style.display = 'none';
-          document.body.appendChild(widgetDiv);
-        })();
-      `;
-      wv.executeJavaScript(script).catch(() => {});
+      try {
+        if (wv.executeJavaScript) {
+          wv.executeJavaScript(translateScript).catch((e: any) => console.error("Translate script error:", e));
+        } else {
+          console.error("webview.executeJavaScript is not available");
+        }
+      } catch (err) {
+        console.error("Failed to execute translate script:", err);
+      }
     };
     window.addEventListener('lumo:translate-page', handleTranslate);
     return () => window.removeEventListener('lumo:translate-page', handleTranslate);
@@ -1070,7 +1101,12 @@ export default function App(): React.ReactElement {
 
   const closeTab = useCallback((id: string) =>
     setTabs((prev) => {
-      if (prev.length === 1) return prev; // never close last tab
+      if (prev.length === 1) {
+        if (window.electron?.send) {
+          window.electron.send('lumo:window-close');
+        }
+        return prev;
+      }
       const idx = prev.findIndex((t) => t.id === id);
       const tabToClose = prev[idx];
       if (tabToClose) {
@@ -1090,10 +1126,9 @@ export default function App(): React.ReactElement {
     setTabs((prev) => [...prev.map((x) => ({ ...x, isActive: false })), t]);
     setNavHistories((prev) => {
       const h = emptyHistory();
-      if (startUrl) {
-        h.stack.push(startUrl);
-        h.cursor = 0;
-      }
+      const urlToPush = startUrl || 'lumo://newtab';
+      h.stack.push(urlToPush);
+      h.cursor = 0;
       return { ...prev, [t.id]: h };
     });
   }, []);
@@ -1376,164 +1411,33 @@ Example response format:
     setTabGrouping(s => ({ ...s, isOpen: false }));
   }, []);
 
-  // ── Keyboard Shortcuts ──────────────────────────────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key.toLowerCase() === 't') {
-        if (e.shiftKey) {
-          // Reopen closed tab (Ctrl+Shift+T)
-          e.preventDefault();
-          setRecentlyClosedTabs(prev => {
-            if (prev.length === 0) return prev;
-            const toRestore = prev[prev.length - 1];
-            const remaining = prev.slice(0, -1);
-            setTabs(ts => [...ts.map(t => ({ ...t, isActive: false })), { ...toRestore, isActive: true, id: `tab-${Date.now()}` }]);
-            return remaining;
-          });
-        } else {
-          e.preventDefault();
-          addTab();
-        }
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'w') {
-        e.preventDefault();
-        if (activeTab) closeTab(activeTab.id);
-      } else if (e.ctrlKey && e.key === 'Tab') {
-        // Cycle tabs (Ctrl+Tab / Ctrl+Shift+Tab)
-        e.preventDefault();
-        setTabs(prev => {
-          const idx = prev.findIndex(t => t.isActive);
-          const nextIdx = e.shiftKey ? (idx - 1 + prev.length) % prev.length : (idx + 1) % prev.length;
-          return prev.map((t, i) => ({ ...t, isActive: i === nextIdx }));
-        });
-      } else if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
-        // Jump to tab (Ctrl+1...9)
-        e.preventDefault();
-        const idx = parseInt(e.key) - 1;
-        setTabs(prev => {
-          if (!prev[idx]) return prev;
-          return prev.map((t, i) => ({ ...t, isActive: i === idx }));
-        });
-      } else if ((e.ctrlKey && e.key.toLowerCase() === 'l') || (e.altKey && e.key.toLowerCase() === 'd')) {
-        // Focus address bar
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('lumo:focus-address-bar'));
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'f') {
-        // Find in page
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('lumo:find-in-page'));
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'n') {
-        // Incognito (Coming soon alert)
-        e.preventDefault();
-        alert('Incognito mode is coming in the next Lumo update!');
-      } else if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
-        // This is now handled below with lumo://settings
-        e.preventDefault();
-        navigate('lumo://settings');
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
-        e.preventDefault();
-        setShowAI((v) => !v);
-        setShowAgent(false);
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') {
-        e.preventDefault();
-        setShowAgent(v => !v);
-        setShowAI(false);
-      } else if (e.key === 'F5' || (e.ctrlKey && e.key.toLowerCase() === 'r')) {
-        e.preventDefault();
-        handleRefresh();
-      } else if (e.altKey && e.key === 'ArrowLeft') {
-        e.preventDefault();
-        handleGoBack();
-      } else if (e.altKey && e.key === 'ArrowRight') {
-        e.preventDefault();
-        handleGoForward();
-      } else if (e.key === 'Escape') {
-        handleStop();
-      } else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
-        e.preventDefault();
-        handleZoomIn();
-      } else if (e.ctrlKey && e.key === '-') {
-        e.preventDefault();
-        handleZoomOut();
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        navigate('lumo://bookmarks');
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'h') {
-        e.preventDefault();
-        navigate('lumo://history');
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'j') {
-        e.preventDefault();
-        e.stopPropagation();
-        // Toggle downloads page (Chrome-style Ctrl+J behaviour)
-        if (currentUrl === 'lumo://downloads') {
-          handleGoBack();
-        } else {
-          navigate('lumo://downloads');
-        }
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'p') {
-        e.preventDefault();
-        handlePrint();
-      } else if (e.ctrlKey && e.key === ',') {
-        e.preventDefault();
-        navigate('lumo://settings');
-      } else if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
-        e.preventDefault();
-        navigate('lumo://settings');
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g') {
-        e.preventDefault();
-        groupTabsWithAI();
-      } else if (e.altKey && e.key.toLowerCase() === 'home') {
-        e.preventDefault();
-        navigate('lumo://newtab');
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'd') {
-        e.preventDefault();
-        toggleBookmark();
-      } else if (e.ctrlKey && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        const wv = activeTab ? document.getElementById(`webview-${activeTab.id}`) as any : null;
-        if (wv?.getURL && wv?.downloadURL) {
-          wv.downloadURL(wv.getURL());
-        }
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'u') {
-        e.preventDefault();
-        if (activeTab?.url && !activeTab.url.startsWith('lumo://')) {
-          addTab('view-source:' + activeTab.url);
-        }
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i') {
-        e.preventDefault();
-        window.electron?.send?.('lumo:toggle-devtools');
-      } else if (e.key === 'F11') {
-        e.preventDefault();
-        const el = document.documentElement;
-        if (document.fullscreenElement) {
-          document.exitFullscreen();
-        } else {
-          el.requestFullscreen();
-        }
-      }
-    };
-
-    // Use capture phase so Lumo intercepts Ctrl+J/B/H/etc BEFORE the
-    // webview or OS (e.g. Brave/Chrome) can steal the shortcut.
-    window.addEventListener('keydown', handleKeyDown, true);
-
-    // Handlers for custom events dispatched by the global shortcut IPC listener
-    const onGoBack   = () => handleGoBack();
-    const onOpenPage = (e: Event) => navigate((e as CustomEvent).detail as string);
-    window.addEventListener('lumo:go-back',   onGoBack);
-    window.addEventListener('lumo:open-page', onOpenPage);
-
-    return () => {
-      window.removeEventListener('keydown',        handleKeyDown, true);
-      window.removeEventListener('lumo:go-back',   onGoBack);
-      window.removeEventListener('lumo:open-page', onOpenPage);
-    };
-  }, [activeTab, addTab, closeTab, handleRefresh, handleGoBack, handleGoForward, handleStop, handleZoomIn, handleZoomOut, navigate, handlePrint, groupTabsWithAI, toggleBookmark]);
-
   const currentUrl = activeTab?.url ?? '';
   const currentHistory = navHistories[activeTab?.id ?? ''] ?? emptyHistory();
-  const canGoBack    = activeTab?.canGoBack ?? (currentHistory.cursor > 0);
-  const canGoForward = activeTab?.canGoForward ?? (currentHistory.cursor < currentHistory.stack.length - 1);
+  const canGoBack    = (activeTab?.canGoBack === true) || (currentHistory.cursor > 0);
+  const canGoForward = (activeTab?.canGoForward === true) || (currentHistory.cursor < currentHistory.stack.length - 1);
   const isSecure     = currentUrl.startsWith('https://');
+
+  // ── Keyboard Shortcuts ──────────────────────────────────────────────────
+  useAppShortcuts({
+    activeTab,
+    addTab,
+    closeTab,
+    navigate,
+    handleRefresh,
+    handleGoBack,
+    handleGoForward,
+    handleStop,
+    handleZoomIn,
+    handleZoomOut,
+    handlePrint,
+    groupTabsWithAI,
+    toggleBookmark,
+    setRecentlyClosedTabs,
+    setTabs,
+    currentUrl,
+    setShowAI,
+    setShowAgent,
+  });
 
 
   // Search engine URL from settings
@@ -1894,14 +1798,16 @@ Example response format:
             const isDevToolsOpen = isWebviewTab ? !!(wv.isDevToolsOpened?.()) : false;
             const hasSelection = (contextMenu.params?.selectionText?.trim()?.length ?? 0) > 0;
             const hasLink = !!contextMenu.params?.linkURL;
+            const hasImage = !!contextMenu.params?.hasImageContents;
+            const isEditable = !!contextMenu.params?.isEditable;
 
             const items: any[] = [];
 
-            // Navigation — only on real webview tabs
-            if (isWebviewTab) {
-              items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', onClick: () => wv?.goBack() });
-              items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', onClick: () => wv?.goForward() });
-              items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => wv?.reload() });
+            // Navigation — available everywhere (hide if editing text, clicking link, or image)
+            if (!isEditable && !hasLink && !hasImage && !hasSelection) {
+              items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', disabled: !canGoBack, onClick: () => isWebviewTab ? wv?.goBack() : handleGoBack() });
+              items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', disabled: !canGoForward, onClick: () => isWebviewTab ? wv?.goForward() : handleGoForward() });
+              items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => isWebviewTab ? wv?.reload() : handleRefresh() });
               items.push({ id: 's1', label: '', isSeparator: true });
             }
 
@@ -1912,9 +1818,32 @@ Example response format:
               items.push({ id: 's-link', label: '', isSeparator: true });
             }
 
-            // Text selection actions
-            if (hasSelection) {
+            // Images
+            if (hasImage) {
+              items.push({ id: 'open-image', label: 'Open Image in New Tab', icon: <ImageIcon size={15} />, onClick: () => { addTab(contextMenu.params.srcURL); } });
+              items.push({ id: 'copy-image-address', label: 'Copy Image Address', icon: <Copy size={15} />, onClick: () => navigator.clipboard.writeText(contextMenu.params.srcURL) });
+              items.push({ id: 'save-image', label: 'Save Image As...', icon: <Download size={15} />, onClick: () => wv?.downloadURL(contextMenu.params.srcURL) });
+              items.push({ id: 's-image', label: '', isSeparator: true });
+            }
+
+            // Text box / Editable areas
+            if (isEditable) {
+              items.push({ id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => isWebviewTab ? wv?.undo() : document.execCommand('undo') });
+              items.push({ id: 'redo', label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => isWebviewTab ? wv?.redo() : document.execCommand('redo') });
+              items.push({ id: 's-edit1', label: '', isSeparator: true });
+              items.push({ id: 'cut', label: 'Cut', shortcut: 'Ctrl+X', disabled: !hasSelection, onClick: () => isWebviewTab ? wv?.cut() : document.execCommand('cut') });
+              items.push({ id: 'copy', label: 'Copy', icon: <Copy size={15} />, shortcut: 'Ctrl+C', disabled: !hasSelection, onClick: () => isWebviewTab ? wv?.copy() : document.execCommand('copy') });
+              items.push({ id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', onClick: () => isWebviewTab ? wv?.paste() : document.execCommand('paste') });
+              items.push({ id: 'paste-plain', label: 'Paste and Match Style', shortcut: 'Ctrl+Shift+V', onClick: () => isWebviewTab ? wv?.pasteAndMatchStyle() : document.execCommand('insertText') });
+              items.push({ id: 's-edit2', label: '', isSeparator: true });
+              items.push({ id: 'select-all', label: 'Select All', shortcut: 'Ctrl+A', onClick: () => isWebviewTab ? wv?.selectAll() : document.execCommand('selectAll') });
+              items.push({ id: 's-edit3', label: '', isSeparator: true });
+            }
+
+            // Text selection actions (if not in an editable text box)
+            if (hasSelection && !isEditable) {
               items.push({ id: 'copy', label: 'Copy', icon: <Copy size={15} />, shortcut: 'Ctrl+C', onClick: () => isWebviewTab ? wv?.copy() : document.execCommand('copy') });
+              items.push({ id: 'search-web', label: `Search Web for "${contextMenu.params.selectionText.length > 15 ? contextMenu.params.selectionText.substring(0, 15) + '...' : contextMenu.params.selectionText}"`, icon: <Search size={15} />, onClick: () => { addTab(`https://www.google.com/search?q=${encodeURIComponent(contextMenu.params.selectionText)}`); } });
               items.push({ id: 'ai-sel', label: 'Ask AI About Selection', icon: <Sparkles size={15} />, onClick: () => setShowAgent(true) });
               items.push({ id: 's2', label: '', isSeparator: true });
             }
@@ -1960,7 +1889,11 @@ Example response format:
                     }
                   }
                 } else {
-                  window.electron?.send?.('lumo:toggle-devtools');
+                  if (contextMenu.params?.x !== undefined && contextMenu.params?.y !== undefined) {
+                    (window as any).electron?.send?.('lumo:inspect-element', contextMenu.params.x, contextMenu.params.y);
+                  } else {
+                    (window as any).electron?.send?.('lumo:toggle-devtools');
+                  }
                 }
               }
             });

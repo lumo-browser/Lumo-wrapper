@@ -1,17 +1,9 @@
 /**
- * adBlocker.ts — Rust-powered ad & tracker blocking engine
+ * adBlocker.ts — Ad & tracker blocking engine (disabled build)
  *
- * Uses lumo-adblocker-rs (NAPI-RS native addon) for high-performance
- * URL matching with EasyList filter lists, L1 cache, and hot-rule
- * frequency tracking.
+ * The native lumo-adblocker-rs addon is not bundled in this build,
+ * so all blocking checks are no-ops.
  */
-
-import {
-  initLogger,
-  compileRules,
-  updateFilters,
-  shouldBlock as nativeShouldBlock,
-} from 'lumo-adblocker-rs';
 
 export interface AdBlockerConfig {
   enabled: boolean;
@@ -31,18 +23,8 @@ export const DEFAULT_CONFIG: AdBlockerConfig = {
   blockFingerprinters: true,
 };
 
-initLogger();
-
-// Pre-fetch filter lists on startup (synchronous blocking HTTP fetches in Rust thread)
-const lists = updateFilters();
-if (lists.length > 0) {
-  compileRules(lists);
-}
-
-export function shouldBlock(url: string, _config: AdBlockerConfig): boolean {
-  if (!_config.enabled) return false;
-  const result = nativeShouldBlock(url, 'https://lumo-browser.local', 'script');
-  return result.blocked;
+export function shouldBlock(_url: string, _config: AdBlockerConfig): boolean {
+  return false;
 }
 
 export class AdBlockerStats {

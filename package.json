@@ -28,8 +28,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "adblock-rs": "git+https://github.com/Rsaimukesh/adblock-rust.git",
-    "lumo-adblocker-rs": "file:../lumo-ad-blocker/lumo-adblocker-rs",
     "axios": "^1.6.1",
     "clsx": "^2.0.0",
     "lucide-react": "^0.294.0",

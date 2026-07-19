@@ -9,10 +9,12 @@ import path from 'path';
 import fs from 'fs';
 import axios from 'axios';
 import { AdBlockerConfig, DEFAULT_CONFIG, AdBlockerStats } from './adBlocker';
-import { shouldBlock as nativeShouldBlock } from 'lumo-adblocker-rs';
+const nativeShouldBlock = (_url: string, _source: string, _resourceType: string): { blocked: boolean; injectScript?: string } => ({ blocked: false });
 import { monitorNetworkRequests, registerSecurityIPC, AdBlockerResult } from './securityMonitor';
 import { guardedOn, guardedHandle, setZeroTrustMode, isZeroTrustMode } from './ipc-guard';
 import { validateScript } from './agent-guard';
+import { setupMainShortcuts } from '../keybindings/mainShortcuts';
+import { registerImportHandlers } from './browserImporter';
 
 // ── Ad Blocker State ──────────────────────────────────────────────────────────
 let adBlockerConfig: AdBlockerConfig = { ...DEFAULT_CONFIG };
@@ -252,6 +254,9 @@ app.on('ready', () => {
 
   // ── Security Monitor IPC ────────────────────────────────────────────────────
   registerSecurityIPC(() => mainWindow);
+
+  // ── Browser Import IPC ──────────────────────────────────────────────────────
+  registerImportHandlers();
 
   // Handle ad blocker toggle + config from renderer
     guardedOn('lumo:set-ad-blocker', (_event, enabled: boolean) => {
@@ -1306,24 +1311,7 @@ app.on('ready', () => {
   // Disable native menu bar completely
   Menu.setApplicationMenu(null);
 
-  // ── Global keyboard shortcuts ─────────────────────────────────────────────
-  // Register AFTER window creation. These fire at OS level, preventing
-  // other apps (e.g. Brave) from intercepting them while Lumo is focused.
-  app.whenReady().then(() => {
-    // Ctrl+J — toggle Downloads page (Chrome-compatible shortcut)
-    globalShortcut.register('CommandOrControl+J', () => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('lumo:shortcut', 'toggle-downloads');
-      }
-    });
-    // Ctrl+Shift+I — toggle docked DevTools on active webview (Firefox-like inspector)
-    globalShortcut.register('CommandOrControl+Shift+I', () => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('lumo:shortcut', 'toggle-inspector');
-      }
-    });
-    console.log('[Lumo] Global shortcuts registered');
-  });
+  setupMainShortcuts(mainWindow);
 });
 
 app.on('window-all-closed', () => {
