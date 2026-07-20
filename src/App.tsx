@@ -83,7 +83,7 @@ interface WebviewTabProps {
   onNewTab: (url?: string) => void;
 }
 
-function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, askSavePasswords, autofillPasswords, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured, onNewTab }: WebviewTabProps) {
+const WebviewTab = React.memo(({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, askSavePasswords, autofillPasswords, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured, onNewTab }: WebviewTabProps) => {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
   const ztRef = useRef(zeroTrustMode);
@@ -91,10 +91,15 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
   const askSaveRef = useRef(askSavePasswords);
   const autofillRef = useRef(autofillPasswords);
   const urlRef = useRef(url);
+  const permissionsRef = useRef(permissions);
+  const cb = useRef({ onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured, onNewTab });
+  
   profileRef.current = activeProfileId;
   ztRef.current = zeroTrustMode;
   askSaveRef.current = askSavePasswords;
   autofillRef.current = autofillPasswords;
+  permissionsRef.current = permissions;
+  cb.current = { onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured, onNewTab };
 
   // React to external URL changes
   useEffect(() => {
@@ -112,15 +117,15 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
     const wv = ref.current;
     if (!wv) return;
 
-    const onStartLoad = () => onLoadingChange(true);
-    const onStopLoad  = () => onLoadingChange(false);
-    const onTitleUpd  = (e: any) => onTitleChange(e.title || '');
+    const onStartLoad = () => cb.current.onLoadingChange(true);
+    const onStopLoad  = () => cb.current.onLoadingChange(false);
+    const onTitleUpd  = (e: any) => cb.current.onTitleChange(e.title || '');
     const onNavigated = (e: any) => {
       urlRef.current = e.url || '';
-      onUrlChange(e.url || '');
-      onLoadingChange(false);
+      cb.current.onUrlChange(e.url || '');
+      cb.current.onLoadingChange(false);
       if (wv && typeof wv.canGoBack === 'function') {
-        onNavStateChange(wv.canGoBack(), wv.canGoForward());
+        cb.current.onNavStateChange(wv.canGoBack(), wv.canGoForward());
       }
     };
 
@@ -390,7 +395,7 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
         try {
           const data = JSON.parse(e.message.slice('[LumoPassword]'.length));
           if (data.password && askSaveRef.current) {
-            onPasswordCaptured({ url: data.url, username: data.username, password: data.password });
+            cb.current.onPasswordCaptured({ url: data.url, username: data.username, password: data.password });
           }
         } catch {}
       }
@@ -420,14 +425,14 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
       if (zeroTrustMode || blockPopups) {
         if (e.disposition === 'new-window' || e.disposition === 'foreground-tab') {
           e.preventDefault();
-          onNewTab(targetUrl);
+          cb.current.onNewTab(targetUrl);
         } else {
           e.preventDefault();
           console.log(`[${zeroTrustMode ? 'ZT' : 'Popups'}] Blocked popup: ${targetUrl}`);
         }
       } else {
         e.preventDefault();
-        onNewTab(targetUrl);
+        cb.current.onNewTab(targetUrl);
       }
     };
     wv.addEventListener('new-window', onNewWindow);
@@ -444,7 +449,7 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
         notifications: 'notifications',
       };
       const settingKey = permMap[e.permission];
-      if (settingKey && !permissions[settingKey]) {
+      if (settingKey && !permissionsRef.current[settingKey]) {
         e.request.deny();
       } else {
         e.request.grant();
@@ -463,7 +468,7 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
       wv.removeEventListener('permission-request', onPermissionRequest);
       wv.removeEventListener('console-message', onConsoleMessage);
     };
-  }, [isDark, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, zeroTrustMode, blockPopups, permissions, askSavePasswords, autofillPasswords, onPasswordCaptured, onNewTab]);
+  }, [tabId, zeroTrustMode, blockPopups]);
 
   return (
     <webview
@@ -477,7 +482,21 @@ function WebviewTab({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockP
       webpreferences={zeroTrustMode ? "sandbox=true" : undefined}
     />
   );
-}
+}, (prev, next) => {
+  // Ignore callback functions in the memo comparison, because WebviewTab 
+  // uses refs internally to always call the latest functions without re-rendering.
+  return (
+    prev.tabId === next.tabId &&
+    prev.url === next.url &&
+    prev.isDark === next.isDark &&
+    prev.zeroTrustMode === next.zeroTrustMode &&
+    prev.activeProfileId === next.activeProfileId &&
+    prev.blockPopups === next.blockPopups &&
+    prev.askSavePasswords === next.askSavePasswords &&
+    prev.autofillPasswords === next.autofillPasswords &&
+    JSON.stringify(prev.permissions) === JSON.stringify(next.permissions)
+  );
+});
 
 
 // ── Tab helpers ────────────────────────────────────────────────────────────
@@ -505,6 +524,105 @@ interface NavHistory {
   cursor: number;
 }
 const emptyHistory = (): NavHistory => ({ stack: [], cursor: -1 });
+
+// ── Internal Tab Content Wrapper ───────────────────────────────────────────
+// This forces React to COMPLETELY ignore re-rendering heavy background tabs 
+// (like History or Settings) unless they are actively being looked at.
+const InternalTabContent = React.memo(({ 
+  tab, navigate, isDark, settings, handleUpdateSettings, 
+  activeProfileId, historyEntries, bookmarkEntries, 
+  setHistoryEntries, setBookmarkEntries, isDisposable, 
+  handleOnboardingComplete, internalZoom, currentUser
+}: any) => {
+  const tabUrlLower = (tab.url || '').toLowerCase();
+  const isNtp = !tabUrlLower || tabUrlLower === 'lumo://newtab';
+  const isSettings   = tabUrlLower === 'lumo://settings';
+  const isHistory    = tabUrlLower === 'lumo://history';
+  const isBookmarks  = tabUrlLower === 'lumo://bookmarks';
+  const isAbout      = tabUrlLower === 'lumo://about';
+  const isExtensions = tabUrlLower === 'lumo://extensions';
+  const isDownloads  = tabUrlLower === 'lumo://downloads';
+  const isCompare    = tabUrlLower.startsWith('lumo://compare');
+  const isWelcome    = tabUrlLower === 'lumo://welcome';
+  const isSecurity   = tabUrlLower === 'lumo://security';
+  const isPasswords  = tabUrlLower === 'lumo://passwords';
+  
+  return (
+    <div style={{ zoom: internalZoom, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
+        {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
+        {isNtp && !isWelcome && !isDisposable && <NewTabPage onNavigate={navigate} isDark={isDark} />}
+        {isNtp && !isWelcome && isDisposable && (
+          <PrivateNewTabPage
+            onNavigate={navigate}
+            settings={settings}
+            onUpdateSettings={handleUpdateSettings}
+          />
+        )}
+        {isDownloads && <DownloadsPage onNavigate={navigate} />}
+        {isSettings && (
+          <SettingsPage
+            settings={settings}
+            activeProfileId={activeProfileId}
+            onUpdateSettings={handleUpdateSettings}
+            onClearBrowsingData={() => {
+              setHistoryEntries([]);
+              setBookmarkEntries([]);
+            }}
+            onNavigate={navigate}
+            historyCount={historyEntries.length}
+            bookmarkCount={bookmarkEntries.length}
+          />
+        )}
+        {isHistory && (
+          <HistoryPage
+            entries={historyEntries}
+            onNavigate={navigate}
+            onDeleteEntry={(id: string) => setHistoryEntries((prev: any) => prev.filter((e: any) => e.id !== id))}
+            onClearAll={() => setHistoryEntries([])}
+          />
+        )}
+        {isBookmarks && (
+          <BookmarksPage
+            bookmarks={bookmarkEntries}
+            onNavigate={navigate}
+            onDeleteBookmark={(id: string) => setBookmarkEntries((prev: any) => prev.filter((b: any) => b.id !== id))}
+            onClearAll={() => setBookmarkEntries([])}
+          />
+        )}
+        {isExtensions && <ExtensionsPage onNavigate={navigate} />}
+        {isPasswords && <PasswordManagerPage activeProfileId={activeProfileId} onNavigate={navigate} />}
+        {isSecurity && (
+          <SecurityDashboard 
+            url="lumo://security" 
+            isSecure={true} 
+            isIncognito={false} 
+            onClose={() => navigate('lumo://newtab')} 
+          />
+        )}
+        {isCompare && <ComparePage query={new URL(tab.url).searchParams.get('q') || ''} />}
+      </React.Suspense>
+      {isAbout && (
+        <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg">
+            <span className="text-2xl font-bold text-white">L</span>
+          </div>
+          <h1 className="text-2xl font-bold mb-1">Lumo Browser</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Version 0.2.0</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center max-w-sm">
+            An AI-native, privacy-first browser built with Chromium and Electron.<br/>
+            No cloud accounts. No API keys. Your data stays local.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}, (prev, next) => {
+  // Performance Hack: If the tab is hidden right now, DO NOT re-render it!
+  // This saves massive CPU spikes when you have heavy tabs (like History) in the background.
+  if (!prev.tab.isActive && !next.tab.isActive) return true;
+  return false;
+});
 
 // ── App ────────────────────────────────────────────────────────────────────
 export default function App(): React.ReactElement {
@@ -603,14 +721,6 @@ export default function App(): React.ReactElement {
     return h;
   });
 
-  // EMERGENCY FIX: Wipe corrupted localStorage arrays that are freezing the renderer.
-  // The previous bug wrote massive 50,000+ item arrays to these keys.
-  if (localStorage.getItem(`lumo-history-${activeProfileId}`)?.length! > 500000) {
-    localStorage.removeItem(`lumo-history-${activeProfileId}`);
-  }
-  if (localStorage.getItem(`lumo-bookmarks-${activeProfileId}`)?.length! > 500000) {
-    localStorage.removeItem(`lumo-bookmarks-${activeProfileId}`);
-  }
 
   // Bookmark state — rich entries with title and timestamp
   const [bookmarkEntries, setBookmarkEntries] = useState<BookmarkEntry[]>(() => {
@@ -1593,80 +1703,22 @@ Example response format:
                 className={`absolute inset-0 flex flex-col transition-opacity duration-0 ${tab.isActive ? 'z-10 opacity-100 visible' : 'z-[-1] opacity-0 invisible pointer-events-none'}`}
               >
                 {isInternal && (
-                  <div style={{ zoom: internalZoom, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <React.Suspense fallback={<div className="flex-1 bg-[#f8f9fa] dark:bg-[#1e1e1e]" />}>
-                      {isWelcome && <WelcomePage onComplete={handleOnboardingComplete} />}
-                  {isNtp && !isWelcome && !isDisposable && <NewTabPage onNavigate={navigate} isDark={isDark} />}
-                  {isNtp && !isWelcome && isDisposable && (
-                    <PrivateNewTabPage
-                      onNavigate={navigate}
-                      settings={settings}
-                      onUpdateSettings={handleUpdateSettings}
-                    />
-                  )}
-                  {isDownloads && <DownloadsPage onNavigate={navigate} />}
-                  {isSettings && (
-                    <SettingsPage
-                      settings={settings}
-                      activeProfileId={activeProfileId}
-                      onUpdateSettings={handleUpdateSettings}
-                      onClearBrowsingData={() => {
-                        setHistoryEntries([]);
-                        setBookmarkEntries([]);
-                      }}
-                      onNavigate={navigate}
-                      historyCount={historyEntries.length}
-                      bookmarkCount={bookmarkEntries.length}
-                    />
-                  )}
-                  {isHistory && (
-                    <HistoryPage
-                      entries={historyEntries}
-                      onNavigate={navigate}
-                      onDeleteEntry={(id) => setHistoryEntries((prev) => prev.filter((e) => e.id !== id))}
-                      onClearAll={() => setHistoryEntries([])}
-                    />
-                  )}
-                  {isBookmarks && (
-                    <BookmarksPage
-                      bookmarks={bookmarkEntries}
-                      onNavigate={navigate}
-                      onDeleteBookmark={(id) => setBookmarkEntries((prev) => prev.filter((b) => b.id !== id))}
-                      onClearAll={() => setBookmarkEntries([])}
-                    />
-                  )}
-                  {isExtensions && (
-                    <ExtensionsPage onNavigate={navigate} />
-                  )}
-                  {isPasswords && (
-                    <PasswordManagerPage activeProfileId={activeProfileId} onNavigate={navigate} />
-                  )}
-                  {isSecurity && (
-                    <SecurityDashboard 
-                      url="lumo://security" 
-                      isSecure={true} 
-                      isIncognito={false} 
-                      onClose={() => navigate('lumo://newtab')} 
-                    />
-                  )}
-                  {isCompare && (
-                    <ComparePage query={new URL(tab.url).searchParams.get('q') || ''} />
-                  )}
-                </React.Suspense>
-                {isAbout && (
-                  <div className="flex-1 flex flex-col items-center justify-center h-full bg-[#f8f9fa] dark:bg-[#1e1e1e] text-gray-800 dark:text-gray-200 p-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mb-4 shadow-lg">
-                      <span className="text-2xl font-bold text-white">L</span>
-                    </div>
-                    <h1 className="text-2xl font-bold mb-1">Lumo Browser</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Version 0.2.0</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 text-center max-w-sm">
-                      An AI-native, privacy-first browser built with Chromium and Electron.<br/>
-                      No cloud accounts. No API keys. Your data stays local.
-                    </p>
-                  </div>
-                )}
-                  </div>
+                  <InternalTabContent
+                    tab={tab}
+                    navigate={navigate}
+                    isDark={isDark}
+                    settings={settings}
+                    handleUpdateSettings={handleUpdateSettings}
+                    activeProfileId={activeProfileId}
+                    historyEntries={historyEntries}
+                    bookmarkEntries={bookmarkEntries}
+                    setHistoryEntries={setHistoryEntries}
+                    setBookmarkEntries={setBookmarkEntries}
+                    isDisposable={isDisposable}
+                    handleOnboardingComplete={handleOnboardingComplete}
+                    internalZoom={internalZoom}
+                    currentUser={currentUser}
+                  />
                 )}
                 {!isInternal && (
                   <WebviewTab
