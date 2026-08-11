@@ -30,7 +30,7 @@ Unlike traditional browsers, Lumo embeds an AI agent directly into the browsing 
 
 ## Key Features
 
-### 🤖 Autonomous AI Browser Agent
+### AI Browser Agent
 - **Dual-mode DOM interaction** — Text-only mode (fast, cheap, any model) + Vision mode (tagged screenshots for VLMs)
 - **"Set of Marks"** numbered element tagging for precise click/type actions
 - **Shadow DOM penetration** — works on complex SPAs and web apps
@@ -41,13 +41,13 @@ Unlike traditional browsers, Lumo embeds an AI agent directly into the browsing 
 - **Plan-driven execution** — `update_plan` breaks goals into sequenced steps with progress tracking
 - **LLM-agnostic** — supports OpenRouter (GPT-4, Claude, Gemini, etc.) and local Ollama
 
-### 🛡️ Native Ad & Tracker Blocker
+### Native Ad & Tracker Blocker
 - **Rust-powered** (NAPI-RS native addon `lumo-adblocker-rs`) — zero GC overhead, sub-microsecond URL matching
 - **EasyList filter lists** — auto-downloaded and compiled on startup
 - Fine-grained blocking: ads, trackers, social trackers, cryptominers, fingerprinters
 - Real-time stats: blocked/allowed count, block rate
 
-### 🔒 Three-Phase Security Pipeline
+### Three-Phase Security Pipeline
 | Phase | Layer | Location | What it does |
 |-------|-------|----------|-------------|
 | **1. Monitor** | Preload hooks | Webview & Renderer | Hooks clipboard API, WebAssembly, fetch/XHR/WebSocket, DOM mutations |
@@ -59,25 +59,25 @@ Unlike traditional browsers, Lumo embeds an AI agent directly into the browsing 
 - **Hidden iframe detection** — flags clickjacking/tracking injections
 - **Script integrity verification** — periodic hook re-application every 5s, tamper alerts
 
-### 🚨 Zero-Trust Mode
+### Zero-Trust Mode
 - **Partition-isolated tabs** — each tab uses a unique `partition=tab-{id}`
 - **Isolated downloads** — saved to temp directory, opened in sandboxed viewer windows, auto-cleaned after 30 min
 - **Domain allow-listing** — 70+ known-safe domains pre-configured, user-extendable via permission dialog
 - **IPC Guard** — origin validation + permission levels (PUBLIC, SESSION, SENSITIVE, ADMIN)
 - **Agent Guard** — rate-limited script injection validation, blocks access to `require`, `process`, `electron`, `ipcRenderer`
 
-### 🔐 Password Vault
+### Password Vault
 - **AES-256-GCM** encryption with per-profile vault files
 - **OS keychain integration** via Electron `safeStorage` (libsecret on Linux, DPAPI on Windows, Keychain on macOS)
 - Auto-capture on form submission, auto-fill on recognized domains
 - Per-profile isolated vaults
 
-### 👤 Multi-Profile Support
+### Multi-Profile Support
 - Isolated browsing sessions with per-profile: bookmarks, history, settings, tabs, passwords
 - Profile switching with partition-based storage isolation
 - Guest mode with disposable partitions
 
-### 🎨 Feature-Rich Browser UI
+### Feature-Rich Browser UI
 - Frameless custom title bar with window controls (minimize, maximize, close)
 - Chrome-style tab bar with tab groups, vertical/horizontal layout
 - Address bar with search engine integration (Google, Bing, DuckDuckGo, Brave, Yahoo, Yandex)
@@ -89,7 +89,7 @@ Unlike traditional browsers, Lumo embeds an AI agent directly into the browsing 
 - Dark/light/system theme with live switching
 - Disposable/incognito windows with ephemeral sessions
 
-### 🛠️ Developer & Analysis Tools
+### Developer & Analysis Tools
 - **Tech stack detection** — identifies frontend (React/Vue/Angular), backend (PHP/.NET/Python), infrastructure (Nginx/Cloudflare/Vercel), services (GA/Stripe/FontAwesome)
 - **DNS resolution** — A, AAAA, MX, TXT, NS, CNAME, SOA records
 - **WHOIS lookup** — domain registration information
@@ -98,7 +98,7 @@ Unlike traditional browsers, Lumo embeds an AI agent directly into the browsing 
 - **Threat intelligence** — domain reputation scoring, suspicious TLD detection
 - **Network proxy configuration** — manual SOCKS5/HTTP, direct, with connectivity testing
 
-### 🤖 AI Provider Support
+### AI Provider Support
 - **OpenRouter** — unified API for 200+ models (OpenAI, Anthropic, Google, Meta, Mistral, DeepSeek, Grok, etc.)
 - **Ollama** — local LLM inference (OpenAI-compatible endpoint)
 - Encrypted API key storage with secure fallback
@@ -754,7 +754,7 @@ Requires macOS host or `electron-builder` with Mac build tools.
 ---
 
 <p align="center">
-  Built with ❤️ by <a href="https://github.com/lumo-browser">Team Lumo</a>
-  <p align="center">
-  developers  : <a href="https://github.com/Rsaimukesh">Saimukesh R</a> & <a href="https://github.com/cosmic-striker">cosmic-striker</a>   
+  Built by <a href="https://github.com/lumo-browser">Team Lumo</a>
+  <br>
+  Developers: <a href="https://github.com/Rsaimukesh">Saimukesh R</a> & <a href="https://github.com/cosmic-striker">cosmic-striker</a>
 </p>
