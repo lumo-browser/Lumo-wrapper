@@ -128,11 +128,8 @@ function SearchWidget({ onNavigate, isDark }: { onNavigate: (url: string) => voi
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus(), 200);
-    // Listen for global focus event
-    const onFocus = () => inputRef.current?.focus();
-    window.addEventListener('lumo:focus-address-bar', onFocus);
-    return () => { clearTimeout(t); window.removeEventListener('lumo:focus-address-bar', onFocus); };
+    // Intentionally empty. We do not want this search bar stealing focus
+    // from the main address bar (BrowserToolbar) when opening a new tab.
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -228,22 +225,34 @@ function ShortcutsWidget({ onNavigate, isDark }: { onNavigate: (url: string) => 
                   opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-md">
                 <X className="w-3 h-3" />
               </button>
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'shadow-lg' : 'shadow-sm'}
+              <div className={`w-16 h-16 rounded-2xl flex flex-col items-center justify-center overflow-hidden relative ${isDark ? 'shadow-lg' : 'shadow-sm'}
                 hover:scale-110 active:scale-95 transition-all duration-200`}
                 style={{
                   background: `${s.color}${isDark ? '22' : '15'}`,
                   border: `1px solid ${s.color}${isDark ? '55' : '33'}`,
                   boxShadow: `0 8px 24px ${s.color}${isDark ? '30' : '20'}`,
                 }}>
-                <Icon className="w-6 h-6" style={{ color: s.color }} />
+                <img 
+                  src={`https://www.google.com/s2/favicons?domain=${(function(){try{return new URL(s.url).hostname}catch{return s.url}})()}&sz=64`} 
+                  alt={s.label}
+                  className="w-10 h-10 object-contain z-10"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <div className="absolute inset-0 z-0 hidden items-center justify-center font-bold text-2xl uppercase" style={{ color: s.color }}>
+                  {(function(){try{return new URL(s.url).hostname.replace('www.','')[0]}catch{return s.label[0]}})()}
+                </div>
               </div>
               <span className={`text-xs font-medium max-w-[64px] truncate text-center ${labelColor}`}>{s.label}</span>
             </div>
           );
         })}
         <button onClick={() => setIsAdding(true)} className="flex flex-col items-center gap-2.5 group">
-          <div className={`w-14 h-14 rounded-2xl border border-dashed flex items-center justify-center transition-all duration-200 ${addBorder}`}>
-            <Plus className={`w-5 h-5 transition-colors ${addIcon}`} />
+          <div className={`w-16 h-16 rounded-2xl border border-dashed flex items-center justify-center transition-all duration-200 ${addBorder}`}>
+            <Plus className={`w-6 h-6 transition-colors ${addIcon}`} />
           </div>
           <span className={`text-xs ${isDark ? 'text-white/30 group-hover:text-white/50' : 'text-gray-400 group-hover:text-gray-600'}`}>Add</span>
         </button>
@@ -280,55 +289,6 @@ function ShortcutsWidget({ onNavigate, isDark }: { onNavigate: (url: string) => 
   );
 }
 
-// ── AI Tip Banner ─────────────────────────────────────────────────────────────
-function AITipBanner({ isDark }: { isDark: boolean }) {
-  const [tip, setTip] = useState(() => AI_TIPS[Math.floor(Math.random() * AI_TIPS.length)]);
-  useEffect(() => {
-    const t = setInterval(() => setTip(AI_TIPS[Math.floor(Math.random() * AI_TIPS.length)]), 8000);
-    return () => clearInterval(t);
-  }, []);
-
-  const bg = isDark ? 'rgba(var(--lumo-accent-rgb),0.1)' : 'rgba(var(--lumo-accent-rgb),0.05)';
-  const border = isDark ? 'rgba(var(--lumo-accent-rgb),0.25)' : 'rgba(var(--lumo-accent-rgb),0.2)';
-
-  return (
-    <div className="flex items-center gap-3 px-5 py-3 rounded-2xl max-w-2xl mx-auto"
-      style={{ background: bg, border: `1px solid ${border}` }}>
-      <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: "var(--lumo-accent)" }} />
-      <p className={`text-xs font-medium ${isDark ? 'text-white/60' : 'text-gray-600'}`}>{tip}</p>
-    </div>
-  );
-}
-
-// ── Keyboard Shortcuts Strip ──────────────────────────────────────────────────
-function ShortcutStrip({ isDark }: { isDark: boolean }) {
-  const items = [
-    { keys: ['Ctrl', 'T'], label: 'New Tab' },
-    { keys: ['Ctrl', 'L'], label: 'Address Bar' },
-    { keys: ['Ctrl', 'Tab'], label: 'Cycle Tabs' },
-    { keys: ['Ctrl', 'Shift', 'G'], label: 'AI Group Tabs' },
-    { keys: ['Ctrl', 'Shift', 'A'], label: 'AI Chat' },
-  ];
-  return (
-    <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
-      {items.map(({ keys, label }) => (
-        <div key={label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-          {keys.map((k, i) => (
-            <React.Fragment key={i}>
-              <kbd className={`px-1.5 py-0.5 text-[10px] font-mono font-bold rounded ${isDark ? 'text-white/70' : 'text-gray-600'}`}
-                style={{
-                  background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`
-                }}>{k}</kbd>
-              {i < keys.length - 1 && <span className={`text-[10px] ${isDark ? 'text-white/30' : 'text-gray-400'}`}>+</span>}
-            </React.Fragment>
-          ))}
-          <span className={`text-[10px] ml-1 ${isDark ? 'text-white/50' : 'text-gray-500'}`}>{label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ── Ambient Orbs ──────────────────────────────────────────────────────────────
 function AmbientOrbs({ isDark }: { isDark: boolean }) {
@@ -473,9 +433,9 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
           setSettingsTab('themes');
           setShowSettings(true);
         }}
-        className={`absolute top-6 right-6 z-50 p-2 rounded-full transition-all ${themeIsDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
+        className={`absolute bottom-6 right-6 z-50 p-2 rounded-full transition-all ${configThemeIsDark ? 'text-white/40 hover:text-white/80 hover:bg-white/10' : 'text-gray-400 hover:text-gray-800 hover:bg-black/5'}`}
       >
-        <Settings className="w-5 h-5" />
+        <Settings className="w-[22px] h-[22px]" />
       </button>
 
       <DashboardSettingsOverlay 
@@ -563,8 +523,6 @@ export function NewTabPage({ onNavigate, isDark = true }: NewTabPageProps): Reac
           {config.showClock !== false && <ClockWidget isDark={configThemeIsDark} />}
           {config.showSearch !== false && <SearchWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
           {config.showShortcuts !== false && <ShortcutsWidget onNavigate={onNavigate} isDark={configThemeIsDark} />}
-          {config.showAITips !== false && <AITipBanner isDark={configThemeIsDark} />}
-          <ShortcutStrip isDark={configThemeIsDark} />
         </div>
       )}
 

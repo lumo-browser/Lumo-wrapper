@@ -98,10 +98,29 @@ export function BrowserToolbar({
 
   // Reset state when switching tabs
   useEffect(() => {
-    setDraftUrl(url);
-    setIsFocused(false);
+    const isNewTab = !url || url === 'lumo://newtab';
+    setDraftUrl(isNewTab ? '' : url);
     setShowSuggestions(false);
-  }, [tabId]);
+    
+    if (isNewTab) {
+      setIsFocused(true);
+      // Slight delay to ensure the input is mounted and ready
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.select();
+        }
+      }, 50);
+    } else {
+      setIsFocused(false);
+      // Blur so the webview can capture keyboard events if we just switched to an active tab
+      setTimeout(() => {
+        if (document.activeElement === inputRef.current) {
+          inputRef.current?.blur();
+        }
+      }, 10);
+    }
+  }, [tabId, url]);
 
   // Close security dropdown on click outside
   useEffect(() => {
@@ -117,6 +136,16 @@ export function BrowserToolbar({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showSecurityDropdown]);
+
+  // Handle Ctrl+L (focus address bar shortcut)
+  useEffect(() => {
+    const handleFocusRequest = () => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    };
+    window.addEventListener('lumo:focus-address-bar', handleFocusRequest);
+    return () => window.removeEventListener('lumo:focus-address-bar', handleFocusRequest);
+  }, []);
 
   // Fetch suggestions with debounce
   useEffect(() => {
@@ -293,8 +322,9 @@ export function BrowserToolbar({
 
   // Format URL for clean display when not focused (Safari-style)
   const getDisplayValue = () => {
-    if (isFocused) return draftUrl;
-    if (!url || url === 'lumo://newtab') return '';
+    const isNewTab = !url || url === 'lumo://newtab';
+    if (isFocused) return (draftUrl === 'lumo://newtab' || !draftUrl) ? '' : draftUrl;
+    if (isNewTab) return '';
     
     try {
       const u = new URL(url);
