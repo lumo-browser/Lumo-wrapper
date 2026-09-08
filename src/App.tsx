@@ -656,7 +656,7 @@ export default function App(): React.ReactElement {
     setSettings(s => ({ ...s, searchEngine: prefs.searchEngine as any, blockAds: prefs.adBlockEnabled }));
     window.electron?.send?.('lumo:set-ad-blocker', prefs.adBlockEnabled);
     // Navigate the welcome tab to new tab page
-    navigate('');
+    navigate('lumo://newtab');
   };
   const [contextMenu, setContextMenu] = useState<{ show: boolean; x: number; y: number; params: any; tabId: string | null }>({ show: false, x: 0, y: 0, params: null, tabId: null });
 
