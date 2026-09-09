@@ -10,7 +10,7 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
-    "dev:electron": "npm run build:electron && wait-on http://127.0.0.1:5173 && electron . --no-sandbox --disable-gpu",
+    "dev:electron": "npm run build:electron && wait-on http://127.0.0.1:5173 && electron . --no-sandbox --disable-gpu --disable-dev-tools",
     "build": "npm run build:backend && npm run build:frontend",
     "build:backend": "cd backend && npm run build",
     "build:frontend": "npm run build:vite && npm run build:electron",
