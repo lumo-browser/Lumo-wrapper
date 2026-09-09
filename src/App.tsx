@@ -500,14 +500,20 @@ const WebviewTab = React.memo(({ tabId, url, isDark, zeroTrustMode, activeProfil
 
 
 // ── Tab helpers ────────────────────────────────────────────────────────────
-const mkTab = (overrides: Partial<BrowserTab> = {}): BrowserTab => ({
-  id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-  title: 'New Tab',
-  url: '',
-  isActive: false,
-  isLoading: false,
-  ...overrides,
-});
+const mkTab = (overrides: Partial<BrowserTab> = {}): BrowserTab => {
+  const defaultFavicon = typeof overrides.url === 'string' && overrides.url.length > 0
+    ? `https://www.google.com/s2/favicons?domain=${new URL(overrides.url).hostname}&sz=16`
+    : '';
+  return {
+    id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    title: 'New Tab',
+    url: '',
+    favicon: defaultFavicon,
+    isActive: false,
+    isLoading: false,
+    ...overrides,
+  };
+};
 
 const _isFirstLaunch = (() => {
   try { return !JSON.parse(localStorage.getItem('lumo-onboarding') || '{}').complete; }
