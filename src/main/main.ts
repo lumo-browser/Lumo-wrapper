@@ -435,22 +435,15 @@ app.on('ready', () => {
 
     // Download path + alwaysAsk
     guardedOn('lumo:set-download-path', (_event, { path: dlPath, alwaysAsk }: { path: string; alwaysAsk: boolean }) => {
-      const handleDownload = (_event: Electron.Event, item: Electron.DownloadItem) => {
-        if (alwaysAsk) {
-          // Let Electron show the save dialog (default behavior)
-          return;
-        }
-        const expanded = dlPath.startsWith('~')
-          ? dlPath.replace('~', require('os').homedir())
-          : dlPath;
-        const safeName = item.getFilename().replace(/[/\\?%*:|"<>]/g, '-');
-        item.setSavePath(require('path').join(expanded, safeName));
-      };
-      session.defaultSession.removeAllListeners('will-download');
-      session.fromPartition('persist:lumo-main').removeAllListeners('will-download');
-      session.defaultSession.on('will-download', handleDownload);
-      session.fromPartition('persist:lumo-main').on('will-download', handleDownload);
-      console.log(`[Lumo] Download path set to ${dlPath}, alwaysAsk=${alwaysAsk}`);
+      if (alwaysAsk) {
+        // Let Electron show the save dialog (default behavior)
+        return;
+      }
+      const expanded = dlPath.startsWith('~')
+        ? dlPath.replace('~', require('os').homedir())
+        : dlPath;
+      downloadSavePath = expanded;
+      console.log(`[Lumo] Download save path set to ${dlPath}, alwaysAsk=${alwaysAsk}`);
     });
 
     // Folder picker dialog
@@ -460,7 +453,9 @@ app.on('ready', () => {
         properties: ['openDirectory', 'createDirectory'],
         title: 'Choose Download Folder',
       });
-      return result.canceled ? null : result.filePaths[0];
+      const folder = result.canceled ? null : result.filePaths[0];
+      if (folder) downloadSavePath = folder;
+      return folder;
     });
 
     // ── Download tracking — push progress events to renderer ──────────────────
@@ -468,12 +463,18 @@ app.on('ready', () => {
     const pathMod = require('path');
     let downloadCounter = 0;
 
+    // Default download save path — can be overridden via lumo:set-download-path IPC
+    let downloadSavePath = pathMod.join(os.homedir(), 'Downloads');
+
     const handleDownloadItem = (_event: Electron.Event, item: Electron.DownloadItem) => {
       const id = `dl-${Date.now()}-${++downloadCounter}`;
       const filename = item.getFilename();
 
-      // Auto-save to Downloads folder unless user configured a custom path
-      const savePath = pathMod.join(os.homedir(), 'Downloads', filename.replace(/[\/\\?%*:|"<>]/g, '-'));
+      // Use custom save path if set, otherwise fall back to Downloads folder
+      const safeName = item.getFilename().replace(/[\/\\?%*:|"<>]/g, '-');
+      const savePath = downloadSavePath
+        ? pathMod.join(downloadSavePath, safeName)
+        : pathMod.join(os.homedir(), 'Downloads', safeName);
       item.setSavePath(savePath);
 
       const baseItem = {
