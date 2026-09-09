@@ -20,7 +20,7 @@ import {
   Cpu,
   Home,
   Download,
-  Globe,
+  GitHub,
   Languages,
   EyeOff,
 } from 'lucide-react';
@@ -507,7 +507,7 @@ export function BrowserToolbar({
                       onMouseEnter={() => setSelectedIndex(index)}
                     >
                       {isInternal ? (
-                        <Globe className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                        <GitHub className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                       ) : (
                         <Search className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                       )}

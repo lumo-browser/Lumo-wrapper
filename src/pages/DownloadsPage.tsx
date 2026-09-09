@@ -44,7 +44,19 @@ function formatDuration(startedAt: number, endedAt?: number): string {
   const ms = (endedAt ?? Date.now()) - startedAt;
   const sec = Math.floor(ms / 1000);
   if (sec < 60) return `${sec}s`;
-  return `${Math.floor(sec / 60)}m ${sec % 60}s`;
+  const min = Math.floor(sec / 60);
+  const hrs = Math.floor(min / 60);
+  if (hrs > 0) return `${hrs}h ${min % 60}m ${sec % 60}s`;
+  return `${min}m ${sec % 60}s`;
+}
+
+function formatTimestamp(date: number): string {
+  return new Date(date).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 function getFileIcon(filename: string, mimeType?: string): React.ReactElement {
@@ -199,6 +211,7 @@ export function DownloadsPage({ onNavigate: _onNavigate }: DownloadsPageProps): 
             <div className="flex flex-col gap-3">
               {active.map(item => {
                 const pct = item.totalBytes > 0 ? (item.receivedBytes / item.totalBytes) * 100 : 0;
+                const started = formatTimestamp(item.startedAt);
                 return (
                   <div key={item.id}
                     className="flex items-start gap-4 p-4 rounded-2xl
@@ -221,6 +234,8 @@ export function DownloadsPage({ onNavigate: _onNavigate }: DownloadsPageProps): 
                         {item.totalBytes > 0 && <span>{pct.toFixed(0)}%</span>}
                         <span>·</span>
                         <span>{formatSpeed(item.receivedBytes, item.startedAt)}</span>
+                        <span>·</span>
+                        <span>{started}</span>
                       </div>
                       <ProgressBar pct={pct} />
                     </div>

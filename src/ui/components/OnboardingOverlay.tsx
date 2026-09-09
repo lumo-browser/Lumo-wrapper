@@ -4,7 +4,7 @@
  */
 import React, { useState } from 'react';
 import {
-  Globe, Sparkles, ChevronRight, ChevronLeft,
+  GitHub, Sparkles, ChevronRight, ChevronLeft,
   Shield, Search, CheckCircle2, ArrowRight, Zap, Lock,
 } from 'lucide-react';
 
@@ -66,7 +66,7 @@ function StepDefault({ onNext }: { onNext: () => void }) {
           <span className="text-white text-5xl font-black tracking-tighter select-none">N</span>
         </div>
         <div className="absolute -bottom-2 -right-2 w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/40">
-          <Globe size={18} className="text-white" />
+          <GitHub size={18} className="text-white" />
         </div>
       </div>
 
@@ -199,7 +199,7 @@ function StepPersonalize({ prefs, setPrefs, onFinish }: {
 
 // ── Step meta ─────────────────────────────────────────────────────────────────
 const STEPS = [
-  { label: 'Default Browser', icon: Globe     },
+  { label: 'Default Browser', icon: GitHub     },
   { label: 'Personalize',     icon: Sparkles  },
 ];
 
@@ -254,7 +254,7 @@ export function WelcomePage({ onComplete }: Props) {
       {/* Top bar */}
       <div className="relative z-10 flex items-center justify-between px-8 py-4 border-b border-white/[0.05]">
         <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-1.5">
-          <Globe size={12} className="text-indigo-400" />
+          <GitHub size={12} className="text-indigo-400" />
           <span className="text-xs text-gray-500 font-mono tracking-wide">lumo://welcome</span>
           <Lock size={10} className="text-emerald-400 ml-1" />
         </div>
