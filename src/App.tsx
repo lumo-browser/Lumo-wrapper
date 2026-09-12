@@ -14,10 +14,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '@utils/logger';
 import { 
-  ArrowLeft, ArrowRight, RotateCw, Settings as SettingsIcon, LayoutGrid, Palette,
-  Code, Command, Maximize, X, User, Plus, Compass, ChevronDown, Download,
-  Printer, Camera, FileText, Copy, BookOpen, Clock, Heart, Sparkles, MonitorPlay,
-  Monitor, BrainCircuit, Globe, Type, Image as ImageIcon, Search
+  ArrowLeft, ArrowRight, RotateCw, Code, Copy, Download, Image as ImageIcon, Search,
+  Sparkles, Printer, Camera, FileText
 } from 'lucide-react';
 
 import { BrowserTabBar, type BrowserTab } from '@ui/components/BrowserTabBar';
@@ -83,7 +81,7 @@ interface WebviewTabProps {
   onNewTab: (url?: string) => void;
 }
 
-const WebviewTab = React.memo(({ tabId, url, isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, askSavePasswords, autofillPasswords, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured, onNewTab }: WebviewTabProps) => {
+const WebviewTab = React.memo(({ tabId, url, _isDark, zeroTrustMode, activeProfileId, blockPopups, permissions, askSavePasswords, autofillPasswords, onTitleChange, onLoadingChange, onUrlChange, onNavStateChange, onPasswordCaptured, onNewTab }: WebviewTabProps) => {
   const ref = useRef<any>(null);
   const initialUrl = useRef(url);
   const ztRef = useRef(zeroTrustMode);
@@ -538,7 +536,7 @@ const InternalTabContent = React.memo(({
   tab, navigate, isDark, settings, handleUpdateSettings, 
   activeProfileId, historyEntries, bookmarkEntries, 
   setHistoryEntries, setBookmarkEntries, isDisposable, 
-  handleOnboardingComplete, internalZoom, currentUser
+  handleOnboardingComplete, internalZoom, _currentUser
 }: any) => {
   const tabUrlLower = (tab.url || '').toLowerCase();
   const isNtp = !tabUrlLower || tabUrlLower === 'lumo://newtab';
@@ -1011,7 +1009,7 @@ export default function App(): React.ReactElement {
   }, [sidebarWidth]);
 
   // Account
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+  const [_currentUser, setCurrentUser] = useState<UserAccount | null>(null);
 
   const handleSwitchProfile = useCallback((id: string) => {
     if (id === activeProfileId) {
@@ -1607,8 +1605,8 @@ Example response format:
           isLoading={activeTab?.isLoading ?? false}
           isSecure={isSecure}
           isDark={isDark}
-          isLoggedIn={!!currentUser}
-          userEmail={currentUser?.email}
+          isLoggedIn={!!_currentUser}
+          userEmail={_currentUser?.email}
           isBookmarked={isBookmarked}
           isAISidebarOpen={showAI}
           isAgentOpen={showAgent}
@@ -1655,8 +1653,8 @@ Example response format:
         {showMenu && (
           <BrowserMenu
             isDark={isDark}
-            isLoggedIn={!!currentUser}
-            userEmail={currentUser?.email}
+            isLoggedIn={!!_currentUser}
+            userEmail={_currentUser?.email}
             onClose={() => setShowMenu(false)}
             onToggleTheme={handleToggleTheme}
             onOpenAccount={() => { setShowAccount(true); setShowMenu(false); }}
@@ -1723,7 +1721,7 @@ Example response format:
                     isDisposable={isDisposable}
                     handleOnboardingComplete={handleOnboardingComplete}
                     internalZoom={internalZoom}
-                    currentUser={currentUser}
+                    _currentUser={_currentUser}
                   />
                 )}
                 {!isInternal && (
@@ -1852,8 +1850,7 @@ Example response format:
           onClose={() => setContextMenu(prev => ({ ...prev, show: false }))}
           items={(() => {
             const wv = document.getElementById(`webview-${contextMenu.tabId}`) as any;
-            const isWebviewTab = !!(wv && typeof wv.inspectElement === 'function');
-            const isDevToolsOpen = isWebviewTab ? !!(wv.isDevToolsOpened?.()) : false;
+            const isDevToolsOpen = false;
             const hasSelection = (contextMenu.params?.selectionText?.trim()?.length ?? 0) > 0;
             const hasLink = !!contextMenu.params?.linkURL;
             const hasImage = !!contextMenu.params?.hasImageContents;
@@ -1863,9 +1860,9 @@ Example response format:
 
             // Navigation — available everywhere (hide if editing text, clicking link, or image)
             if (!isEditable && !hasLink && !hasImage && !hasSelection) {
-              items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', disabled: !canGoBack, onClick: () => isWebviewTab ? wv?.goBack() : handleGoBack() });
-              items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', disabled: !canGoForward, onClick: () => isWebviewTab ? wv?.goForward() : handleGoForward() });
-              items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => isWebviewTab ? wv?.reload() : handleRefresh() });
+              items.push({ id: 'back', label: 'Back', icon: <ArrowLeft size={15} />, shortcut: 'Alt+Left', disabled: !canGoBack, onClick: () => wv?.goBack() });
+              items.push({ id: 'forward', label: 'Forward', icon: <ArrowRight size={15} />, shortcut: 'Alt+Right', disabled: !canGoForward, onClick: () => wv?.goForward() });
+              items.push({ id: 'reload', label: 'Reload Page', icon: <RotateCw size={15} />, shortcut: 'Ctrl+R', onClick: () => wv?.reload() });
               items.push({ id: 's1', label: '', isSeparator: true });
             }
 
@@ -1930,10 +1927,10 @@ Example response format:
 
             items.push({ id: 's3', label: '', isSeparator: true });
 
-            // Inspect — opens docked DevTools (Firefox-like panel at bottom)
+            // DevTools — toggle docked DevTools panel
             items.push({
-              id: 'inspect',
-              label: isDevToolsOpen ? 'Close DevTools' : 'Inspect Element',
+              id: 'toggle-devtools',
+              label: isDevToolsOpen ? 'Close DevTools' : 'Open DevTools',
               icon: <Code size={15} />,
               shortcut: 'Ctrl+Shift+I',
               onClick: () => {
@@ -1942,17 +1939,12 @@ Example response format:
                     wv.closeDevTools();
                   } else {
                     wv.openDevTools({ mode: 'bottom' });
-                    if (contextMenu.params?.x !== undefined && contextMenu.params?.y !== undefined) {
-                      wv.inspectElement(contextMenu.params.x, contextMenu.params.y);
-                    }
                   }
                 } else {
-                  if (contextMenu.params?.x !== undefined && contextMenu.params?.y !== undefined) {
-                    (window as any).electron?.send?.('lumo:inspect-element', contextMenu.params.x, contextMenu.params.y);
-                  } else {
-                    (window as any).electron?.send?.('lumo:toggle-devtools');
-                  }
+                  (window as any).electron?.send?.('lumo:toggle-devtools');
                 }
+              }
+            });
               }
             });
 

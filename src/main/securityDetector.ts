@@ -214,7 +214,7 @@ export function extractHost(url: string): string {
  * Validate a URL against the local blocklist and heuristic checks.
  */
 export function validateUrl(url: string): DetectionResult {
-  if (!url || url.startsWith('lumo://') || url.startsWith('chrome://') || url.startsWith('devtools://')) {
+  if (!url || url.startsWith('lumo://') || url.startsWith('chrome://') || url.startsWith('devtools://') || url.startsWith('about:') || url.startsWith('data:')) {
     return { safe: true, confidence: 100, category: 'safe', action: 'allow' };
   }
 

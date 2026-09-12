@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { X, Plus, GitHub, Minus, Square } from 'lucide-react';
+import { X, Plus, GitBranch, Minus, Square } from 'lucide-react';
 
 export interface BrowserTab {
   id: string;
@@ -72,7 +72,7 @@ export function BrowserTabBar({
                 ) : tab.favicon ? (
                   <img src={tab.favicon} alt="" className="w-4 h-4 rounded-sm" />
                 ) : (
-                  <GitHub className="w-3.5 h-3.5 opacity-50" />
+                  <GitBranch className="w-3.5 h-3.5 opacity-50" />
                 )}
               </div>
 
@@ -160,7 +160,7 @@ export function BrowserTabBar({
                 ) : tab.favicon ? (
                   <img src={tab.favicon} alt="" className="w-4 h-4 rounded-sm" />
                 ) : (
-                  <GitHub className="w-3.5 h-3.5 opacity-50" />
+                  <GitBranch className="w-3.5 h-3.5 opacity-50" />
                 )}
               </div>
 

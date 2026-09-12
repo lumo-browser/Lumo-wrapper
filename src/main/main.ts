@@ -319,6 +319,14 @@ app.on('ready', () => {
           const savePath = path.join(tempDir, filename.replace(/[\/\\?%*:|"<>]/g, '-'));
           item.setSavePath(savePath);
           console.log(`[ZT] Isolated download: ${filename} → ${savePath}`);
+          item.on('cancel', () => {
+            try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch { /* ignore */ }
+            ztDownloadDirs.delete(tempDir);
+          });
+          item.on('failed', () => {
+            try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch { /* ignore */ }
+            ztDownloadDirs.delete(tempDir);
+          });
           item.once('done', (_e, state) => {
             if (state === 'completed') {
               viewDownloadIsolated(savePath, item.getMimeType());
@@ -374,7 +382,7 @@ app.on('ready', () => {
     });
 
     // Toggle main window DevTools (used by home/internal pages)
-    guardedOn('lumo:toggle-devtools', () => {
+guardedOn('lumo:toggle-devtools', () => {
       if (!mainWindow) return;
       const wc = mainWindow.webContents;
       if (wc.isDevToolsOpened()) {
@@ -382,30 +390,6 @@ app.on('ready', () => {
       } else {
         wc.openDevTools({ mode: 'bottom' });
       }
-    });
-
-    // Inspect element at coordinates in the main renderer (internal pages)
-    guardedOn('lumo:inspect-element', (_event, x: number, y: number) => {
-      if (!mainWindow) return;
-      const wc = mainWindow.webContents;
-      wc.openDevTools({ mode: 'bottom' });
-      wc.inspectElement(x, y);
-    });
-
-    // Inspect element in a webview by webContentsId
-    guardedOn('lumo:inspect-webview', (_event, { webContentsId, x, y }: { webContentsId: number; x: number; y: number }) => {
-      try {
-        const wc = webContents.fromId(webContentsId);
-        if (!wc) return;
-        if (wc.isDevToolsOpened()) {
-          wc.closeDevTools();
-        } else {
-          wc.openDevTools({ mode: 'bottom' });
-          if (x !== undefined && y !== undefined) {
-            wc.inspectElement(x, y);
-          }
-        }
-      } catch { /* ignore */ }
     });
 
     guardedOn('lumo:save-screenshot', async (_event, webContentsId: number) => {
@@ -471,7 +455,11 @@ app.on('ready', () => {
       const filename = item.getFilename();
 
       // Use custom save path if set, otherwise fall back to Downloads folder
-      const safeName = item.getFilename().replace(/[\/\\?%*:|"<>]/g, '-');
+      let safeName = item.getFilename().replace(/[\/\\?%*:|"<>]/g, '-');
+      // Remove path traversal sequences to prevent security issues
+      safeName = safeName.replace(/\.\./g, '').replace(/^\/|\/$/g, '');
+      // Guard against empty filename after sanitisation
+      safeName = safeName || 'download';
       const savePath = downloadSavePath
         ? pathMod.join(downloadSavePath, safeName)
         : pathMod.join(os.homedir(), 'Downloads', safeName);

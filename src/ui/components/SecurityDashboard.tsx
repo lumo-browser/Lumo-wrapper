@@ -731,7 +731,9 @@ export function SecurityDashboard({
     const dlAnchor = document.createElement('a');
     dlAnchor.setAttribute('href', dataStr);
     dlAnchor.setAttribute('download', `${domain}_security_report.json`);
+    dlAnchor.href = URL.createObjectURL(blob);
     dlAnchor.click();
+    URL.revokeObjectURL(dlAnchor.href);
   };
 
   const generateReportMarkdown = () => {

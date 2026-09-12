@@ -17,10 +17,10 @@ import {
   RotateCcw,
   Sparkles,
   MoreHorizontal,
-  Cpu,
+  _cpu,
   Home,
   Download,
-  GitHub,
+  GitBranch,
   Languages,
   EyeOff,
 } from 'lucide-react';
@@ -38,7 +38,7 @@ interface BrowserToolbarProps {
   userEmail?: string;
   isBookmarked: boolean;
   isAISidebarOpen: boolean;
-  isAgentOpen: boolean;
+  _isAgentOpen: boolean;
   onBack: () => void;
   onForward: () => void;
   onRefresh: () => void;
@@ -48,7 +48,7 @@ interface BrowserToolbarProps {
   onToggleExtensions: () => void;
   onOpenAccount: () => void;
   onToggleAI: () => void;
-  onToggleAgent: () => void;
+  _onToggleAgent: () => void;
   onToggleBookmark: () => void;
   onOpenMenu: () => void;
   onDownload?: () => void;
@@ -67,7 +67,7 @@ export function BrowserToolbar({
   isSecure,
   isBookmarked,
   isAISidebarOpen,
-  isAgentOpen,
+  _isAgentOpen,
   onBack,
   onForward,
   onRefresh,
@@ -75,7 +75,7 @@ export function BrowserToolbar({
   onNavigate,
   onToggleExtensions,
   onToggleAI,
-  onToggleAgent,
+  _onToggleAgent,
   onToggleBookmark,
   onOpenMenu,
   onDownload,
@@ -507,7 +507,7 @@ export function BrowserToolbar({
                       onMouseEnter={() => setSelectedIndex(index)}
                     >
                       {isInternal ? (
-                        <GitHub className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                        <GitBranch className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                       ) : (
                         <Search className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                       )}
@@ -549,12 +549,12 @@ export function BrowserToolbar({
       <div className="flex items-center gap-0.5">
         {/* Agent — Autonomous Browser Control */}
         {/* <NavBtn
-          onClick={onToggleAgent}
+          onClick={_onToggleAgent}
           title="Lumo Agent (Ctrl+Shift+R)"
           id="btn-agent"
-          active={isAgentOpen}
+          active={_isAgentOpen}
         >
-          <Cpu className="w-4 h-4" />
+          <_cpu className="w-4 h-4" />
         </NavBtn> */}
 
         {/* AI Assistant — primary AI entry point */}
